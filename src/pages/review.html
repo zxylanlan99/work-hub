@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>复习计划 - StudyMind</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li class="menu-item">
+          <a href="../../index.html">
+            <i class="fas fa-chart-pie"></i>
+            <span>首页</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="learning.html">
+            <i class="fas fa-bullseye"></i>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li class="menu-item active">
+          <a href="review.html">
+            <i class="fas fa-redo"></i>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="knowledge.html">
+            <i class="fas fa-book-open"></i>
+            <span>知识库</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="ai-chat.html">
+            <i class="fas fa-comments"></i>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="news.html">
+            <i class="fas fa-rss"></i>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="output.html">
+            <i class="fas fa-file-alt"></i>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="settings.html">
+            <i class="fas fa-cog"></i>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title">复习计划</div>
+        <button class="btn btn-primary" id="generate-cards-btn">
+          <i class="fas fa-magic"></i>
+          生成复习卡片
+        </button>
+      </header>
+
+      <div class="content">
+        <div class="grid grid-3">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fee2e2;">
+              <i class="fas fa-alarm-clock" style="color: #ef4444;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="due-count">0</div>
+              <div class="stat-label">待复习</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fef3c7;">
+              <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="risk-count">0</div>
+              <div class="stat-label">遗忘风险</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #dcfce7;">
+              <i class="fas fa-check-circle" style="color: #22c55e;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="mastered-count">0</div>
+              <div class="stat-label">已掌握</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">今日复习队列</div>
+            <span style="font-size: 14px; color: #6b7280;">共 <span id="queue-count">0</span> 张卡片</span>
+          </div>
+          <div id="review-queue">
+            <div class="empty-state">
+              <i class="fas fa-calendar-check-o"></i>
+              <div class="empty-title">暂无复习任务</div>
+              <div class="empty-desc">学习知识条目后会生成复习卡片</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">复习统计</div>
+          </div>
+          <div id="review-stats">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+              <div style="text-align: center; flex: 1;">
+                <div style="font-size: 24px; font-weight: 700;">32</div>
+                <div style="font-size: 14px; color: #6b7280;">本周复习</div>
+              </div>
+              <div style="text-align: center; flex: 1;">
+                <div style="font-size: 24px; font-weight: 700;">75%</div>
+                <div style="font-size: 14px; color: #6b7280;">正确率</div>
+              </div>
+              <div style="text-align: center; flex: 1;">
+                <div style="font-size: 24px; font-weight: 700;">128</div>
+                <div style="font-size: 14px; color: #6b7280;">总卡片数</div>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-size: 14px; color: #6b7280;">掌握度分布</span>
+              </div>
+              <div style="display: flex; gap: 4px; height: 24px;">
+                <div style="flex: 20%; background: #22c55e; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">已掌握</div>
+                <div style="flex: 35%; background: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">学习中</div>
+                <div style="flex: 25%; background: #ef4444; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">待复习</div>
+                <div style="flex: 20%; background: #6b7280; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">新卡片</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/cloudbase.js"></script>
+  <script src="../js/review.js"></script>
+</body>
+</html>

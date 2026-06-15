@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — AI对话模块原型</title>
+<style>
+:root{
+  --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#eef2ff;
+  --success:#22c55e;--success-light:#dcfce7;
+  --warning:#f59e0b;--warning-light:#fef3c7;
+  --danger:#ef4444;--danger-light:#fee2e2;
+  --info:#3b82f6;--info-light:#dbeafe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:var(--gray-800);font-size:14px;min-height:100vh}
+
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--gray-50);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 12px;font-size:18px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:22px}
+.sidebar-nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--gray-600);font-size:13.5px;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:var(--gray-200);color:var(--gray-800)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:600;color:var(--gray-900);flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13.5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
+.btn-ghost{background:transparent;color:var(--gray-500);padding:6px 10px}.btn-ghost:hover{background:var(--gray-100);color:var(--gray-700)}
+.btn-sm{padding:5px 10px;font-size:12.5px}.btn-xs{padding:3px 8px;font-size:11.5px}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#16a34a}
+
+/* 对话布局 */
+.chat-layout{display:flex;flex:1;overflow:hidden}
+.chat-sidebar{width:260px;background:#fff;border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.chat-sidebar-search{padding:12px}
+.chat-sidebar-search input{width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;outline:none;color:var(--gray-700)}
+.chat-sidebar-search input:focus{border-color:var(--primary)}
+.chat-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+.chat-group-label{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;padding:12px 12px 4px;letter-spacing:.5px}
+.chat-list-item{padding:10px 12px;border-radius:var(--radius);cursor:pointer;transition:all .15s;margin-bottom:2px}
+.chat-list-item:hover{background:var(--gray-50)}
+.chat-list-item.active{background:var(--primary-light);border-left:3px solid var(--primary);padding-left:9px}
+.chat-item-title{font-size:13px;font-weight:500;color:var(--gray-800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.chat-item-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--gray-400)}
+.chat-new-btn{margin:8px;padding:9px;border:1px dashed var(--gray-300);border-radius:var(--radius);text-align:center;font-size:13px;color:var(--gray-500);cursor:pointer;transition:all .15s}
+.chat-new-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+/* 消息区域 */
+.chat-main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#f0f2f5}
+.chat-messages{flex:1;overflow-y:auto;padding:20px 24px}
+.msg-wrapper{margin-bottom:24px;display:flex;flex-direction:column}
+.msg-wrapper.user{align-items:flex-end}
+.msg-wrapper.assistant{align-items:flex-start}
+.msg-bubble{max-width:75%;padding:12px 16px;border-radius:var(--radius-lg);line-height:1.7;font-size:14px}
+.msg-wrapper.user .msg-bubble{background:var(--primary);color:#fff}
+.msg-wrapper.assistant .msg-bubble{background:#fff;color:var(--gray-700);border:1px solid var(--gray-200);box-shadow:var(--shadow)}
+.msg-time{font-size:11px;color:var(--gray-400);margin-top:4px}
+.msg-actions{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px}
+.msg-model-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gray-100);border-radius:20px;font-size:11.5px;color:var(--gray-600)}
+.msg-model-badge.confident{background:var(--success-light);color:#16a34a}
+.msg-cost{font-size:11.5px;color:var(--gray-400)}
+.msg-star{cursor:pointer;font-size:14px;color:var(--gray-400);transition:color .15s}
+.msg-star:hover,.msg-star.active{color:#f59e0b}
+.msg-copy{cursor:pointer;font-size:13px;color:var(--gray-400);transition:color .15s}
+.msg-copy:hover{color:var(--primary)}
+
+/* Markdown 渲染 */
+.ai-content h1{font-size:18px;font-weight:700;margin:8px 0 6px;color:var(--gray-900)}
+.ai-content h2{font-size:15px;font-weight:600;margin:12px 0 6px;color:var(--gray-800)}
+.ai-content h3{font-size:14px;font-weight:600;margin:10px 0 4px;color:var(--gray-700)}
+.ai-content p{margin-bottom:8px;line-height:1.8}
+.ai-content strong{color:var(--gray-800)}
+.ai-content code{background:var(--gray-100);padding:2px 5px;border-radius:4px;font-size:12.5px;color:var(--danger)}
+.ai-content pre{background:var(--gray-800);padding:14px;border-radius:var(--radius);overflow-x:auto;margin:10px 0}
+.ai-content pre code{background:transparent;color:#e5e7eb;padding:0}
+.ai-content ul,.ai-content ol{margin:8px 0 8px 20px;line-height:1.8}
+.ai-content li{margin-bottom:2px}
+.ai-content blockquote{border-left:3px solid var(--primary);padding:8px 14px;margin:10px 0;background:var(--primary-light);border-radius:0 var(--radius) var(--radius) 0;font-size:13px;color:var(--gray-600)}
+
+/* 知识库引用 */
+.kb-ref{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;background:var(--info-light);border:1px solid #bfdbfe;border-radius:var(--radius);font-size:12px;color:#1e40af}
+.kb-ref-icon{font-size:14px}
+.kb-ref-link{color:var(--primary);cursor:pointer;font-weight:500}
+.kb-ref-link:hover{text-decoration:underline}
+
+/* 路由标识 */
+.route-tag{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:500}
+.route-auto{background:var(--success-light);color:#16a34a}
+.route-suggest{background:var(--info-light);color:var(--info)}
+.route-default{color:var(--gray-400)}
+
+/* 流式输出的闪烁光标 */
+.typing-cursor{display:inline-block;width:2px;height:16px;background:var(--primary);animation:blink .8s infinite;vertical-align:text-bottom;margin-left:2px}
+@keyframes blink{0%,50%{opacity:1}51%,100%{opacity:0}}
+
+/* 输入区 */
+.chat-input-area{padding:16px 24px;background:#fff;border-top:1px solid var(--gray-200)}
+.chat-input-tools{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.model-dropdown{position:relative}
+.model-btn{display:flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);background:#fff;font-size:13px;color:var(--gray-700);cursor:pointer;transition:all .15s;font-family:inherit}
+.model-btn:hover{border-color:var(--primary)}
+.model-btn.confident{border-color:var(--success);color:#16a34a}
+.model-menu{display:none;position:absolute;bottom:100%;left:0;margin-bottom:4px;background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow-lg);width:240px;z-index:100}
+.model-menu.show{display:block}
+.model-opt{padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s;border-bottom:1px solid var(--gray-50)}
+.model-opt:last-child{border-bottom:none}
+.model-opt:hover{background:var(--gray-50)}
+.model-opt.active{background:var(--primary-light)}
+.model-opt-icon{font-size:18px}
+.model-opt-info{flex:1}
+.model-opt-name{font-size:13px;font-weight:500;color:var(--gray-800)}
+.model-opt-tag{font-size:11px;color:var(--gray-400);margin-top:1px}
+.model-opt-check{color:var(--primary);font-weight:600;font-size:13px}
+
+.topic-select{padding:6px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;color:var(--gray-600);background:#fff;cursor:pointer;font-family:inherit}
+
+.chat-input-row{display:flex;gap:10px;align-items:flex-end}
+.chat-input-row textarea{flex:1;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius-lg);font-size:14px;color:var(--gray-800);resize:none;outline:none;font-family:inherit;line-height:1.6;min-height:44px;max-height:120px}
+.chat-input-row textarea:focus{border-color:var(--primary)}
+.chat-input-hint{display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:12px}
+.chat-cost-estimate{color:var(--gray-400)}
+.chat-budget-bar{display:flex;align-items:center;gap:6px}
+.budget-bar-mini{width:80px;height:4px;background:var(--gray-200);border-radius:4px;overflow:hidden}
+.budget-bar-fill{height:100%;background:var(--success);border-radius:4px}
+.budget-warn .budget-bar-fill{background:var(--warning)}
+.budget-text{font-size:11px;color:var(--gray-400)}
+
+.send-btn{width:44px;height:44px;border-radius:var(--radius);background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:all .15s;flex-shrink:0}
+.send-btn:hover{background:var(--primary-dark)}
+.send-btn:disabled{background:var(--gray-300);cursor:not-allowed}
+
+/* 对比模式指示器 */
+.compare-indicator{display:none;align-items:center;gap:6px;padding:4px 10px;background:#ede9fe;border-radius:20px;font-size:12px;color:#7c3aed;margin-left:8px}
+.compare-indicator.show{display:flex}
+
+/* ===== 弹窗 ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.3);width:90%;max-width:600px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-lg{max-width:860px}
+.modal-sm{max-width:420px}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:16px;font-weight:600;color:var(--gray-900)}
+.modal-close{background:none;border:none;font-size:22px;color:var(--gray-400);cursor:pointer;padding:0 4px}
+.modal-close:hover{color:var(--gray-700)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:10px}
+
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:var(--gray-700);margin-bottom:6px}
+.form-input,.form-textarea,.form-select{width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13.5px;color:var(--gray-800);font-family:inherit;outline:none}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--primary)}
+.form-textarea{resize:vertical;min-height:80px;line-height:1.6}
+
+/* 对比模式 */
+.compare-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start}
+.compare-col{background:var(--gray-50);border-radius:var(--radius);border:1px solid var(--gray-200);overflow:hidden}
+.compare-col-header{padding:12px 14px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;gap:8px;background:#fff}
+.compare-col-name{font-size:14px;font-weight:600;color:var(--gray-800)}
+.compare-col-cost{font-size:11px;color:var(--gray-400);margin-left:auto}
+.compare-col-body{padding:14px;font-size:13.5px;line-height:1.8;color:var(--gray-600);max-height:300px;overflow-y:auto}
+.compare-vs{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 4px}
+.compare-vs-text{font-size:14px;font-weight:700;color:var(--gray-400)}
+
+.diff-legend{font-size:12px;color:var(--gray-500);margin-top:8px;display:flex;gap:16px;flex-wrap:wrap}
+.diff-tag{display:inline-flex;align-items:center;gap:4px}
+.diff-dot{width:8px;height:8px;border-radius:50%}
+.diff-dot.agree{background:var(--success)}
+.diff-dot.complement{background:var(--info)}
+.diff-dot.conflict{background:var(--warning)}
+.diff-dot.quality{background:var(--danger)}
+
+/* 费用详情 */
+.cost-circle{text-align:center;padding:16px 0}
+.cost-circle-inner{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:120px;height:120px;border-radius:50%;border:6px solid var(--success);position:relative}
+.cost-circle-amount{font-size:24px;font-weight:700;color:var(--success)}
+.cost-circle-label{font-size:12px;color:var(--gray-500);margin-top:2px}
+.cost-breakdown{margin-top:16px}
+.cost-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-50);font-size:13px}
+.cost-row:last-child{border-bottom:none}
+.cost-model-name{width:100px;color:var(--gray-700)}
+.cost-model-bar{flex:1;height:6px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.cost-model-fill{height:100%;border-radius:4px}
+.cost-model-amount{width:80px;text-align:right;color:var(--gray-600);font-weight:500}
+.cost-list{max-height:160px;overflow-y:auto;margin-top:12px}
+.cost-item{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;color:var(--gray-500);border-bottom:1px solid var(--gray-50)}
+
+/* 模型选择 */
+.model-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.model-card{padding:14px;border:1px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;transition:all .15s}
+.model-card:hover{border-color:var(--primary)}
+.model-card.selected{border-color:var(--primary);background:var(--primary-light)}
+.model-card-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.model-card-icon{font-size:20px}
+.model-card-name{font-size:14px;font-weight:600;color:var(--gray-800)}
+.model-card-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.model-card-tag{padding:1px 6px;background:var(--gray-100);border-radius:4px;font-size:11px;color:var(--gray-600)}
+.model-card-price{font-size:12px;color:var(--gray-500)}
+.model-card-check{font-size:13px;color:var(--primary);font-weight:600}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#fff;border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:240px;animation:toastIn .3s ease;border-left:3px solid var(--primary);pointer-events:auto}
+.toast.success{border-left-color:var(--success)}.toast.warning{border-left-color:var(--warning)}.toast.danger{border-left-color:var(--danger)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}
+.toast-text{font-size:13px;color:var(--gray-700)}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo"><span>🧠</span> StudyMind</div>
+    <div class="sidebar-nav">
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📊</span> 首页</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🎯</span> 学习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📡</span> 资讯</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📚</span> 知识库</div>
+      <div class="nav-item active" onclick="navSide(this)"><span class="nav-icon">💬</span> AI对话</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🔁</span> 复习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">✍️</span> 知识沉淀</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title">💬 AI 对话</div>
+      <div class="chat-budget-bar" id="budgetBar">
+        <span style="font-size:12px;color:var(--gray-400)">本月</span>
+        <span style="font-size:13px;font-weight:600;color:var(--gray-700)">¥3.50</span>
+        <span style="font-size:12px;color:var(--gray-400)">/ ¥20</span>
+        <div class="budget-bar-mini"><div class="budget-bar-fill" style="width:17.5%"></div></div>
+        <span class="budget-text">17.5%</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('modal-cost')">📊</button>
+      <button class="btn btn-primary" onclick="newChat()"><span>+</span> 新对话</button>
+    </div>
+
+    <div class="chat-layout">
+      <!-- 对话列表 -->
+      <div class="chat-sidebar">
+        <div class="chat-sidebar-search">
+          <input type="text" placeholder="搜索对话..." onkeydown="if(event.key==='Enter')toast('搜索: '+this.value)">
+        </div>
+        <div class="chat-new-btn" onclick="newChat()">+ 新建对话</div>
+        <div class="chat-list">
+          <div class="chat-group-label">今天</div>
+          <div class="chat-list-item active" onclick="switchChat(this,1)">
+            <div class="chat-item-title">微服务架构对比</div>
+            <div class="chat-item-meta"><span>DeepSeek</span><span>·</span><span>10:23</span></div>
+          </div>
+          <div class="chat-list-item" onclick="switchChat(this,2)">
+            <div class="chat-item-title">Go 并发模型优化</div>
+            <div class="chat-item-meta"><span>Kimi</span><span>·</span><span>09:15</span></div>
+          </div>
+          <div class="chat-group-label">昨天</div>
+          <div class="chat-list-item" onclick="switchChat(this,3)">
+            <div class="chat-item-title">React Server Components</div>
+            <div class="chat-item-meta"><span>Claude</span><span>·</span><span>14:30</span></div>
+          </div>
+          <div class="chat-list-item" onclick="switchChat(this,4)">
+            <div class="chat-item-title">TypeScript 类型体操</div>
+            <div class="chat-item-meta"><span>DeepSeek</span><span>·</span><span>11:02</span></div>
+          </div>
+          <div class="chat-group-label">本周</div>
+          <div class="chat-list-item" onclick="switchChat(this,5)">
+            <div class="chat-item-title">PRD 写作规范讨论</div>
+            <div class="chat-item-meta"><span>豆包</span><span>·</span><span>周一</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息区域 -->
+      <div class="chat-main" id="chatMain">
+        <div class="chat-messages" id="chatMessages">
+          <!-- 消息1：用户 -->
+          <div class="msg-wrapper user">
+            <div class="msg-bubble">微服务架构中，API Gateway 和 Service Mesh 的区别是什么？我最近在选型，想了解各自的适用场景。</div>
+            <div class="msg-time">10:23 AM</div>
+          </div>
+
+          <!-- 消息2：AI -->
+          <div class="msg-wrapper assistant">
+            <div class="msg-bubble">
+              <div class="ai-content">
+                <h2>API Gateway vs Service Mesh — 核心区别</h2>
+                <p>两者虽然都涉及"流量管理"，但处于<strong>不同的架构层级</strong>，本质上是互补而非替代关系。</p>
+                <h3>1. 架构层级不同</h3>
+                <ul>
+                  <li><strong>API Gateway（应用层入口）：</strong>部署在系统边界，负责 <code>南北向流量</code>（外部→内部）</li>
+                  <li><strong>Service Mesh（基础设施层）：</strong>以 Sidecar 模式注入每个服务旁，负责 <code>东西向流量</code>（服务间）</li>
+                </ul>
+                <h3>2. 核心关注点不同</h3>
+                <blockquote>API Gateway 关心"谁能进来、去哪"，Service Mesh 关心"服务间如何可靠通信"。</blockquote>
+                <h3>3. 选型建议</h3>
+                <ul>
+                  <li>如果团队刚起步、服务数量 < 10：<strong>API Gateway 就够了</strong>（Kong / APISIX）</li>
+                  <li>如果服务 > 20、需要灰度/熔断/可观测：<strong>引入 Service Mesh</strong>（Istio / Linkerd）</li>
+                  <li>两者不冲突，典型架构是"API Gateway + Service Mesh"组合使用</li>
+                </ul>
+              </div>
+              <div class="kb-ref">
+                <span class="kb-ref-icon">📚</span>
+                <span>参考知识库:</span>
+                <span class="kb-ref-link" onclick="toast('打开: 微服务架构设计模式')">《微服务架构设计模式》</span>
+                <span style="font-size:11px;color:var(--gray-400)">相关度 92%</span>
+              </div>
+            </div>
+            <div class="msg-actions">
+              <span class="msg-model-badge confident">🤖 自动使用 DeepSeek (推荐)</span>
+              <span class="msg-cost">💰 1,250 tokens · ¥0.002</span>
+              <span class="msg-star" onclick="toggleStar(this)" title="收藏">⭐</span>
+              <span class="msg-copy" onclick="toast('已复制到剪贴板')" title="复制">📋</span>
+            </div>
+            <div class="msg-time">10:23 AM</div>
+          </div>
+
+          <!-- 消息3：用户追问 -->
+          <div class="msg-wrapper user">
+            <div class="msg-bubble">我们目前 15 个微服务，想引入 Service Mesh。Istio 和 Linkerd 怎么选？</div>
+            <div class="msg-time">10:25 AM</div>
+          </div>
+
+          <!-- 消息4：AI回复（演示对比模式触发） -->
+          <div class="msg-wrapper assistant">
+            <div class="msg-bubble">
+              <div class="ai-content">
+                <h2>Istio vs Linkerd — 对比分析</h2>
+                <p>您的场景（15个微服务）恰好处于<strong>决策关键期</strong>。以下是核心维度的对比：</p>
+                <h3>Istio（功能全面）</h3>
+                <ul>
+                  <li><strong>优点：</strong>功能丰富（流量管理、安全、可观测一体）、社区活跃（CNCF 毕业）、多协议支持</li>
+                  <li><strong>缺点：</strong>复杂度高、资源消耗大（Istiod + Envoy Sidecar 约 200MB 内存/实例）</li>
+                  <li><strong>适用：</strong>大型团队（>50 服务）、需要复杂流量策略</li>
+                </ul>
+                <h3>Linkerd（极简高效）</h3>
+                <ul>
+                  <li><strong>优点：</strong>轻量（Rust 编写，~10MB/实例）、部署简单、性能损耗极低（<1ms P99）</li>
+                  <li><strong>缺点：</strong>功能较少（仅 HTTP/gRPC）、生态较小</li>
+                  <li><strong>适用：</strong>中小团队、追求简单和性能</li>
+                </ul>
+                <blockquote>建议：15 个服务的规模，<strong>推荐从 Linkerd 开始</strong>。等团队熟悉 Service Mesh 后，如果发现功能不够再迁移到 Istio，迁移成本可控。</blockquote>
+              </div>
+              <div class="kb-ref">
+                <span class="kb-ref-icon">📚</span>
+                <span>参考知识库:</span>
+                <span class="kb-ref-link" onclick="toast('打开: 微服务架构设计模式')">《微服务架构设计模式》</span>
+                <span style="font-size:11px;color:var(--gray-400)">相关度 85%</span>
+              </div>
+            </div>
+            <div class="msg-actions">
+              <span class="msg-model-badge">💡 推荐 Kimi（中文长文对比更清晰）<span style="color:var(--primary);cursor:pointer;margin-left:4px">切换</span></span>
+              <span class="msg-model-badge" style="margin-left:4px;background:var(--primary-light);color:var(--primary);cursor:pointer" onclick="openModal('modal-compare')">🔄 对比模式</span>
+              <span class="msg-cost">💰 2,100 tokens · ¥0.006</span>
+              <span class="msg-star" onclick="toggleStar(this)" title="收藏">⭐</span>
+              <span class="msg-copy" onclick="toast('已复制到剪贴板')" title="复制">📋</span>
+            </div>
+            <div class="msg-time">10:25 AM</div>
+          </div>
+        </div>
+
+        <!-- 输入区 -->
+        <div class="chat-input-area">
+          <div class="chat-input-tools">
+            <div class="model-dropdown">
+              <button class="model-btn" onclick="toggleModelMenu()" id="modelBtn">
+                <span>🔽</span> <span id="currentModel">DeepSeek</span>
+                <span style="font-size:10px;color:var(--gray-400)">▼</span>
+              </button>
+              <button class="btn btn-ghost btn-xs compare-indicator" id="compareInd" onclick="openModal('modal-compare')">
+                🆚 对比中
+              </button>
+              <div class="model-menu" id="modelMenu">
+                <div class="model-opt active" onclick="selectModel('DeepSeek','🔽',this)">
+                  <span class="model-opt-icon">🔽</span>
+                  <div class="model-opt-info"><div class="model-opt-name">DeepSeek</div><div class="model-opt-tag">代码 · 推理 · 性价比最高</div></div>
+                  <span class="model-opt-check">✓</span>
+                </div>
+                <div class="model-opt" onclick="selectModel('Kimi','🌟',this)">
+                  <span class="model-opt-icon">🌟</span>
+                  <div class="model-opt-info"><div class="model-opt-name">Kimi</div><div class="model-opt-tag">中文写作 · 长文 · 翻译</div></div>
+                </div>
+                <div class="model-opt" onclick="selectModel('豆包','⚡',this)">
+                  <span class="model-opt-icon">⚡</span>
+                  <div class="model-opt-info"><div class="model-opt-name">豆包</div><div class="model-opt-tag">快速响应 · 日常问答 · 成本极低</div></div>
+                </div>
+                <div class="model-opt" onclick="selectModel('Claude','🧠',this)">
+                  <span class="model-opt-icon">🧠</span>
+                  <div class="model-opt-info"><div class="model-opt-name">Claude</div><div class="model-opt-tag">长文分析 · 深度思考 · 多角度</div></div>
+                </div>
+                <div class="model-opt" onclick="selectModel('DeepSeek-R1','🔬',this)">
+                  <span class="model-opt-icon">🔬</span>
+                  <div class="model-opt-info"><div class="model-opt-name">DeepSeek-R1</div><div class="model-opt-tag">推理链 · 数学 · 逻辑推导</div></div>
+                </div>
+              </div>
+            </div>
+            <select class="topic-select" style="flex:1;max-width:220px">
+              <option>📚 关联: 不关联主题</option>
+              <option>📚 关联: 微服务架构</option>
+              <option>📚 关联: Go 语言并发</option>
+              <option>📚 关联: 前端开发</option>
+            </select>
+            <button class="btn btn-ghost btn-xs" onclick="openModal('modal-model-select')">查看全部模型</button>
+          </div>
+          <div class="chat-input-row">
+            <textarea placeholder="输入问题... (Ctrl+Enter 发送, Shift+Enter 换行)" id="chatInput" onkeydown="handleInputKey(event)" rows="1"></textarea>
+            <button class="btn btn-secondary btn-sm" onclick="startCompare()" id="compareBtn">🆚 对比</button>
+            <button class="send-btn" onclick="sendMessage()" id="sendBtn">↑</button>
+          </div>
+          <div class="chat-input-hint">
+            <div class="chat-cost-estimate" id="costEstimate">💡 预估 ¥0.002</div>
+            <div style="font-size:11px;color:var(--gray-400)">Ctrl+Enter 发送 | 本月已用 ¥3.50 / ¥20 (17.5%)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗A：对比模式 ===== -->
+<div class="modal-overlay" id="modal-compare" onclick="if(event.target===this)closeModal('modal-compare')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">🔄 模型对比 — Istio vs Linkerd 选型</div><button class="modal-close" onclick="closeModal('modal-compare')">×</button></div>
+    <div class="modal-body">
+      <div class="compare-grid">
+        <div class="compare-col">
+          <div class="compare-col-header"><span style="font-size:20px">🔽</span><span class="compare-col-name">DeepSeek</span><span class="compare-col-cost">💰 ¥0.002</span></div>
+          <div class="compare-col-body">
+            <strong>Istio vs Linkerd 核心区别：</strong><br><br>
+            <strong>Istio：</strong>功能最全，基于 Envoy 代理，支持 HTTP/gRPC/TCP 多协议。资源占用较大（Sidecar ~200MB），适合大型集群（50+ 服务）。<br><br>
+            <strong>Linkerd：</strong>极简轻量（Rust 实现），仅 ~10MB/Sidecar。只支持 HTTP/gRPC，但性能损耗极小。适合中小团队。<br><br>
+            <strong>选型建议：</strong>15 个服务建议 Linkerd，轻量够用，后续可平滑迁移 Istio。<br><br>
+            <code># Istio 安装命令<br>istioctl install --set profile=demo</code>
+          </div>
+        </div>
+        <div class="compare-vs"><span class="compare-vs-text">VS</span></div>
+        <div class="compare-col">
+          <div class="compare-col-header"><span style="font-size:20px">🌟</span><span class="compare-col-name">Kimi</span><span class="compare-col-cost">💰 ¥0.006</span></div>
+          <div class="compare-col-body">
+            <strong>Istio vs Linkerd 怎么选？</strong><br><br>
+            <strong>一句话总结：</strong>大团队选 Istio，小团队选 Linkerd。15 个服务规模刚好在"小"的边缘。<br><br>
+            <strong>从三个维度来拆解：</strong><br>
+            ① <strong>复杂度：</strong>Istio 的学习曲线大概是 Linkerd 的 3 倍。如果团队没有 K8s 运维专家，选 Linkerd 更明智。<br>
+            ② <strong>资源成本：</strong>Istio Sidecar 占约 200MB × 15 实例 = 3GB 额外内存。Linkerd 仅需 150MB。<br>
+            ③ <strong>功能取舍：</strong>如果未来需要多集群、授权策略、Wasm 扩展 → Istio；如果只需要 mTLS + 可观测 → Linkerd 完全够用。
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;background:var(--gray-50);border-radius:var(--radius);padding:14px 16px">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:10px">📊 AI 差异分析</div>
+        <div class="diff-legend">
+          <span class="diff-tag"><span class="diff-dot agree"></span> 核心一致：两者都建议 15 服务规模选 Linkerd</span>
+          <span class="diff-tag"><span class="diff-dot complement"></span> 角度互补：DeepSeek 偏技术细节+代码，Kimi 偏决策框架+成本</span>
+          <span class="diff-tag"><span class="diff-dot quality"></span> 质量差距：Kimi 的"按维度拆解"结构更清晰</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-compare')">关闭</button>
+      <button class="btn btn-sm" style="background:var(--info);color:#fff" onclick="closeModal('modal-compare');toast('采纳 DeepSeek 回答')">采纳左侧</button>
+      <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="closeModal('modal-compare');toast('采纳 Kimi 回答')">采纳右侧</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-compare');toast('已合并到新消息')">合并</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗B：收藏入库 ===== -->
+<div class="modal-overlay" id="modal-import-confirm" onclick="if(event.target===this)closeModal('modal-import-confirm')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">⭐ 收藏入库</div><button class="modal-close" onclick="closeModal('modal-import-confirm')">×</button></div>
+    <div class="modal-body">
+      <div style="background:var(--gray-50);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--gray-400);margin-bottom:4px">来源</div>
+        <div style="font-size:13px;font-weight:500;color:var(--gray-700)">AI对话：微服务架构对比</div>
+      </div>
+      <div class="form-group"><label class="form-label">标题</label><input type="text" class="form-input" value="API Gateway 与 Service Mesh 区别分析"></div>
+      <div class="form-group"><label class="form-label">分类 <span style="color:var(--danger)">*</span></label><select class="form-select"><option>技术/后端</option><option>技术/前端</option><option>产品</option></select></div>
+      <div class="form-group"><label class="form-label">标签</label><div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 10px;border:1px solid var(--gray-200);border-radius:var(--radius)"><span style="padding:3px 10px;background:var(--primary-light);color:var(--primary);border-radius:20px;font-size:12px">微服务 <span style="cursor:pointer;font-size:14px" onclick="this.parentElement.remove()">×</span></span><span style="padding:3px 10px;background:var(--primary-light);color:var(--primary);border-radius:20px;font-size:12px">API Gateway <span style="cursor:pointer;font-size:14px" onclick="this.parentElement.remove()">×</span></span><input type="text" placeholder="+ 添加标签" style="border:none;outline:none;flex:1;min-width:80px;font-size:13px"></div></div>
+      <div class="form-group"><label class="form-label">AI 摘要</label><textarea class="form-textarea" readonly>API Gateway 与 Service Mesh 的核心区别：前者处理南北向流量（外部→内部），后者处理东西向流量（服务间通信）。两者是互补关系，15 服务规模建议优先 Linkerd。</textarea></div>
+      <div style="background:var(--primary-light);border-radius:var(--radius);padding:12px 16px">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px">📚 是否加入学习计划？</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary btn-sm" onclick="closeModal('modal-import-confirm');toast('已入库并加入学习计划','success')">入库 + 加入计划</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-import-confirm');toast('已收藏入库','success')">仅入库</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-import-confirm')">取消</button></div>
+  </div>
+</div>
+
+<!-- ===== 弹窗C：对话详情 ===== -->
+<div class="modal-overlay" id="modal-chat-settings" onclick="if(event.target===this)closeModal('modal-chat-settings')">
+  <div class="modal modal-sm">
+    <div class="modal-header"><div class="modal-title">⚙️ 对话设置</div><button class="modal-close" onclick="closeModal('modal-chat-settings')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">对话标题</label><input type="text" class="form-input" value="微服务架构对比"></div>
+      <div class="form-group"><label class="form-label">关联知识主题</label><select class="form-select"><option>不关联</option><option selected>微服务架构</option><option>Go 语言并发</option><option>前端开发</option></select></div>
+      <div class="form-group"><label class="form-label">对话信息</label><div style="font-size:12.5px;color:var(--gray-500);line-height:1.8">创建时间：2026-06-11 10:23<br>消息数：4 条<br>模型：DeepSeek · Kimi<br>总费用：¥0.008</div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" style="margin-right:auto" onclick="if(confirm('确定删除此对话？')){closeModal('modal-chat-settings');toast('对话已删除','danger')}">🗑 删除对话</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-chat-settings')">取消</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-chat-settings');toast('已保存','success')">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗D：费用详情 ===== -->
+<div class="modal-overlay" id="modal-cost" onclick="if(event.target===this)closeModal('modal-cost')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">💰 费用详情 — 2026年6月</div><button class="modal-close" onclick="closeModal('modal-cost')">×</button></div>
+    <div class="modal-body">
+      <div class="cost-circle">
+        <div class="cost-circle-inner"><div class="cost-circle-amount">¥3.50</div><div class="cost-circle-label">已用 / ¥20 预算</div></div>
+        <div style="font-size:12px;color:var(--gray-400);margin-top:6px">17.5% · 剩余 ¥16.50</div>
+      </div>
+      <div class="cost-breakdown">
+        <div class="cost-row"><span class="cost-model-name">🔽 DeepSeek</span><div class="cost-model-bar"><div class="cost-model-fill" style="width:60%;background:var(--primary)"></div></div><span class="cost-model-amount">¥2.10 (60%)</span></div>
+        <div class="cost-row"><span class="cost-model-name">🌟 Kimi</span><div class="cost-model-bar"><div class="cost-model-fill" style="width:26%;background:#7c3aed"></div></div><span class="cost-model-amount">¥0.90 (26%)</span></div>
+        <div class="cost-row"><span class="cost-model-name">⚡ 豆包</span><div class="cost-model-bar"><div class="cost-model-fill" style="width:14%;background:var(--warning)"></div></div><span class="cost-model-amount">¥0.50 (14%)</span></div>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">最近消耗</div>
+        <div class="cost-list">
+          <div class="cost-item"><span>微服务架构对比 (Kimi)</span><span>¥0.006</span></div>
+          <div class="cost-item"><span>Go 并发模型 (DeepSeek)</span><span>¥0.003</span></div>
+          <div class="cost-item"><span>API Gateway 区别 (DeepSeek)</span><span>¥0.002</span></div>
+          <div class="cost-item"><span>RSC 深度分析 (Claude)</span><span>¥0.015</span></div>
+          <div class="cost-item"><span>TypeScript 类型 (DeepSeek)</span><span>¥0.001</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cost')">关闭</button>
+      <button class="btn btn-primary btn-sm" onclick="toast('预算设置已保存','success')">调整预算</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗E：模型选择 ===== -->
+<div class="modal-overlay" id="modal-model-select" onclick="if(event.target===this)closeModal('modal-model-select')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">🤖 选择模型</div><button class="modal-close" onclick="closeModal('modal-model-select')">×</button></div>
+    <div class="modal-body">
+      <div class="model-cards">
+        <div class="model-card selected" onclick="selectModelCard(this)">
+          <div class="model-card-header"><span class="model-card-icon">🔽</span><span class="model-card-name">DeepSeek</span><span class="model-card-check" style="margin-left:auto">✓ 当前</span></div>
+          <div class="model-card-tags"><span class="model-card-tag">代码</span><span class="model-card-tag">技术问答</span><span class="model-card-tag">逻辑推理</span></div>
+          <div class="model-card-price">💰 0.001元/千tokens · 性价比 ★★★★★</div>
+        </div>
+        <div class="model-card" onclick="selectModelCard(this)">
+          <div class="model-card-header"><span class="model-card-icon">🌟</span><span class="model-card-name">Kimi</span></div>
+          <div class="model-card-tags"><span class="model-card-tag">中文写作</span><span class="model-card-tag">长文</span><span class="model-card-tag">翻译</span></div>
+          <div class="model-card-price">💰 0.003元/千tokens · 性价比 ★★★★</div>
+        </div>
+        <div class="model-card" onclick="selectModelCard(this)">
+          <div class="model-card-header"><span class="model-card-icon">⚡</span><span class="model-card-name">豆包</span></div>
+          <div class="model-card-tags"><span class="model-card-tag">快速响应</span><span class="model-card-tag">日常问答</span><span class="model-card-tag">成本极低</span></div>
+          <div class="model-card-price">💰 Lite 0.0003元/千tokens · 性价比 ★★★★★</div>
+        </div>
+        <div class="model-card" onclick="selectModelCard(this)">
+          <div class="model-card-header"><span class="model-card-icon">🧠</span><span class="model-card-name">Claude</span></div>
+          <div class="model-card-tags"><span class="model-card-tag">长文分析</span><span class="model-card-tag">深度思考</span><span class="model-card-tag">多角度</span></div>
+          <div class="model-card-price">💰 成本较高 · 性价比 ★★★</div>
+        </div>
+        <div class="model-card" onclick="selectModelCard(this)">
+          <div class="model-card-header"><span class="model-card-icon">🔬</span><span class="model-card-name">DeepSeek-R1</span></div>
+          <div class="model-card-tags"><span class="model-card-tag">推理链</span><span class="model-card-tag">数学</span><span class="model-card-tag">逻辑</span></div>
+          <div class="model-card-price">💰 0.004元/千tokens · 性价比 ★★★★</div>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--gray-600)">
+        <input type="checkbox" checked style="accent-color:var(--primary)"> 启用自动路由推荐（4A规则）
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-model-select')">取消</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-model-select');toast('模型已切换','success')">确认选择</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== Toast =====
+let toastTimer;
+function toast(msg,type){
+  type=type||'info';var c=document.getElementById('toastContainer');
+  var icons={success:'✅',warning:'⚠️',danger:'❌',info:'ℹ️'};
+  var el=document.createElement('div');el.className='toast '+type;
+  el.innerHTML='<span class="toast-icon">'+(icons[type]||icons.info)+'</span><span class="toast-text">'+msg+'</span>';
+  c.appendChild(el);clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove()},300)},2500);
+}
+
+// ===== 侧边栏导航 =====
+function navSide(el){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== 对话列表 =====
+function switchChat(el,id){
+  document.querySelectorAll('.chat-list-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+  toast('切换至对话: '+el.querySelector('.chat-item-title').textContent);
+}
+
+function newChat(){
+  toast('已创建新对话');
+  document.getElementById('chatInput').focus();
+}
+
+// ===== 模型选择 =====
+function toggleModelMenu(){
+  document.getElementById('modelMenu').classList.toggle('show');
+  setTimeout(function(){
+    document.addEventListener('click',function handler(e){
+      if(!e.target.closest('.model-dropdown')){
+        document.getElementById('modelMenu').classList.remove('show');
+        document.removeEventListener('click',handler);
+      }
+    });
+  },100);
+}
+
+function selectModel(name,icon,el){
+  document.querySelectorAll('.model-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('currentModel').textContent=name;
+  document.getElementById('modelBtn').querySelector('span').textContent=icon;
+  document.getElementById('modelMenu').classList.remove('show');
+  toast('模型切换至: '+name,'success');
+}
+
+function selectModelCard(el){
+  document.querySelectorAll('.model-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ===== 发送消息 =====
+function sendMessage(){
+  var input=document.getElementById('chatInput');
+  var text=input.value.trim();
+  if(!text)return;
+  var msgArea=document.getElementById('chatMessages');
+  
+  // 添加用户消息
+  var now=new Date();var time=now.getHours()+':'+(now.getMinutes()<10?'0':'')+now.getMinutes();
+  var userHtml='<div class="msg-wrapper user"><div class="msg-bubble">'+escapeHtml(text)+'</div><div class="msg-time">'+time+'</div></div>';
+  msgArea.insertAdjacentHTML('beforeend',userHtml);
+  input.value='';input.style.height='auto';
+  
+  // 模拟AI回复 - 流式效果
+  var aiWrapper=document.createElement('div');
+  aiWrapper.className='msg-wrapper assistant';
+  var aiBubble=document.createElement('div');
+  aiBubble.className='msg-bubble';
+  aiBubble.innerHTML='<div class="ai-content"><span class="typing-cursor"></span></div>';
+  aiWrapper.appendChild(aiBubble);
+  msgArea.appendChild(aiWrapper);
+  
+  var model=document.getElementById('currentModel').textContent;
+  var isCompare=document.getElementById('compareInd').classList.contains('show');
+  
+  // 模拟打字机效果
+  var fullText=getMockResponse(text,model,isCompare);
+  var chars=fullText.split('');
+  var i=0;
+  var contentDiv=aiBubble.querySelector('.ai-content');
+  contentDiv.innerHTML='';
+  var interval=setInterval(function(){
+    if(i<chars.length){
+      contentDiv.innerHTML+=chars[i]==='\n'?'<br>':chars[i];
+      i++;
+      msgArea.scrollTop=msgArea.scrollHeight;
+    }else{
+      clearInterval(interval);
+      contentDiv.innerHTML+='<span class="typing-cursor"></span>';
+      setTimeout(function(){
+        var cursor=contentDiv.querySelector('.typing-cursor');
+        if(cursor)cursor.remove();
+        // 添加操作栏
+        var actions=document.createElement('div');
+        actions.className='msg-actions';
+        var confidence=model==='DeepSeek'?'confident':'';
+        actions.innerHTML='<span class="msg-model-badge '+confidence+'">🤖 自动使用 '+model+' (推荐)</span>'+
+          '<span class="msg-cost">💰 ~'+Math.ceil(text.length/10)+' tokens · ¥0.00'+(Math.floor(Math.random()*5)+1)+'</span>'+
+          '<span class="msg-star" onclick="toggleStar(this)" title="收藏">⭐</span>'+
+          '<span class="msg-copy" onclick="toast(\'已复制\')" title="复制">📋</span>';
+        aiWrapper.appendChild(actions);
+        var timeDiv=document.createElement('div');
+        timeDiv.className='msg-time';timeDiv.textContent=time;
+        aiWrapper.appendChild(timeDiv);
+        msgArea.scrollTop=msgArea.scrollHeight;
+        if(isCompare){document.getElementById('compareInd').classList.remove('show');}
+      },500);
+    }
+  },20);
+  msgArea.scrollTop=msgArea.scrollHeight;
+}
+
+function getMockResponse(query,model,isCompare){
+  if(isCompare)return '<h3>对比模式结果</h3><p>已同时向 <strong>DeepSeek</strong> 和 <strong>'+model+'</strong> 发送查询。</p><p>请在对比弹窗中查看两个模型的回答差异。</p><p><em>提示：点击右上角「🔄 对比模式」按钮查看结果。</em></p>';
+  
+  var resp='<h3>关于"' + query.slice(0,20) + (query.length>20?'…':'') + '"</h3>';
+  resp+='<p>这是一个很好的问题。基于当前上下文，以下是分析：</p>';
+  resp+='<ul><li><strong>核心要点：</strong>需要从多个维度综合考虑</li>';
+  resp+='<li><strong>技术视角：</strong>建议参考最佳实践和官方文档</li>';
+  resp+='<li><strong>实践建议：</strong>结合你的实际场景进行权衡</li></ul>';
+  resp+='<blockquote>使用 <strong>'+model+'</strong> 模型回答。如需对比不同模型的结果，可点击输入区的「🆚 对比」按钮。</blockquote>';
+  resp+='<p>如需更详细的分析或代码示例，可以继续追问。</p>';
+  return resp;
+}
+
+function escapeHtml(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function handleInputKey(e){
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();sendMessage();}
+}
+
+// ===== 对比模式 =====
+function startCompare(){
+  document.getElementById('compareInd').classList.add('show');
+  toast('已开启对比模式 — 下次发送将同时查询两个模型');
+  document.getElementById('chatInput').focus();
+}
+
+// ===== 收藏 =====
+function toggleStar(el){
+  el.classList.toggle('active');
+  if(el.classList.contains('active')){
+    openModal('modal-import-confirm');
+  }else{
+    toast('已取消收藏');
+  }
+}
+
+// ===== 弹窗 =====
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+// ===== 键盘 =====
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var modals=document.querySelectorAll('.modal-overlay.show');
+    if(modals.length>0)closeModal(modals[modals.length-1].id);
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='k'){e.preventDefault();newChat();}
+});
+</script>
+</body>
+</html>

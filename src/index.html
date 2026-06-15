@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyMind - AI驱动的学习管理平台</title>
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span>🧠</span>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li id="nav-home" class="menu-item active" data-page="home">
+          <a href="#home">
+            <span>🏠</span>
+            <span>首页</span>
+          </a>
+        </li>
+        <li id="nav-learning" class="menu-item" data-page="learning">
+          <a href="#learning">
+            <span>📚</span>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li id="nav-review" class="menu-item" data-page="review">
+          <a href="#review">
+            <span>🔄</span>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li id="nav-news" class="menu-item" data-page="news">
+          <a href="#news">
+            <span>📰</span>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li id="nav-ai-chat" class="menu-item" data-page="ai-chat">
+          <a href="#ai-chat">
+            <span>🤖</span>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li id="nav-knowledge" class="menu-item" data-page="knowledge">
+          <a href="#knowledge">
+            <span>📖</span>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li id="nav-output" class="menu-item" data-page="output">
+          <a href="#output">
+            <span>📝</span>
+            <span>输出文档</span>
+          </a>
+        </li>
+        <li id="nav-settings" class="menu-item" data-page="settings">
+          <a href="#settings">
+            <span>⚙️</span>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+    
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title" id="page-title">欢迎来到 StudyMind</div>
+        <div class="user-info"></div>
+      </header>
+      <div class="content" id="page-container"></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tcb-js-sdk@1.7.0/dist/cloudbase.full.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/cloudbase.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/home.js"></script>
+  <script src="js/learning.js"></script>
+  <script src="js/review.js"></script>
+  <script src="js/news.js"></script>
+  <script src="js/ai-chat.js"></script>
+  <script src="js/knowledge.js"></script>
+  <script src="js/output.js"></script>
+  <script src="js/settings.js"></script>
+  
+</body>
+</html>

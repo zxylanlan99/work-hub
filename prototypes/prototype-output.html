@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — 知识沉淀模块原型</title>
+<style>
+:root{
+  --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#eef2ff;
+  --success:#22c55e;--success-light:#dcfce7;
+  --warning:#f59e0b;--warning-light:#fef3c7;
+  --danger:#ef4444;--danger-light:#fee2e2;
+  --info:#3b82f6;--info-light:#dbeafe;
+  --purple:#7c3aed;--purple-light:#ede9fe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:var(--gray-800);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--gray-50);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 12px;font-size:18px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:22px}
+.sidebar-nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--gray-600);font-size:13.5px;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:var(--gray-200);color:var(--gray-800)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:600;color:var(--gray-900);flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13.5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
+.btn-ghost{background:transparent;color:var(--gray-500);padding:6px 10px}.btn-ghost:hover{background:var(--gray-100);color:var(--gray-700)}
+.btn-sm{padding:5px 10px;font-size:12.5px}.btn-xs{padding:3px 8px;font-size:11.5px}
+.btn-success{background:var(--success);color:#fff}.btn-purple{background:var(--purple);color:#fff}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+.sub-tabs{display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:var(--radius);margin-bottom:20px;width:fit-content;flex-wrap:wrap}
+.sub-tab{padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--gray-500);transition:all .15s;white-space:nowrap}
+.sub-tab.active{background:#fff;color:var(--gray-800);font-weight:600;box-shadow:var(--shadow)}
+.sub-tab:hover:not(.active){background:var(--gray-200)}
+.sub-tab .count-pill{display:inline-block;background:var(--gray-200);color:var(--gray-500);padding:0 6px;border-radius:10px;font-size:11px;margin-left:4px}
+.sub-tab.active .count-pill{background:var(--primary-light);color:var(--primary)}
+
+.overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.overview-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:20px;box-shadow:var(--shadow);text-align:center}
+.overview-num{font-size:28px;font-weight:700;margin-bottom:4px}
+.overview-label{font-size:13px;color:var(--gray-500)}
+.overview-num.primary{color:var(--primary)}.overview-num.success{color:var(--success)}.overview-num.purple{color:var(--purple)}.overview-num.info{color:var(--info)}
+
+/* 页面布局 */
+.output-layout{display:grid;grid-template-columns:1fr 280px;gap:20px}
+.output-main{display:flex;flex-direction:column;gap:16px}
+
+/* 文档卡片 */
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.doc-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:20px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s}
+.doc-card:hover{border-color:var(--primary);box-shadow:0 4px 12px rgba(99,102,241,.12);transform:translateY(-1px)}
+.doc-card-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px}
+.doc-type-icon{width:44px;height:44px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.type-article{background:#eef2ff;color:var(--primary)}
+.type-speech{background:#fef3c7;color:#d97706}
+.type-note{background:#dcfce7;color:#16a34a}
+.type-practice{background:#fee2e2;color:var(--danger)}
+.type-tutorial{background:#ede9fe;color:var(--purple)}
+.doc-card-info{flex:1;min-width:0}
+.doc-card-title{font-size:15px;font-weight:600;color:var(--gray-900);margin-bottom:4px;line-height:1.4}
+.doc-card-type{font-size:12px;color:var(--gray-400)}
+.doc-card-excerpt{font-size:13px;color:var(--gray-500);line-height:1.6;margin-bottom:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.doc-card-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.doc-meta-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-400)}
+.doc-card-footer{display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:1px solid var(--gray-100)}
+.status-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.status-draft{background:var(--warning-light);color:#b45309}
+.status-published{background:var(--success-light);color:#16a34a}
+
+/* 灵感碎片侧栏 */
+.scrap-panel{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 200px)}
+.scrap-header{padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center}
+.scrap-title{font-size:13.5px;font-weight:600;color:var(--gray-800)}
+.scrap-list{flex:1;overflow-y:auto;padding:12px}
+.scrap-item{background:var(--gray-50);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--warning)}
+.scrap-text{font-size:13px;color:var(--gray-700);line-height:1.6;margin-bottom:8px}
+.scrap-meta{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--gray-400)}
+.scrap-suggest{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:var(--warning-light);border-radius:4px;color:#b45309;font-size:11px}
+.scrap-actions{display:flex;gap:6px;margin-top:8px}
+.scrap-add{display:flex;align-items:center;gap:6px;padding:10px;border:1px dashed var(--gray-300);border-radius:var(--radius);color:var(--gray-400);font-size:13px;cursor:pointer;transition:all .15s;margin-top:4px}
+.scrap-add:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+/* 编辑器 */
+.editor-view{display:none;flex-direction:column;height:100%}
+.editor-topbar{display:flex;align-items:center;gap:14px;padding:12px 24px;background:#fff;border-bottom:1px solid var(--gray-200);flex-shrink:0}
+.editor-back{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--gray-500);font-size:13px;transition:color .15s}
+.editor-back:hover{color:var(--primary)}
+.editor-doc-title{font-size:15px;font-weight:600;color:var(--gray-900);flex:1}
+.editor-layout{display:grid;grid-template-columns:1fr 340px;flex:1;overflow:hidden}
+.editor-main{display:flex;flex-direction:column;overflow:hidden}
+.editor-toolbar{display:flex;align-items:center;gap:4px;padding:8px 16px;background:#fff;border-bottom:1px solid var(--gray-100);flex-shrink:0}
+.editor-tool-btn{padding:4px 8px;border:none;background:transparent;cursor:pointer;border-radius:4px;font-size:13px;color:var(--gray-500);font-family:inherit;transition:all .15s}
+.editor-tool-btn:hover{background:var(--gray-100);color:var(--gray-700)}
+.editor-area{flex:1;display:flex;overflow:hidden}
+.editor-input-pane{width:55%;border-right:1px solid var(--gray-200);padding:20px;overflow-y:auto}
+.editor-input-pane textarea{width:100%;min-height:100%;border:none;outline:none;font-family:'SF Mono',Menlo,monospace;font-size:13.5px;line-height:1.8;color:var(--gray-800);resize:none;background:transparent}
+.editor-preview-pane{width:45%;padding:20px;overflow-y:auto;background:var(--gray-50);font-size:14px;line-height:1.9;color:var(--gray-600)}
+.editor-preview-pane h1{font-size:20px;font-weight:700;color:var(--gray-900);margin-bottom:12px}
+.editor-preview-pane h2{font-size:16px;font-weight:600;color:var(--gray-800);margin:18px 0 10px}
+.editor-preview-pane p{margin-bottom:10px}
+.editor-preview-pane blockquote{border-left:3px solid var(--primary);padding:8px 14px;margin:12px 0;background:rgba(99,102,241,.05);border-radius:0 var(--radius) var(--radius) 0;font-size:13px;color:var(--gray-500)}
+.editor-preview-pane code{background:var(--gray-100);padding:1px 5px;border-radius:3px;font-size:13px;color:var(--danger)}
+.editor-preview-pane pre{background:var(--gray-800);padding:12px;border-radius:var(--radius);color:#e5e7eb;font-size:13px;overflow-x:auto;margin:10px 0}
+.editor-footer{display:flex;align-items:center;gap:16px;padding:10px 20px;background:#fff;border-top:1px solid var(--gray-200);flex-shrink:0;font-size:12.5px;color:var(--gray-500)}
+.editor-footer .ai-suggestion{color:var(--primary);cursor:pointer;margin-left:auto}
+.editor-footer .ai-suggestion:hover{text-decoration:underline}
+
+/* AI辅助面板 */
+.ai-panel{display:flex;flex-direction:column;overflow-y:auto;border-left:1px solid var(--gray-200);background:#fff}
+.panel-section{border-bottom:1px solid var(--gray-100);padding:16px}
+.panel-section:last-child{border-bottom:none}
+.panel-section-title{font-size:13px;font-weight:600;color:var(--gray-800);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.material-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:8px;transition:all .15s}
+.material-item:hover{border-color:var(--primary)}
+.material-info{flex:1;min-width:0}
+.material-title{font-size:13px;font-weight:500;color:var(--gray-800);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.material-tags{font-size:11px;color:var(--gray-400)}
+.material-score{font-size:12px;color:var(--primary);font-weight:500;margin-bottom:6px}
+.material-actions{display:flex;gap:4px}
+.ai-op-btn{display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);background:#fff;cursor:pointer;font-size:12.5px;color:var(--gray-600);transition:all .15s;font-family:inherit;width:100%;margin-bottom:6px;text-align:left}
+.ai-op-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+
+.doc-meta-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--gray-50)}
+.doc-meta-row:last-child{border-bottom:none}
+.doc-meta-label{color:var(--gray-500)}.doc-meta-value{color:var(--gray-800);font-weight:500}
+
+/* 弹窗 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.3);width:90%;max-width:600px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-lg{max-width:700px}.modal-sm{max-width:420px}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:16px;font-weight:600;color:var(--gray-900)}
+.modal-close{background:none;border:none;font-size:22px;color:var(--gray-400);cursor:pointer;padding:0 4px}
+.modal-close:hover{color:var(--gray-700)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:10px}
+
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:var(--gray-700);margin-bottom:6px}
+.form-input,.form-textarea,.form-select{width:100%;padding:9px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13.5px;color:var(--gray-800);font-family:inherit;outline:none}
+.form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--primary)}
+.form-textarea{resize:vertical;min-height:80px;line-height:1.6}
+
+/* 类型选择卡片 */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.type-card{padding:16px;border:2px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all .15s}
+.type-card:hover{border-color:var(--primary)}
+.type-card.selected{border-color:var(--primary);background:var(--primary-light)}
+.type-card-icon{font-size:28px;margin-bottom:6px}
+.type-card-name{font-size:14px;font-weight:600;color:var(--gray-800);margin-bottom:3px}
+.type-card-desc{font-size:11.5px;color:var(--gray-400)}
+
+/* AI评审 */
+.review-score{text-align:center;padding:12px 0}
+.review-stars{font-size:24px;margin-bottom:4px}
+.review-score-num{font-size:28px;font-weight:700;color:var(--success)}
+.review-score-label{font-size:12px;color:var(--gray-400)}
+.review-dim-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px}
+.review-dim-name{width:90px;color:var(--gray-600)}
+.review-dim-bar{flex:1;height:6px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.review-dim-fill{height:100%;border-radius:4px}
+.review-dim-val{width:36px;text-align:right;font-weight:500}
+.review-suggestions{margin-top:12px}
+.review-sug{font-size:12.5px;color:var(--gray-600);padding:4px 0;display:flex;align-items:flex-start;gap:6px}
+.review-sug-num{color:var(--primary);font-weight:600;flex-shrink:0}
+
+/* AI操作结果预览 */
+.ai-result-preview{display:none;margin-top:12px;padding:12px 14px;background:var(--gray-50);border-radius:var(--radius);font-size:13px;color:var(--gray-600);line-height:1.8;border:1px solid var(--gray-200);max-height:200px;overflow-y:auto}
+.ai-result-preview.show{display:block}
+
+/* 实践Checklist */
+.checklist-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--gray-50)}
+.checklist-cb{width:18px;height:18px;border:2px solid var(--gray-300);border-radius:4px;cursor:pointer;flex-shrink:0}
+.checklist-cb.done{background:var(--success);border-color:var(--success);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px}
+.checklist-text{font-size:13px;color:var(--gray-700)}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#fff;border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:240px;animation:toastIn .3s ease;border-left:3px solid var(--primary);pointer-events:auto}
+.toast.success{border-left-color:var(--success)}.toast.warning{border-left-color:var(--warning)}.toast.danger{border-left-color:var(--danger)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}.toast-text{font-size:13px;color:var(--gray-700)}
+.hidden{display:none!important}.page-hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo"><span>🧠</span> StudyMind</div>
+    <div class="sidebar-nav">
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📊</span> 首页</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🎯</span> 学习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📡</span> 资讯</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📚</span> 知识库</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">💬</span> AI对话</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🔁</span> 复习计划</div>
+      <div class="nav-item active" onclick="navSide(this)"><span class="nav-icon">✍️</span> 知识沉淀</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- ===== 页面1：输出列表页 ===== -->
+    <div id="page-list">
+      <div class="topbar">
+        <div class="topbar-title">✍️ 知识沉淀</div>
+        <button class="btn btn-secondary btn-sm" onclick="showQuickScrap()">💡 快速灵感</button>
+        <button class="btn btn-primary" onclick="openModal('modal-new-output')"><span>+</span> 新建输出</button>
+      </div>
+      <div class="content">
+        <!-- 概览 -->
+        <div class="overview-grid">
+          <div class="overview-card"><div class="overview-num warning">3</div><div class="overview-label">📝 草稿</div></div>
+          <div class="overview-card"><div class="overview-num success">5</div><div class="overview-label">✅ 已发布</div></div>
+          <div class="overview-card"><div class="overview-num primary">28,500</div><div class="overview-label">📊 总字数</div></div>
+          <div class="overview-card"><div class="overview-num purple">62%</div><div class="overview-label">♻️ 素材利用率</div></div>
+        </div>
+
+        <div class="output-layout">
+          <div class="output-main">
+            <div class="sub-tabs">
+              <div class="sub-tab active" onclick="filterDocs(this,'all')">全部<span class="count-pill">8</span></div>
+              <div class="sub-tab" onclick="filterDocs(this,'draft')">📝 草稿<span class="count-pill">3</span></div>
+              <div class="sub-tab" onclick="filterDocs(this,'published')">✅ 已发布<span class="count-pill">5</span></div>
+            </div>
+
+            <div class="doc-grid" id="docGrid">
+              <!-- 卡片1：文章-已发布 -->
+              <div class="doc-card" data-type="published" onclick="openEditor()">
+                <div class="doc-card-header">
+                  <div class="doc-type-icon type-article">📄</div>
+                  <div class="doc-card-info"><div class="doc-card-title">微服务架构实战总结</div><div class="doc-card-type">技术文章</div></div>
+                </div>
+                <div class="doc-card-excerpt">过去半年，团队从单体架构迁移到微服务架构，经历了服务拆分、通信选型、部署运维等关键阶段。本文是对整个迁移过程的全面复盘…</div>
+                <div class="doc-card-meta">
+                  <span class="doc-meta-item">📊 3,200字</span><span class="doc-meta-item">♻️ 引用3个素材</span><span class="doc-meta-item">📅 3天前</span>
+                </div>
+                <div class="doc-card-footer">
+                  <span class="status-tag status-published">✅ 已发布</span>
+                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>
+                </div>
+              </div>
+
+              <!-- 卡片2：演讲-草稿 -->
+              <div class="doc-card" data-type="draft" onclick="openEditor()">
+                <div class="doc-card-header">
+                  <div class="doc-type-icon type-speech">🎤</div>
+                  <div class="doc-card-info"><div class="doc-card-title">Go并发模型技术分享</div><div class="doc-card-type">技术演讲</div></div>
+                </div>
+                <div class="doc-card-excerpt">准备在团队内做一次关于Go并发模型的技术分享，大纲已梳理：goroutine原理→GMP调度→channel实战→性能优化…</div>
+                <div class="doc-card-meta">
+                  <span class="doc-meta-item">📊 5,800字</span><span class="doc-meta-item">♻️ 引用5个素材</span><span class="doc-meta-item">📅 编辑中 (80%)</span>
+                </div>
+                <div class="doc-card-footer">
+                  <span class="status-tag status-draft">📝 草稿</span>
+                  <div class="progress-bar-mini" style="width:80px;height:6px;background:var(--gray-100);border-radius:4px"><div style="width:80%;height:100%;background:var(--warning);border-radius:4px"></div></div>
+                </div>
+              </div>
+
+              <!-- 卡片3：笔记-已发布 -->
+              <div class="doc-card" data-type="published" onclick="openEditor()">
+                <div class="doc-card-header">
+                  <div class="doc-type-icon type-note">📝</div>
+                  <div class="doc-card-info"><div class="doc-card-title">分布式系统学习笔记</div><div class="doc-card-type">学习笔记</div></div>
+                </div>
+                <div class="doc-card-excerpt">CAP 理论、一致性协议（Paxos/Raft）、分布式事务（2PC/TCC/Saga）的核心要点梳理。附思维导图和对比表格…</div>
+                <div class="doc-card-meta">
+                  <span class="doc-meta-item">📊 1,500字</span><span class="doc-meta-item">♻️ 引用2个素材</span><span class="doc-meta-item">📅 1周前</span>
+                </div>
+                <div class="doc-card-footer">
+                  <span class="status-tag status-published">✅ 已发布</span>
+                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>
+                </div>
+              </div>
+
+              <!-- 卡片4：实践-已发布 -->
+              <div class="doc-card" data-type="published" onclick="openEditor()">
+                <div class="doc-card-header">
+                  <div class="doc-type-icon type-practice">🔧</div>
+                  <div class="doc-card-info"><div class="doc-card-title">CI/CD 流水线搭建记录</div><div class="doc-card-type">项目实践记录</div></div>
+                </div>
+                <div class="doc-card-excerpt">使用 GitHub Actions 搭建前后端 CI/CD 流水线完整记录：Lint → Test → Build → Deploy，含踩坑和解决方案…</div>
+                <div class="doc-card-meta">
+                  <span class="doc-meta-item">📊 800字</span><span class="doc-meta-item">♻️ 引用1个素材</span><span class="doc-meta-item">📅 2周前</span>
+                </div>
+                <div class="doc-card-footer">
+                  <span class="status-tag status-published">✅ 已发布</span>
+                  <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>
+                </div>
+              </div>
+
+              <!-- 卡片5：教程-草稿 -->
+              <div class="doc-card" data-type="draft" onclick="openEditor()">
+                <div class="doc-card-header">
+                  <div class="doc-type-icon type-tutorial">📘</div>
+                  <div class="doc-card-info"><div class="doc-card-title">React Hooks 完全指南</div><div class="doc-card-type">进阶教程</div></div>
+                </div>
+                <div class="doc-card-excerpt">从 useState 到 useMemo，涵盖所有内置 Hooks 的使用场景、常见陷阱和最佳实践，配合 CodeSandbox 在线示例…</div>
+                <div class="doc-card-meta">
+                  <span class="doc-meta-item">📊 6,200字</span><span class="doc-meta-item">♻️ 引用4个素材</span><span class="doc-meta-item">📅 编辑中 (45%)</span>
+                </div>
+                <div class="doc-card-footer">
+                  <span class="status-tag status-draft">📝 草稿</span>
+                  <div class="progress-bar-mini" style="width:80px;height:6px;background:var(--gray-100);border-radius:4px"><div style="width:45%;height:100%;background:var(--warning);border-radius:4px"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 灵感碎片侧栏 -->
+          <div class="scrap-panel">
+            <div class="scrap-header"><div class="scrap-title">💡 灵感碎片</div><span style="font-size:12px;color:var(--gray-400)">7条</span></div>
+            <div class="scrap-list">
+              <div class="scrap-item">
+                <div class="scrap-text">"Service Mesh 选型可以用对比表格总结，一目了然"</div>
+                <div class="scrap-meta"><span class="scrap-suggest">💡 可用于: 技术文章</span><span>📅 今天</span></div>
+                <div class="scrap-actions">
+                  <button class="btn btn-primary btn-xs" onclick="openModal('modal-new-output')">展开写作</button>
+                  <button class="btn btn-ghost btn-xs">忽略</button>
+                </div>
+              </div>
+              <div class="scrap-item">
+                <div class="scrap-text">"PRD 里提到的评审方法可以整理成模板给团队用"</div>
+                <div class="scrap-meta"><span class="scrap-suggest">💡 可用于: 工作文档</span><span>📅 昨天</span></div>
+                <div class="scrap-actions">
+                  <button class="btn btn-primary btn-xs" onclick="openModal('modal-new-output')">展开写作</button>
+                  <button class="btn btn-ghost btn-xs">忽略</button>
+                </div>
+              </div>
+              <div class="scrap-item">
+                <div class="scrap-text">"Goroutine 泄漏排查方法可以写一篇 Debug 经验分享"</div>
+                <div class="scrap-meta"><span class="scrap-suggest">💡 可用于: 技术文章</span><span>📅 3天前</span></div>
+                <div class="scrap-actions">
+                  <button class="btn btn-primary btn-xs" onclick="openModal('modal-new-output')">展开写作</button>
+                  <button class="btn btn-ghost btn-xs">忽略</button>
+                </div>
+              </div>
+            </div>
+            <div class="scrap-add" onclick="showQuickScrap()">💡 快速记录灵感…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 页面2：编辑器 ===== -->
+    <div id="page-editor" class="editor-view">
+      <div class="editor-topbar">
+        <div class="editor-back" onclick="closeEditor()"><span>←</span> 返回列表</div>
+        <div class="editor-doc-title">微服务架构实战总结</div>
+        <button class="btn btn-secondary btn-sm" onclick="toast('草稿已保存','success')">💾 保存草稿</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-review')">🚀 发布</button>
+      </div>
+      <div class="editor-layout">
+        <div class="editor-main">
+          <div class="editor-toolbar">
+            <button class="editor-tool-btn" title="加粗"><b>B</b></button>
+            <button class="editor-tool-btn" title="斜体"><i>I</i></button>
+            <button class="editor-tool-btn" title="标题1">H1</button>
+            <button class="editor-tool-btn" title="标题2">H2</button>
+            <button class="editor-tool-btn" title="代码">```</button>
+            <button class="editor-tool-btn" title="引用">"</button>
+            <span style="flex:1"></span>
+            <span style="font-size:12px;color:var(--gray-400)">Markdown</span>
+          </div>
+          <div class="editor-area">
+            <div class="editor-input-pane">
+              <textarea id="editorText" oninput="updatePreview()"># 微服务架构实战总结
+
+## 背景
+
+过去半年，我们团队从单体架构逐步迁移到微服务架构。技术栈：Go + Kubernetes + Istio。
+
+## 核心实践
+
+### 1. 服务拆分策略
+我们参考了 DDD 的限界上下文理论，将单体应用拆分为 15 个独立服务。
+
+### 2. 通信选型
+内部服务间采用 gRPC 通信，外部 API 通过 Kong Gateway 统一入口。
+
+### 3. 部署与运维
+使用 Helm Charts 管理部署，Istio 处理流量管理和可观测性。
+
+## 踩坑记录
+
+### 分布式事务
+跨服务事务处理是一个大坑。最终我们采用了 Saga 模式。
+
+## 总结
+
+微服务不是银弹。15个服务的规模下，团队需要额外投入约 30% 的运维精力。</textarea>
+            </div>
+            <div class="editor-preview-pane" id="editorPreview">
+              <!-- 实时预览渲染 -->
+            </div>
+          </div>
+          <div class="editor-footer">
+            <span>📊 3,200字 · ⏱️ 阅读约12分钟</span>
+            <span class="ai-suggestion" onclick="toast('AI建议：第3段可补充具体性能数据')">💡 AI建议：第3段可补充具体的QPS对比数据 →</span>
+          </div>
+        </div>
+
+        <!-- AI辅助面板 -->
+        <div class="ai-panel">
+          <div class="panel-section">
+            <div class="panel-section-title">📚 素材推荐（来自知识库）</div>
+            <div class="material-item">
+              <div class="material-info">
+                <div class="material-title">《微服务设计模式》</div>
+                <div class="material-tags">服务发现 · 熔断器 · API Gateway</div>
+                <div class="material-score">相关度 92%</div>
+              </div>
+              <div class="material-actions">
+                <button class="btn btn-xs" style="background:var(--primary-light);color:var(--primary)" onclick="insertQuote('微服务设计模式')">引用</button>
+              </div>
+            </div>
+            <div class="material-item">
+              <div class="material-info">
+                <div class="material-title">《API Gateway vs Service Mesh》</div>
+                <div class="material-tags">网关对比 · 选型建议</div>
+                <div class="material-score">相关度 85%</div>
+              </div>
+              <div class="material-actions">
+                <button class="btn btn-xs" style="background:var(--primary-light);color:var(--primary)" onclick="insertQuote('API Gateway vs Service Mesh')">引用</button>
+              </div>
+            </div>
+            <div class="material-item">
+              <div class="material-info">
+                <div class="material-title">《分布式追踪实践》</div>
+                <div class="material-tags">Jaeger · OpenTelemetry</div>
+                <div class="material-score">相关度 78%</div>
+              </div>
+              <div class="material-actions">
+                <button class="btn btn-xs" style="background:var(--primary-light);color:var(--primary)" onclick="insertQuote('分布式追踪实践')">引用</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <div class="panel-section-title">🤖 AI 操作</div>
+            <button class="ai-op-btn" onclick="aiAction('润色选中文字')">✨ 润色选中段落</button>
+            <button class="ai-op-btn" onclick="aiAction('续写下一段')">➕ 续写下一段</button>
+            <button class="ai-op-btn" onclick="aiAction('扩写为详细版')">📖 扩写为详细版</button>
+            <button class="ai-op-btn" onclick="aiAction('缩写为要点版')">📋 缩写为要点版</button>
+            <button class="ai-op-btn" onclick="aiAction('总结全文')">📝 AI 总结全文</button>
+            <button class="ai-op-btn" style="border-color:var(--primary);color:var(--primary)" onclick="openModal('modal-review')">🔍 AI 质量评审 →</button>
+            <div class="ai-result-preview" id="aiResult"></div>
+          </div>
+
+          <div class="panel-section">
+            <div class="panel-section-title">📋 文档信息</div>
+            <div class="doc-meta-row"><span class="doc-meta-label">类型</span><span class="doc-meta-value">📄 技术文章</span></div>
+            <div class="doc-meta-row"><span class="doc-meta-label">关联知识</span><span class="doc-meta-value">2个条目</span></div>
+            <div class="doc-meta-row"><span class="doc-meta-label">状态</span><span class="doc-meta-value">📝 草稿</span></div>
+            <div class="doc-meta-row"><span class="doc-meta-label">创建</span><span class="doc-meta-value">3天前</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗A：新建输出 ===== -->
+<div class="modal-overlay" id="modal-new-output" onclick="if(event.target===this)closeModal('modal-new-output')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">✍️ 新建输出</div><button class="modal-close" onclick="closeModal('modal-new-output')">×</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px">
+        <div class="form-label">选择输出类型</div>
+        <div class="type-grid">
+          <div class="type-card selected" onclick="selectType(this)"><div class="type-card-icon">📄</div><div class="type-card-name">文章</div><div class="type-card-desc">技术博客/工作总结</div></div>
+          <div class="type-card" onclick="selectType(this)"><div class="type-card-icon">🎤</div><div class="type-card-name">演讲</div><div class="type-card-desc">技术分享/PPT稿</div></div>
+          <div class="type-card" onclick="selectType(this)"><div class="type-card-icon">📝</div><div class="type-card-name">笔记</div><div class="type-card-desc">学习笔记/摘要</div></div>
+          <div class="type-card" onclick="selectType(this)"><div class="type-card-icon">🔧</div><div class="type-card-name">实践</div><div class="type-card-desc">项目记录/复盘</div></div>
+          <div class="type-card" onclick="selectType(this)"><div class="type-card-icon">📘</div><div class="type-card-name">教程</div><div class="type-card-desc">入门/进阶教程</div></div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">标题 <span style="color:var(--danger)">*</span></label><input type="text" class="form-input" placeholder="输入输出标题"></div>
+      <div class="form-group"><label class="form-label">关联知识（可选）</label><select class="form-select" multiple style="min-height:80px"><option>微服务设计模式</option><option>API Gateway 对比</option><option>Go 并发模型</option></select><div class="form-hint" style="font-size:11.5px;color:var(--gray-400);margin-top:4px">AI 推荐: 微服务设计模式、API Gateway 对比（基于标题语义）</div></div>
+      <div style="background:var(--primary-light);padding:14px;border-radius:var(--radius);margin-top:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px">🤖 AI 组装素材生成初稿</div>
+        <div style="font-size:12.5px;color:var(--gray-600);margin-bottom:10px">AI 将从关联知识库中提取素材，按「文章」模板自动生成初稿</div>
+        <button class="btn btn-primary btn-sm" onclick="closeModal('modal-new-output');openEditor();toast('AI 初稿已生成','success')">生成初稿 →</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-new-output')">取消</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-new-output');openEditor()">手动创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗B：AI 质量评审 ===== -->
+<div class="modal-overlay" id="modal-review" onclick="if(event.target===this)closeModal('modal-review')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">🤖 AI 质量评审</div><button class="modal-close" onclick="closeModal('modal-review')">×</button></div>
+    <div class="modal-body">
+      <div class="review-score">
+        <div class="review-stars">⭐⭐⭐⭐</div>
+        <div class="review-score-num">8.2</div>
+        <div class="review-score-label">综合评分 / 10</div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="review-dim-row"><span class="review-dim-name">结构清晰度</span><div class="review-dim-bar"><div class="review-dim-fill" style="width:85%;background:var(--success)"></div></div><span class="review-dim-val">8.5</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">内容深度</span><div class="review-dim-bar"><div class="review-dim-fill" style="width:78%;background:var(--info)"></div></div><span class="review-dim-val">7.8</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">可读性</span><div class="review-dim-bar"><div class="review-dim-fill" style="width:82%;background:var(--success)"></div></div><span class="review-dim-val">8.2</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">引用准确性</span><div class="review-dim-bar"><div class="review-dim-fill" style="width:80%;background:var(--success)"></div></div><span class="review-dim-val">8.0</span></div>
+      </div>
+      <div class="review-suggestions" style="margin-top:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">💡 改进建议</div>
+        <div class="review-sug"><span class="review-sug-num">1.</span> 第3段可补充具体的 QPS 对比数据来支撑"性能提升"的观点</div>
+        <div class="review-sug"><span class="review-sug-num">2.</span> 建议在"踩坑记录"后增加一个"经验教训"总结段落</div>
+        <div class="review-sug"><span class="review-sug-num">3.</span> 引用外部来源时建议标注版本号（如 Istio v1.18）</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-review')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-review');toast('已一键优化','success')">✨ 一键优化</button>
+      <button class="btn btn-success btn-sm" onclick="closeModal('modal-review');toast('已发布并生成复习卡片','success')">🚀 发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗C：快速灵感录入 ===== -->
+<div class="modal-overlay" id="modal-scrap" onclick="if(event.target===this)closeModal('modal-scrap')">
+  <div class="modal modal-sm">
+    <div class="modal-header"><div class="modal-title">💡 快速记录灵感</div><button class="modal-close" onclick="closeModal('modal-scrap')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">一句话想法</label><textarea class="form-textarea" placeholder="随时记录一闪而过的写作灵感…" id="scrapInput"></textarea></div>
+      <div style="background:var(--gray-50);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--gray-600)">
+        <div style="margin-bottom:6px">🤖 AI 自动归类</div>
+        <div id="scrapPreview" style="color:var(--gray-400)">输入内容后将自动识别分类并推荐关联知识…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-scrap')">取消</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-scrap');toast('灵感已保存','success')">保存碎片</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗D：实践连接器 ===== -->
+<div class="modal-overlay" id="modal-practice" onclick="if(event.target===this)closeModal('modal-practice')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">🔗 实践连接器</div><button class="modal-close" onclick="closeModal('modal-practice')">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">将「微服务架构」知识匹配到实践场景：</div>
+      <div style="margin-bottom:16px">
+        <div class="form-label">📁 关联项目</div>
+        <select class="form-select"><option>StudyMind 个人学习助手</option><option>团队微服务迁移项目</option></select>
+      </div>
+      <div style="margin-bottom:14px">
+        <div class="form-label">💡 可应用场景</div>
+        <div class="checklist-item"><div class="checklist-cb done" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''">✓</div><span class="checklist-text">后端服务拆分方案设计（参考 DDD 限界上下文）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''"></div><span class="checklist-text">API Gateway 选型（Kong vs APISIX）</span></div>
+        <div class="checklist-item"><div class="checklist-cb done" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''">✓</div><span class="checklist-text">分布式追踪基础设施搭建（OpenTelemetry）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''"></div><span class="checklist-text">服务间通信协议选型（gRPC vs HTTP）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="this.classList.toggle('done');this.textContent=this.classList.contains('done')?'✓':''"></div><span class="checklist-text">配置服务发现（Consul / Nacos）</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-practice')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-practice');toast('实践计划已关联到学习计划','success')">生成实践计划</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗E：素材匹配详情 ===== -->
+<div class="modal-overlay" id="modal-material" onclick="if(event.target===this)closeModal('modal-material')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">📚 素材匹配详情</div><button class="modal-close" onclick="closeModal('modal-material')">×</button></div>
+    <div class="modal-body">
+      <div class="material-item" style="background:var(--primary-light);border-color:var(--primary)">
+        <div class="material-info">
+          <div class="material-title" style="font-size:14px">《微服务设计模式》</div>
+          <div class="material-tags">服务发现 · 熔断器 · API Gateway · 分布式追踪</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">12,500字 · 📁 技术/后端 · 相关度 92%</div>
+          <div style="background:var(--gray-100);padding:8px;border-radius:4px;margin-top:6px;font-size:12px;color:var(--gray-600)">
+            > 微服务架构的核心设计模式包括：API Gateway、服务发现、断路器…<br>
+            > 本文结合 Spring Cloud 和 Kubernetes 生态…
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn btn-primary btn-sm" onclick="insertQuote('微服务设计模式');closeModal('modal-material')">📎 引用选段</button>
+        <button class="btn btn-secondary btn-sm" onclick="insertQuote('微服务设计模式');closeModal('modal-material')">📋 引用全文摘要</button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-material')">关闭</button></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== Toast =====
+let toastTimer;
+function toast(msg,type){
+  type=type||'info';var c=document.getElementById('toastContainer');
+  var icons={success:'✅',warning:'⚠️',danger:'❌',info:'ℹ️'};
+  var el=document.createElement('div');el.className='toast '+type;
+  el.innerHTML='<span class="toast-icon">'+(icons[type]||icons.info)+'</span><span class="toast-text">'+msg+'</span>';
+  c.appendChild(el);clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove()},300)},2500);
+}
+
+function navSide(el){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== 页面切换 =====
+function openEditor(){
+  document.getElementById('page-list').classList.add('page-hidden');
+  document.getElementById('page-editor').style.display='flex';
+  updatePreview();
+}
+
+function closeEditor(){
+  document.getElementById('page-editor').style.display='none';
+  document.getElementById('page-list').classList.remove('page-hidden');
+}
+
+// ===== 预览区更新 =====
+function updatePreview(){
+  var text=document.getElementById('editorText').value;
+  var preview=document.getElementById('editorPreview');
+  var html=text
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(.+)$/gm,function(m){if(!m.startsWith('<'))return '<p>'+m+'</p>';return m});
+  html='<p>'+html+'</p>';
+  html=html.replace(/<p><\/p>/g,'');
+  html=html.replace(/<p><h([123])>/g,'<h$1>').replace(/<\/h([123])><\/p>/g,'</h$1>');
+  preview.innerHTML=html;
+}
+
+// ===== 素材引用 =====
+function insertQuote(source){
+  var ta=document.getElementById('editorText');
+  ta.value=ta.value+'\n\n> 来源：《'+source+'》\n';
+  updatePreview();
+  toast('已引用: '+source,'success');
+}
+
+// ===== AI操作 =====
+function aiAction(action){
+  var result=document.getElementById('aiResult');
+  result.classList.add('show');
+  result.innerHTML='<div style="color:var(--gray-400)">🤖 AI 处理中…</div>';
+  setTimeout(function(){
+    var responses={
+      '润色选中文字':'已润色：将原文表达优化，增强了逻辑连贯性和专业术语的准确性。',
+      '续写下一段':'续写建议：\n\n### 4. 监控与告警\n在生产环境中，我们使用 Prometheus + Grafana 搭建了统一的监控体系，覆盖了服务健康检查、QPS 监控和延迟分布三大维度的指标。',
+      '扩写为详细版':'已扩写：每个章节增加了 1-2 个实战案例和代码示例，总字数从 3,200 扩展至约 5,800 字。',
+      '缩写为要点版':'已缩写：提炼为 5 个核心要点，适合快速查阅：\n1. 服务拆分以业务边界为准\n2. gRPC + Kong 的组合方案\n3. Istio 的渐进式引入策略\n4. Saga 模式处理分布式事务\n5. 30% 额外运维成本评估',
+      '总结全文':'📝 AI 总结：本文记录了从单体到微服务迁移的完整过程，核心经验包括 DDD 限界上下文驱动拆分、渐进式 Istio 引入、Saga 分布式事务方案。文章结构清晰，建议补充性能数据对比。'
+    };
+    result.innerHTML='<div style="font-weight:600;color:var(--gray-700);margin-bottom:6px">'+action+' 完成：</div><div>'+responses[action]+'</div>';
+    toast(action+' 完成','success');
+  },1500);
+}
+
+// ===== 类型选择 =====
+function selectType(el){
+  document.querySelectorAll('.type-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ===== 文档筛选 =====
+function filterDocs(el,type){
+  document.querySelectorAll('#page-list .sub-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== 快速灵感 =====
+function showQuickScrap(){
+  openModal('modal-scrap');
+  var input=document.getElementById('scrapInput');
+  var preview=document.getElementById('scrapPreview');
+  input.oninput=function(){
+    var v=input.value.trim();
+    if(v.length>5){preview.innerHTML='📄 归类: <strong>技术文章</strong> · 🔗 关联: 微服务设计模式';preview.style.color='var(--gray-600)'}
+    else{preview.innerHTML='输入内容后将自动识别分类并推荐关联知识…';preview.style.color='var(--gray-400)'}
+  };
+}
+
+// ===== 弹窗 =====
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+// ===== 实践Checklist =====
+document.addEventListener('click',function(e){
+  if(e.target.classList.contains('checklist-cb')&&!e.target.classList.contains('done')){
+    e.target.classList.add('done');e.target.textContent='✓';
+  }
+});
+
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var modals=document.querySelectorAll('.modal-overlay.show');
+    if(modals.length>0)closeModal(modals[modals.length-1].id);
+  }
+});
+
+// 初始预览
+if(document.getElementById('editorText'))updatePreview();
+</script>
+</body>
+</html>

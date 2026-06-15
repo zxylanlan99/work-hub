@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — 首页原型</title>
+<style>
+:root{
+  --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#eef2ff;
+  --success:#22c55e;--success-light:#dcfce7;
+  --warning:#f59e0b;--warning-light:#fef3c7;
+  --danger:#ef4444;--danger-light:#fee2e2;
+  --info:#3b82f6;--info-light:#dbeafe;
+  --purple:#7c3aed;--purple-light:#ede9fe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:var(--gray-800);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--gray-50);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 12px;font-size:18px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:22px}
+.sidebar-nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--gray-600);font-size:13.5px;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:var(--gray-200);color:var(--gray-800)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:600;color:var(--gray-900);flex:1}
+.topbar-greeting{font-size:14px;color:var(--gray-500);margin-right:12px}
+.topbar-date{font-size:13px;color:var(--gray-400)}
+.content{flex:1;overflow-y:auto;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-content:start}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13.5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-ghost{background:transparent;color:var(--gray-500);padding:6px 10px}.btn-ghost:hover{background:var(--gray-100);color:var(--gray-700)}
+.btn-sm{padding:5px 10px;font-size:12.5px}
+
+/* 卡片 */
+.panel{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow);overflow:hidden}
+.panel-body{padding:20px}
+.panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.panel-title{font-size:14px;font-weight:600;color:var(--gray-800);display:flex;align-items:center;gap:6px}
+
+/* 暖身卡 — 全宽 */
+.warmup{grid-column:1/-1;background:linear-gradient(135deg,#eef2ff 0%,#ede9fe 100%);border:1px solid #c7d2fe}
+.warmup-body{display:flex;gap:24px;padding:20px 24px}
+.warmup-left{flex:1}
+.warmup-greeting{font-size:18px;font-weight:700;color:var(--gray-900);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.warmup-sections{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.warmup-section{background:rgba(255,255,255,.7);border-radius:var(--radius);padding:14px 16px}
+.warmup-section-label{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.warmup-yesterday{font-size:13.5px;color:var(--gray-700);line-height:1.6}
+.warmup-quiz-q{font-size:13.5px;color:var(--gray-700);margin-bottom:6px}
+.warmup-quiz-a{padding:6px 12px;background:var(--primary);color:#fff;border-radius:20px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s}
+.warmup-quiz-a:hover{background:var(--primary-dark)}
+.warmup-quiz-a.revealed{background:var(--success-light);color:#16a34a;cursor:default}
+.warmup-right{display:flex;flex-direction:column;justify-content:center;gap:10px;flex-shrink:0}
+.warmup-continue{padding:12px 24px;background:var(--primary);color:#fff;border:none;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center;font-family:inherit}
+.warmup-continue:hover{background:var(--primary-dark)}
+.warmup-skip{background:transparent;color:var(--gray-400);border:none;cursor:pointer;font-size:12px;text-align:center;font-family:inherit}
+
+/* 四宫格快捷入口 */
+.quick-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:0}
+.quick-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:18px 20px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s}
+.quick-card:hover{border-color:var(--primary);box-shadow:0 4px 12px rgba(99,102,241,.12);transform:translateY(-1px)}
+.quick-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.quick-card-icon{width:40px;height:40px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:20px}
+.qc-plan{background:var(--primary-light);color:var(--primary)}
+.qc-review{background:var(--warning-light);color:#d97706}
+.qc-news{background:var(--info-light);color:var(--info)}
+.qc-output{background:var(--purple-light);color:var(--purple)}
+.quick-card-badge{font-size:11px;padding:2px 7px;border-radius:10px}
+.qbadge-warn{background:var(--danger-light);color:var(--danger)}
+.qbadge-info{background:var(--info-light);color:var(--info)}
+.quick-card-num{font-size:28px;font-weight:700;color:var(--gray-900);margin-bottom:3px}
+.quick-card-sub{font-size:12px;color:var(--gray-500)}
+.quick-card-link{font-size:12px;color:var(--primary);margin-top:10px;display:flex;align-items:center;gap:4px;font-weight:500}
+
+/* 智能续接卡 */
+.resume{grid-column:1}
+.resume-info{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.resume-topic{font-size:13.5px;color:var(--gray-600);line-height:1.6}
+.resume-topic strong{color:var(--gray-800)}
+.resume-meta{display:flex;gap:16px;font-size:12px;color:var(--gray-400)}
+.resume-meta span{display:flex;align-items:center;gap:4px}
+
+/* 日历热力图 */
+.calendar{grid-column:2}
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.heatmap-cell{aspect-ratio:1;border-radius:3px;transition:all .15s}
+.h0{background:var(--gray-100)}.h1{background:#c7d2fe}.h2{background:#a5b4fc}.h3{background:#818cf8}.h4{background:#6366f1}
+.heatmap:hover .heatmap-cell{opacity:.6}
+.heatmap-cell:hover{transform:scale(1.2);opacity:1!important}
+.heatmap-days{display:flex;justify-content:space-around;margin-bottom:4px;font-size:10px;color:var(--gray-400)}
+.heatmap-legend{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:var(--gray-400);justify-content:flex-end}
+
+/* 本周趋势 */
+.trend{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.trend-panel{display:flex;align-items:center;gap:16px;padding:20px;background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow)}
+.trend-icon{font-size:32px}
+.trend-info{flex:1}
+.trend-value{font-size:24px;font-weight:700;color:var(--gray-900);margin-bottom:2px}
+.trend-label{font-size:13px;color:var(--gray-500);margin-bottom:4px}
+.trend-change{font-size:12px}
+.trend-up{color:var(--success)}.trend-down{color:var(--danger)}
+.trend-bar-wrap{width:120px;height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.trend-bar-fill{height:100%;background:var(--success);border-radius:4px}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#fff;border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:240px;animation:toastIn .3s ease;border-left:3px solid var(--primary);pointer-events:auto}
+.toast.success{border-left-color:var(--success)}.toast.warning{border-left-color:var(--warning)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}.toast-text{font-size:13px;color:var(--gray-700)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo"><span>🧠</span> StudyMind</div>
+    <div class="sidebar-nav">
+      <div class="nav-item active" onclick="navSide(this)"><span class="nav-icon">📊</span> 首页</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🎯</span> 学习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📡</span> 资讯</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📚</span> 知识库</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">💬</span> AI对话</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🔁</span> 复习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">✍️</span> 知识沉淀</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">📊 首页</div>
+      <div class="topbar-greeting">👋 下午好，欢迎回来</div>
+      <span class="topbar-date">2026年6月11日 · 周四</span>
+    </div>
+
+    <div class="content">
+      <!-- 暖身卡 -->
+      <div class="panel warmup" id="warmupPanel">
+        <div class="warmup-body">
+          <div class="warmup-left">
+            <div class="warmup-greeting">🌅 今日暖身 <span style="font-size:13px;font-weight:400;color:var(--gray-400)">（约1分钟）</span></div>
+            <div class="warmup-sections">
+              <div class="warmup-section">
+                <div class="warmup-section-label">📝 昨日回顾</div>
+                <div class="warmup-yesterday">你学习了<strong>「服务发现」</strong>概念，掌握了 Consul 的基本注册机制，并完成了 <strong>Go 并发模型</strong>的复习。</div>
+              </div>
+              <div class="warmup-section">
+                <div class="warmup-section-label">❓ 快问快答</div>
+                <div class="warmup-quiz-q">Go 语言的并发模型基于什么理论？</div>
+                <div class="warmup-quiz-a" onclick="revealAnswer(this)">💡 点击查看答案</div>
+              </div>
+            </div>
+          </div>
+          <div class="warmup-right">
+            <button class="warmup-continue" onclick="toast('继续上次学习: Go 并发模型 > GMP 调度')">继续上次学习 →</button>
+            <button class="warmup-skip" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 四宫格快捷入口 -->
+      <div class="quick-grid" style="grid-column:1/-1">
+        <div class="quick-card" onclick="toast('跳转至: 学习计划')">
+          <div class="quick-card-header">
+            <div class="quick-card-icon qc-plan">🎯</div>
+            <span class="quick-card-badge" style="background:var(--success-light);color:#16a34a">进行中</span>
+          </div>
+          <div class="quick-card-num">2</div>
+          <div class="quick-card-sub">个学习目标进行中 · 0个逾期任务</div>
+          <div class="quick-card-link">查看详情 →</div>
+        </div>
+        <div class="quick-card" onclick="toast('跳转至: 复习计划')">
+          <div class="quick-card-header">
+            <div class="quick-card-icon qc-review">🔁</div>
+            <span class="quick-card-badge qbadge-warn">⚠ 逾期</span>
+          </div>
+          <div class="quick-card-num">9</div>
+          <div class="quick-card-sub">张卡片待复习 · 3张已逾期</div>
+          <div class="quick-card-link">开始复习 →</div>
+        </div>
+        <div class="quick-card" onclick="toast('跳转至: 资讯')">
+          <div class="quick-card-header">
+            <div class="quick-card-icon qc-news">📡</div>
+            <span class="quick-card-badge qbadge-info">🤖 AI推荐</span>
+          </div>
+          <div class="quick-card-num">2</div>
+          <div class="quick-card-sub">条AI推荐资讯待处理</div>
+          <div class="quick-card-link">查看推荐 →</div>
+        </div>
+        <div class="quick-card" onclick="toast('跳转至: 知识沉淀')">
+          <div class="quick-card-header">
+            <div class="quick-card-icon qc-output">✍️</div>
+            <span class="quick-card-badge" style="background:var(--warning-light);color:#b45309">编辑中</span>
+          </div>
+          <div class="quick-card-num">3</div>
+          <div class="quick-card-sub">篇草稿待完成 · 素材利用率62%</div>
+          <div class="quick-card-link">继续写作 →</div>
+        </div>
+      </div>
+
+      <!-- 智能续接 -->
+      <div class="panel resume">
+        <div class="panel-body">
+          <div class="panel-header"><div class="panel-title">📖 智能续接</div></div>
+          <div class="resume-info">
+            <div class="resume-topic"><strong>上次学习：</strong>Go 语言并发模型深度解析 > 二、GMP 调度模型</div>
+            <div class="resume-meta">
+              <span>⏱️ 昨天 22:30</span>
+              <span>📖 预计剩余约 25 分钟</span>
+              <span>📊 阅读进度 65%</span>
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="toast('回到上次学习位置')">回到上次位置 →</button>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn btn-ghost btn-sm" onclick="toast('已生成上下文摘要')">查看上下文摘要</button>
+            <button class="btn btn-ghost btn-sm" onclick="toast('已关联: Channel 原理')">关联知识点 (2)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 学习日历热力图 -->
+      <div class="panel calendar">
+        <div class="panel-body">
+          <div class="panel-header"><div class="panel-title">📅 近2周学习日历</div></div>
+          <div class="heatmap-days" style="margin-bottom:6px"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+          <div class="heatmap" id="heatmap"></div>
+          <div class="heatmap-legend">
+            <span>少</span>
+            <div class="heatmap-cell h0" style="width:12px;height:12px"></div>
+            <div class="heatmap-cell h1" style="width:12px;height:12px"></div>
+            <div class="heatmap-cell h2" style="width:12px;height:12px"></div>
+            <div class="heatmap-cell h3" style="width:12px;height:12px"></div>
+            <div class="heatmap-cell h4" style="width:12px;height:12px"></div>
+            <span>多</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 本周趋势 -->
+      <div class="trend" style="grid-column:1/-1">
+        <div class="trend-panel">
+          <span class="trend-icon">📈</span>
+          <div class="trend-info">
+            <div class="trend-value">72%</div>
+            <div class="trend-label">本周复习完成率</div>
+            <span class="trend-change trend-up">↑ 较上周 +8%</span>
+          </div>
+          <div class="trend-bar-wrap"><div class="trend-bar-fill" style="width:72%"></div></div>
+        </div>
+        <div class="trend-panel">
+          <span class="trend-icon">🔥</span>
+          <div class="trend-info">
+            <div class="trend-value">7 天</div>
+            <div class="trend-label">连续学习天数</div>
+            <span class="trend-change trend-up">↑ 创近30天新高</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+function toast(msg,type){
+  type=type||'info';
+  var c=document.getElementById('toastContainer');
+  var icons={success:'✅',warning:'⚠️',info:'ℹ️'};
+  var el=document.createElement('div');el.className='toast '+(type||'info');
+  el.innerHTML='<span class="toast-icon">'+(icons[type]||icons.info)+'</span><span class="toast-text">'+msg+'</span>';
+  c.appendChild(el);
+  setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove()},300)},2200);
+}
+
+function navSide(el){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function revealAnswer(el){
+  el.textContent='CSP（通信顺序进程）';
+  el.classList.add('revealed');
+  toast('回答正确！','success');
+}
+
+// 热力图
+(function(){
+  var g=document.getElementById('heatmap'),levels=['h0','h1','h2','h3','h4'],days=[];
+  for(var i=0;i<14;i++){
+    var d=new Date();d.setDate(d.getDate()-(13-i));
+    days.push({day:d.getDay()||7,val:Math.floor(Math.random()*5)});
+  }
+  // 填充前导空白
+  var firstDay=days[0].day;
+  for(var i=1;i<firstDay;i++){var cell=document.createElement('div');cell.className='heatmap-cell h0';g.appendChild(cell)}
+  for(var i=0;i<days.length;i++){
+    var cell=document.createElement('div');
+    cell.className='heatmap-cell '+levels[days[i].val];
+    cell.title=days[i].val*5+' 分钟学习';
+    g.appendChild(cell);
+  }
+})();
+</script>
+</body>
+</html>

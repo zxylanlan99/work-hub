@@ -1,0 +1,21 @@
+{
+  "name": "studymind",
+  "version": "1.0.0",
+  "description": "StudyMind - 个人学习管理系统",
+  "main": "src/pages/index.html",
+  "scripts": {
+    "dev": "echo 'Running development server...'",
+    "build": "echo 'Building project...'",
+    "test": "echo 'Running tests...'",
+    "deploy": "echo 'Deploying to CloudBase...'"
+  },
+  "keywords": [
+    "learning",
+    "management",
+    "studymind"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

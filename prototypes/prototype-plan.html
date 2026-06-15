@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — 学习计划模块原型</title>
+<style>
+  :root {
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #eef2ff;
+    --success: #22c55e;
+    --success-light: #dcfce7;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger: #ef4444;
+    --danger-light: #fee2e2;
+    --info: #3b82f6;
+    --info-light: #dbeafe;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --bg: #ffffff;
+    --sidebar-bg: #f9fafb;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: var(--gray-800); font-size: 14px; min-height: 100vh; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: 220px; background: var(--sidebar-bg); border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sidebar-logo { padding: 20px 16px 12px; font-size: 18px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+  .sidebar-logo span { font-size: 22px; }
+  .sidebar-nav { flex: 1; padding: 8px; overflow-y: auto; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); cursor: pointer; color: var(--gray-600); font-size: 13.5px; margin-bottom: 2px; transition: all 0.15s; }
+  .nav-item:hover { background: var(--gray-200); color: var(--gray-800); }
+  .nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Topbar */
+  .topbar { height: 56px; background: white; border-bottom: 1px solid var(--gray-200); display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0; }
+  .topbar-title { font-size: 17px; font-weight: 600; color: var(--gray-900); flex: 1; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13.5px; font-weight: 500; transition: all 0.15s; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: white; color: var(--gray-700); border: 1px solid var(--gray-300); }
+  .btn-secondary:hover { background: var(--gray-50); }
+  .btn-ghost { background: transparent; color: var(--gray-500); padding: 6px 10px; }
+  .btn-ghost:hover { background: var(--gray-100); color: var(--gray-700); }
+  .btn-sm { padding: 5px 10px; font-size: 12.5px; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-success { background: var(--success); color: white; }
+
+  /* Content Area */
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+
+  /* Sub Tabs */
+  .sub-tabs { display: flex; gap: 4px; background: var(--gray-100); padding: 4px; border-radius: var(--radius); margin-bottom: 20px; width: fit-content; }
+  .sub-tab { padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; color: var(--gray-500); transition: all 0.15s; }
+  .sub-tab.active { background: white; color: var(--gray-800); font-weight: 600; box-shadow: var(--shadow); }
+  .sub-tab:hover:not(.active) { background: var(--gray-200); }
+
+  /* 目标卡片列表 */
+  .goals-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .goals-stats { display: flex; gap: 12px; }
+  .stat-pill { display: flex; align-items: center; gap: 6px; padding: 5px 12px; background: white; border: 1px solid var(--gray-200); border-radius: 20px; font-size: 12.5px; color: var(--gray-600); box-shadow: var(--shadow); }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .goals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .goal-card { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); padding: 20px; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow); }
+  .goal-card:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(99,102,241,0.12); transform: translateY(-1px); }
+  .goal-card.active-state { border-left: 4px solid var(--primary); }
+  .goal-card.paused-state { border-left: 4px solid var(--warning); opacity: 0.8; }
+  .goal-card.completed-state { border-left: 4px solid var(--success); }
+
+  .goal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+  .goal-title { font-size: 15px; font-weight: 600; color: var(--gray-900); flex: 1; margin-right: 8px; line-height: 1.4; }
+  .badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+  .badge-active { background: var(--primary-light); color: var(--primary); }
+  .badge-paused { background: var(--warning-light); color: #d97706; }
+  .badge-completed { background: var(--success-light); color: #16a34a; }
+  .badge-ai { background: #ede9fe; color: #7c3aed; }
+
+  .goal-desc { font-size: 12.5px; color: var(--gray-500); margin-bottom: 14px; line-height: 1.5; }
+  .progress-bar-wrap { margin-bottom: 10px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--gray-500); margin-bottom: 5px; }
+  .progress-bar { height: 6px; background: var(--gray-100); border-radius: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 10px; transition: width 0.5s; }
+  .progress-fill.primary { background: var(--primary); }
+  .progress-fill.success { background: var(--success); }
+  .progress-fill.warning { background: var(--warning); }
+
+  .goal-meta { display: flex; gap: 12px; font-size: 12px; color: var(--gray-400); }
+  .goal-meta span { display: flex; align-items: center; gap: 3px; }
+
+  .goal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gray-100); }
+
+  /* 空状态 */
+  .empty-state { text-align: center; padding: 60px 20px; }
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-title { font-size: 16px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; }
+  .empty-desc { font-size: 13px; color: var(--gray-400); margin-bottom: 20px; }
+
+  /* ===== 目标详情视图 ===== */
+  .detail-view { display: none; }
+  .detail-back { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--gray-500); font-size: 13px; margin-bottom: 16px; transition: color 0.15s; }
+  .detail-back:hover { color: var(--primary); }
+  .detail-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+  .detail-main { display: flex; flex-direction: column; gap: 16px; }
+  .detail-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  .detail-hero { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); padding: 24px; box-shadow: var(--shadow); }
+  .detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .detail-title { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+  .detail-desc { font-size: 13px; color: var(--gray-500); margin-bottom: 16px; line-height: 1.6; }
+  .progress-big-wrap { margin-bottom: 16px; }
+  .progress-big-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .progress-big-pct { font-size: 28px; font-weight: 700; color: var(--primary); }
+  .progress-big-bar { height: 10px; background: var(--gray-100); border-radius: 10px; overflow: hidden; }
+  .detail-meta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .detail-meta-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gray-500); }
+  .detail-meta-item strong { color: var(--gray-700); }
+
+  /* 里程碑 */
+  .milestones-wrap { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow); overflow: hidden; }
+  .milestones-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+  .milestones-title { font-size: 14px; font-weight: 600; color: var(--gray-800); }
+
+  .milestone-item { border-bottom: 1px solid var(--gray-50); }
+  .milestone-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; cursor: pointer; transition: background 0.15s; }
+  .milestone-header:hover { background: var(--gray-50); }
+  .milestone-toggle { font-size: 12px; color: var(--gray-400); transition: transform 0.2s; }
+  .milestone-toggle.open { transform: rotate(90deg); }
+  .milestone-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .milestone-icon.done { background: var(--success-light); color: var(--success); }
+  .milestone-icon.active { background: var(--primary-light); color: var(--primary); }
+  .milestone-icon.pending { background: var(--gray-100); color: var(--gray-400); }
+  .milestone-info { flex: 1; }
+  .milestone-name { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+  .milestone-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .milestone-progress { text-align: right; font-size: 12px; color: var(--gray-400); flex-shrink: 0; }
+  .mini-progress { width: 80px; height: 4px; background: var(--gray-100); border-radius: 4px; overflow: hidden; margin-top: 4px; }
+  .mini-fill { height: 100%; background: var(--primary); border-radius: 4px; }
+  .mini-fill.success { background: var(--success); }
+
+  .tasks-list { padding: 0 20px 12px 56px; }
+  .task-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-50); }
+  .task-item:last-child { border-bottom: none; }
+  .task-check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--gray-300); cursor: pointer; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .task-check.done { background: var(--success); border-color: var(--success); color: white; font-size: 10px; }
+  .task-check.in-progress { background: var(--primary-light); border-color: var(--primary); }
+  .task-body { flex: 1; }
+  .task-title { font-size: 13px; color: var(--gray-700); line-height: 1.4; }
+  .task-title.done-text { text-decoration: line-through; color: var(--gray-400); }
+  .task-meta { display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+  .task-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; color: var(--gray-400); }
+  .task-tag.overdue { color: var(--danger); }
+  .task-tag.today { color: var(--warning); }
+  .task-priority { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 6px; }
+  .priority-high { background: var(--danger); }
+  .priority-mid { background: var(--warning); }
+  .priority-low { background: var(--success); }
+  .task-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+  .task-item:hover .task-actions { opacity: 1; }
+
+  /* 侧边面板 */
+  .panel { background: white; border-radius: var(--radius-lg); border: 1px solid var(--gray-200); box-shadow: var(--shadow); overflow: hidden; }
+  .panel-header { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+  .panel-title { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+  .panel-body { padding: 16px; }
+
+  /* AI 诊断面板 */
+  .ai-diag-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .ai-avatar { width: 28px; height: 28px; background: linear-gradient(135deg, var(--primary), #a78bfa); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; color: white; }
+  .diag-section { margin-bottom: 14px; }
+  .diag-label { font-size: 11.5px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .diag-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--gray-50); font-size: 12.5px; color: var(--gray-600); }
+  .diag-item:last-child { border-bottom: none; }
+  .diag-icon { font-size: 14px; flex-shrink: 0; }
+  .diag-suggest { background: #ede9fe; border-radius: var(--radius); padding: 10px 12px; font-size: 12.5px; color: #5b21b6; line-height: 1.5; margin-bottom: 8px; }
+  .diag-suggest strong { display: block; margin-bottom: 3px; font-weight: 600; }
+
+  /* 耗时预测 */
+  .estimate-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--gray-50); font-size: 12.5px; }
+  .estimate-row:last-child { border-bottom: none; }
+  .estimate-bar { display: flex; align-items: center; gap: 6px; }
+  .confid-badge { font-size: 11px; padding: 1px 6px; border-radius: 10px; font-weight: 500; }
+  .confid-high { background: var(--success-light); color: #16a34a; }
+  .confid-med { background: var(--warning-light); color: #d97706; }
+
+  /* ===== Modal 弹窗 ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; animation: slideIn 0.25s ease; }
+  .modal-sm { max-width: 440px; }
+  .modal-md { max-width: 580px; }
+  .modal-lg { max-width: 720px; }
+  .modal-xl { max-width: 880px; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--gray-100); display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+  .modal-subtitle { font-size: 12.5px; color: var(--gray-400); margin-top: 2px; }
+  .modal-close { cursor: pointer; color: var(--gray-400); font-size: 20px; line-height: 1; padding: 2px 6px; border-radius: 4px; transition: all 0.15s; }
+  .modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
+  .modal-body { padding: 20px 24px; max-height: 70vh; overflow-y: auto; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--gray-100); display: flex; justify-content: flex-end; gap: 10px; }
+
+  /* AI 对话创建目标 */
+  .ai-chat-wrap { background: var(--gray-50); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+  .chat-bubble { display: flex; gap: 10px; max-width: 90%; }
+  .chat-bubble.user { align-self: flex-end; flex-direction: row-reverse; }
+  .chat-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .chat-avatar.ai { background: linear-gradient(135deg, var(--primary), #a78bfa); color: white; }
+  .chat-avatar.user { background: var(--gray-200); color: var(--gray-600); }
+  .chat-content { padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+  .chat-content.ai { background: white; border: 1px solid var(--gray-200); color: var(--gray-700); border-radius: 4px 14px 14px 14px; }
+  .chat-content.user { background: var(--primary); color: white; border-radius: 14px 4px 14px 14px; }
+  .typing-indicator { display: flex; gap: 4px; padding: 12px 14px; background: white; border: 1px solid var(--gray-200); border-radius: 4px 14px 14px 14px; width: fit-content; }
+  .typing-dot { width: 6px; height: 6px; background: var(--gray-300); border-radius: 50%; animation: typing 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+
+  .chat-input-row { display: flex; gap: 8px; }
+  .chat-input { flex: 1; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 13.5px; resize: none; outline: none; transition: border-color 0.15s; }
+  .chat-input:focus { border-color: var(--primary); }
+
+  /* 生成结果预览 */
+  .gen-result { background: var(--primary-light); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .gen-result-title { font-size: 13.5px; font-weight: 600; color: var(--primary-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .milestone-preview { background: white; border-radius: var(--radius); padding: 12px; margin-bottom: 8px; border: 1px solid var(--gray-200); }
+  .milestone-preview-title { font-size: 13px; font-weight: 600; color: var(--gray-800); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .milestone-task-list { list-style: none; padding: 0; }
+  .milestone-task-list li { font-size: 12.5px; color: var(--gray-600); padding: 3px 0; display: flex; align-items: center; gap: 6px; }
+  .milestone-task-list li::before { content: "·"; color: var(--primary); font-size: 18px; line-height: 1; }
+
+  /* 弹性排期弹窗 */
+  .reschedule-option { padding: 14px 16px; border: 2px solid var(--gray-200); border-radius: var(--radius); margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+  .reschedule-option:hover, .reschedule-option.selected { border-color: var(--primary); background: var(--primary-light); }
+  .reschedule-option-title { font-size: 13.5px; font-weight: 600; color: var(--gray-800); margin-bottom: 4px; }
+  .reschedule-option-desc { font-size: 12.5px; color: var(--gray-500); }
+  .impact-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 500; margin-left: 8px; }
+  .impact-low { background: var(--success-light); color: #16a34a; }
+  .impact-med { background: var(--warning-light); color: #d97706; }
+
+  /* 进度诊断弹窗 */
+  .diag-score { text-align: center; padding: 20px; background: linear-gradient(135deg, var(--primary-light), #ede9fe); border-radius: var(--radius); margin-bottom: 20px; }
+  .diag-score-num { font-size: 48px; font-weight: 800; color: var(--primary); line-height: 1; }
+  .diag-score-label { font-size: 13px; color: var(--gray-600); margin-top: 4px; }
+  .diag-metric { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+  .diag-metric-icon { font-size: 20px; flex-shrink: 0; }
+  .diag-metric-info { flex: 1; }
+  .diag-metric-name { font-size: 13px; font-weight: 600; color: var(--gray-700); }
+  .diag-metric-desc { font-size: 12px; color: var(--gray-400); }
+  .diag-metric-val { font-size: 14px; font-weight: 700; }
+  .val-good { color: var(--success); }
+  .val-warn { color: var(--warning); }
+  .val-bad { color: var(--danger); }
+  .advice-card { background: #fffbeb; border: 1px solid var(--warning); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; }
+  .advice-title { font-size: 12.5px; font-weight: 600; color: #92400e; margin-bottom: 4px; }
+  .advice-body { font-size: 12.5px; color: #78350f; line-height: 1.5; }
+
+  /* 任务完成弹窗 */
+  .complete-success { text-align: center; padding: 16px 0; }
+  .complete-emoji { font-size: 44px; margin-bottom: 10px; }
+  .complete-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+  .complete-desc { font-size: 13px; color: var(--gray-500); margin-bottom: 16px; }
+  .complete-options { display: flex; flex-direction: column; gap: 8px; }
+  .complete-option { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: var(--radius); cursor: pointer; transition: all 0.15s; }
+  .complete-option:hover { border-color: var(--primary); background: var(--primary-light); }
+  .complete-option-icon { font-size: 20px; }
+  .complete-option-text { flex: 1; }
+  .complete-option-title { font-size: 13.5px; font-weight: 600; color: var(--gray-800); }
+  .complete-option-desc { font-size: 12px; color: var(--gray-400); }
+
+  /* Form */
+  .form-group { margin-bottom: 16px; }
+  .form-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
+  .form-label .required { color: var(--danger); margin-left: 2px; }
+  .form-input, .form-textarea, .form-select { width: 100%; padding: 9px 12px; border: 1px solid var(--gray-300); border-radius: var(--radius); font-size: 13.5px; outline: none; transition: border-color 0.15s; background: white; color: var(--gray-800); }
+  .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(99,102,241,0.1); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+  .form-hint { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Toast */
+  .toast-container { position: fixed; top: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast { background: white; border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 10px; font-size: 13.5px; pointer-events: auto; animation: toastIn 0.25s ease; border-left: 3px solid; max-width: 320px; }
+  .toast-success { border-left-color: var(--success); }
+  .toast-info { border-left-color: var(--info); }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+  .toast-icon { font-size: 16px; flex-shrink: 0; }
+
+  /* Divider with text */
+  .divider-text { display: flex; align-items: center; gap: 10px; margin: 16px 0; }
+  .divider-text::before, .divider-text::after { content: ""; flex: 1; height: 1px; background: var(--gray-200); }
+  .divider-text span { font-size: 12px; color: var(--gray-400); white-space: nowrap; }
+
+  /* Steps */
+  .steps { display: flex; gap: 0; margin-bottom: 24px; }
+  .step { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--gray-400); }
+  .step:not(:last-child)::after { content: "→"; margin: 0 6px; color: var(--gray-300); flex: 0; }
+  .step.active { color: var(--primary); font-weight: 600; }
+  .step.done { color: var(--success); }
+  .step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .step.active .step-num { background: var(--primary); color: white; }
+  .step.done .step-num { background: var(--success); color: white; }
+
+  /* 难度曲线 */
+  .difficulty-chart { display: flex; align-items: flex-end; gap: 4px; height: 50px; margin-top: 8px; }
+  .diff-bar { flex: 1; border-radius: 3px 3px 0 0; transition: all 0.3s; }
+  .diff-bar.easy { background: var(--success); opacity: 0.7; }
+  .diff-bar.medium { background: var(--warning); opacity: 0.7; }
+  .diff-bar.hard { background: var(--danger); opacity: 0.7; }
+
+  /* tags */
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 12px; background: var(--gray-100); color: var(--gray-600); margin: 2px; }
+
+  /* locked badge */
+  .locked-banner { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0; border-radius: var(--radius); padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #166534; margin-bottom: 16px; }
+
+  /* AI暖身卡 */
+  .warmup-banner { background: linear-gradient(135deg, var(--primary-light), #ede9fe); border: 1px solid #c4b5fd; border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start; }
+  .warmup-left { flex: 1; }
+  .warmup-title { font-size: 13px; font-weight: 600; color: #4c1d95; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .warmup-card { background: white; border-radius: var(--radius); padding: 10px 12px; font-size: 12.5px; color: var(--gray-700); margin-bottom: 6px; border: 1px solid var(--gray-200); }
+  .warmup-card strong { color: var(--gray-900); }
+
+  /* 续接卡 */
+  .resume-card { background: white; border: 1px solid var(--primary); border-left: 4px solid var(--primary); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: all 0.15s; }
+  .resume-card:hover { box-shadow: 0 4px 12px rgba(99,102,241,0.15); }
+  .resume-info { flex: 1; }
+  .resume-title { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+  .resume-sub { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+  /* 状态筛选栏 */
+  .filter-bar { display: flex; gap: 8px; margin-bottom: 20px; align-items: center; }
+  .filter-btn { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--gray-200); background: white; font-size: 12.5px; cursor: pointer; color: var(--gray-500); transition: all 0.15s; }
+  .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+  .filter-btn:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+
+  /* 帮助提示 */
+  .hint-box { background: var(--info-light); border-radius: var(--radius); padding: 10px 14px; font-size: 12.5px; color: #1e40af; display: flex; gap: 8px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span>🧠</span> StudyMind
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item" onclick="showToast('切换到首页', 'info')">
+        <span class="nav-icon">📊</span> 首页
+      </div>
+      <div class="nav-item active">
+        <span class="nav-icon">🎯</span> 学习计划
+      </div>
+      <div class="nav-item" onclick="showToast('切换到资讯', 'info')">
+        <span class="nav-icon">📡</span> 资讯
+      </div>
+      <div class="nav-item" onclick="showToast('切换到知识库', 'info')">
+        <span class="nav-icon">📚</span> 知识库
+      </div>
+      <div class="nav-item" onclick="showToast('切换到AI对话', 'info')">
+        <span class="nav-icon">💬</span> AI对话
+      </div>
+      <div class="nav-item" onclick="showToast('切换到复习计划', 'info')">
+        <span class="nav-icon">🔄</span> 复习计划
+      </div>
+      <div class="nav-item" onclick="showToast('切换到知识沉淀', 'info')">
+        <span class="nav-icon">✍️</span> 知识沉淀
+      </div>
+    </nav>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="main">
+    <!-- 顶部栏 -->
+    <div class="topbar">
+      <span class="topbar-title" id="pageTitle">🎯 学习计划</span>
+      <button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ 新建目标</button>
+    </div>
+
+    <!-- 内容区 -->
+    <div class="content">
+      <!-- ===== 列表视图 ===== -->
+      <div id="listView">
+        <!-- AI暖身卡 -->
+        <div class="warmup-banner" id="warmupBanner">
+          <div class="warmup-left">
+            <div class="warmup-title">🌅 今日暖身（1分钟）</div>
+            <div class="warmup-card">
+              <strong>昨日回顾：</strong>你学习了「服务发现」概念，掌握了 Consul 的基本注册机制。
+            </div>
+            <div class="warmup-card">
+              <strong>快问快答：</strong>服务注册中心的核心作用是什么？
+              <span id="warmupAnswer" style="display:none; margin-top:4px; display: none; color: var(--success); font-weight:500;">✅ 答案：维护服务实例列表，提供服务发现和健康检查功能。</span>
+              <button class="btn btn-ghost btn-sm" style="margin-top:6px; padding:4px 8px; font-size:12px;" onclick="showWarmupAnswer()">查看答案</button>
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('warmupBanner').style.display='none'">跳过 ✕</button>
+        </div>
+
+        <!-- 续接卡 -->
+        <div class="resume-card" onclick="openDetail()">
+          <span style="font-size: 24px;">⏭️</span>
+          <div class="resume-info">
+            <div class="resume-title">继续上次学习：微服务架构实战</div>
+            <div class="resume-sub">上次停在「服务通信 — gRPC vs REST 对比」· 预计剩余 45 分钟</div>
+          </div>
+          <button class="btn btn-primary btn-sm">继续 →</button>
+        </div>
+
+        <!-- 子标签 -->
+        <div class="sub-tabs">
+          <div class="sub-tab active" onclick="switchSubTab(this)">全部目标</div>
+          <div class="sub-tab" onclick="switchSubTab(this)">进行中</div>
+          <div class="sub-tab" onclick="switchSubTab(this)">已暂停</div>
+          <div class="sub-tab" onclick="switchSubTab(this)">已完成</div>
+        </div>
+
+        <!-- 筛选 & 统计 -->
+        <div class="goals-header">
+          <div class="goals-stats">
+            <div class="stat-pill"><span class="stat-dot" style="background: var(--primary)"></span> 进行中 3</div>
+            <div class="stat-pill"><span class="stat-dot" style="background: var(--warning)"></span> 暂停中 1</div>
+            <div class="stat-pill"><span class="stat-dot" style="background: var(--success)"></span> 已完成 2</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <select class="form-select" style="width: 130px; padding: 5px 10px; font-size: 12.5px;">
+              <option>最近活跃</option>
+              <option>创建时间</option>
+              <option>完成度</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 目标卡片网格 -->
+        <div class="goals-grid">
+          <!-- 卡片1 -->
+          <div class="goal-card active-state" onclick="openDetail()">
+            <div class="goal-header">
+              <div class="goal-title">微服务架构实战</div>
+              <span class="badge badge-active">🟢 进行中</span>
+            </div>
+            <div class="goal-desc">系统掌握微服务设计、开发与部署，能在工作中独立拆分并实施微服务架构</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>总体进度</span><span style="color: var(--primary); font-weight: 600;">65%</span></div>
+              <div class="progress-bar"><div class="progress-fill primary" style="width: 65%"></div></div>
+            </div>
+            <div class="goal-meta">
+              <span>📅 截止 2026-08-30</span>
+              <span>📋 8/12 任务</span>
+              <span>⏱️ 约42小时</span>
+            </div>
+            <div class="goal-footer">
+              <div style="display: flex; gap: 6px;">
+                <span class="tag">🏷️ 后端</span>
+                <span class="tag">🏷️ 架构</span>
+              </div>
+              <div style="display: flex; gap: 6px;" onclick="event.stopPropagation()">
+                <button class="btn btn-ghost btn-sm" onclick="openRescheduleModal()">📅 排期</button>
+                <button class="btn btn-ghost btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 卡片2 -->
+          <div class="goal-card active-state" onclick="openDetail(); showToast('打开 React 深度学习目标', 'info')">
+            <div class="goal-header">
+              <div class="goal-title">React 深度学习</div>
+              <span class="badge badge-active">🟢 进行中</span>
+            </div>
+            <div class="goal-desc">从 Hooks 到性能优化，掌握 React 生态系统，能构建生产级应用</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>总体进度</span><span style="color: var(--primary); font-weight: 600;">38%</span></div>
+              <div class="progress-bar"><div class="progress-fill primary" style="width: 38%"></div></div>
+            </div>
+            <div class="goal-meta">
+              <span>📅 截止 2026-07-15</span>
+              <span>📋 5/13 任务</span>
+              <span>⚠️ 进度偏慢</span>
+            </div>
+            <div class="goal-footer">
+              <div style="display: flex; gap: 6px;">
+                <span class="tag">🏷️ 前端</span>
+              </div>
+              <div style="display: flex; gap: 6px;" onclick="event.stopPropagation()">
+                <button class="btn btn-ghost btn-sm">📅 排期</button>
+                <button class="btn btn-ghost btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 卡片3 -->
+          <div class="goal-card paused-state">
+            <div class="goal-header">
+              <div class="goal-title">英语口语提升</div>
+              <span class="badge badge-paused">⏸️ 暂停中</span>
+            </div>
+            <div class="goal-desc">提升工作英语口语能力，能流畅参与英文技术会议和演讲</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>总体进度</span><span style="color: var(--warning); font-weight: 600;">22%</span></div>
+              <div class="progress-bar"><div class="progress-fill warning" style="width: 22%"></div></div>
+            </div>
+            <div class="goal-meta">
+              <span>📅 截止 2026-12-31</span>
+              <span>📋 3/15 任务</span>
+            </div>
+            <div class="goal-footer">
+              <div style="display: flex; gap: 6px;">
+                <span class="tag">🏷️ 语言</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-ghost btn-sm" onclick="showToast('目标已恢复进行中', 'success')">▶ 恢复</button>
+                <button class="btn btn-ghost btn-sm">⋯</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 卡片4 完成 -->
+          <div class="goal-card completed-state">
+            <div class="goal-header">
+              <div class="goal-title">Docker & K8s 入门</div>
+              <span class="badge badge-completed">✅ 已完成</span>
+            </div>
+            <div class="goal-desc">掌握容器化技术与 Kubernetes 基础，能部署生产应用</div>
+            <div class="progress-bar-wrap">
+              <div class="progress-label"><span>总体进度</span><span style="color: var(--success); font-weight: 600;">100%</span></div>
+              <div class="progress-bar"><div class="progress-fill success" style="width: 100%"></div></div>
+            </div>
+            <div class="goal-meta">
+              <span>✅ 完成于 2026-05-20</span>
+              <span>📋 12/12 任务</span>
+            </div>
+            <div class="goal-footer">
+              <div style="display: flex; gap: 6px;">
+                <span class="tag">🏷️ DevOps</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-ghost btn-sm" onclick="showToast('查看学习总结', 'info')">📋 总结</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 目标详情视图 ===== -->
+      <div id="detailView" class="detail-view">
+        <div class="detail-back" onclick="closeDetail()">
+          ← 返回列表
+        </div>
+        <div class="detail-layout">
+          <!-- 左主区 -->
+          <div class="detail-main">
+            <!-- 目标概况 -->
+            <div class="detail-hero">
+              <div class="detail-title-row">
+                <div class="detail-title">微服务架构实战</div>
+                <div style="display: flex; gap: 8px;">
+                  <span class="badge badge-active">🟢 进行中</span>
+                  <button class="btn btn-ghost btn-sm">✏️ 编辑</button>
+                  <button class="btn btn-ghost btn-sm" style="color: var(--danger)">⋯</button>
+                </div>
+              </div>
+              <div class="detail-desc">系统掌握微服务设计、开发与部署，能在工作中独立拆分并实施微服务架构。通过三个月的系统学习，从理论到实战，最终能够独立完成服务拆分方案设计并在团队内分享。</div>
+              <div class="progress-big-wrap">
+                <div class="progress-big-label">
+                  <span style="font-size: 13px; color: var(--gray-500);">8 / 12 任务完成</span>
+                  <span class="progress-big-pct">65%</span>
+                </div>
+                <div class="progress-big-bar"><div class="progress-fill primary" style="width: 65%; height: 10px; border-radius: 10px;"></div></div>
+              </div>
+              <div class="detail-meta-row">
+                <div class="detail-meta-item">📅 <strong>创建</strong> 2026-04-10</div>
+                <div class="detail-meta-item">🏁 <strong>截止</strong> 2026-08-30</div>
+                <div class="detail-meta-item">⏱️ <strong>总耗时</strong> 已用 28h / 预计 42h</div>
+                <div class="detail-meta-item">🔥 <strong>连续学习</strong> 7 天</div>
+              </div>
+            </div>
+
+            <!-- 里程碑与任务 -->
+            <div class="milestones-wrap">
+              <div class="milestones-header">
+                <div class="milestones-title">🗺️ 学习路径（里程碑 & 任务）</div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-secondary btn-sm" onclick="openAddTaskModal()">+ 添加任务</button>
+                </div>
+              </div>
+
+              <!-- 里程碑1 完成 -->
+              <div class="milestone-item">
+                <div class="milestone-header" onclick="toggleMilestone(this)">
+                  <span class="milestone-toggle open">▶</span>
+                  <div class="milestone-icon done">✅</div>
+                  <div class="milestone-info">
+                    <div class="milestone-name">里程碑1：理解微服务核心概念</div>
+                    <div class="milestone-sub">完成于 2026-05-01 · 3/3 任务</div>
+                  </div>
+                  <div class="milestone-progress">
+                    <div style="color: var(--success); font-weight: 600;">100%</div>
+                    <div class="mini-progress"><div class="mini-fill success" style="width:100%"></div></div>
+                  </div>
+                </div>
+                <div class="tasks-list">
+                  <div class="task-item">
+                    <div class="task-check done">✓</div>
+                    <div class="task-priority priority-high"></div>
+                    <div class="task-body">
+                      <div class="task-title done-text">阅读《微服务设计》前3章，整理核心概念</div>
+                      <div class="task-meta">
+                        <span class="task-tag">⏱️ 实际 95min（预计 90min）</span>
+                        <span class="task-tag">✅ 2026-04-15</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="task-item">
+                    <div class="task-check done">✓</div>
+                    <div class="task-priority priority-mid"></div>
+                    <div class="task-body">
+                      <div class="task-title done-text">单体架构 vs 微服务对比分析（输出笔记）</div>
+                      <div class="task-meta">
+                        <span class="task-tag">⏱️ 实际 65min（预计 60min）</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="task-item">
+                    <div class="task-check done">✓</div>
+                    <div class="task-priority priority-mid"></div>
+                    <div class="task-body">
+                      <div class="task-title done-text">绘制微服务架构全景图（含各组件）</div>
+                      <div class="task-meta">
+                        <span class="task-tag">⏱️ 实际 40min（预计 45min）</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 里程碑2 进行中 -->
+              <div class="milestone-item">
+                <div class="milestone-header" onclick="toggleMilestone(this)">
+                  <span class="milestone-toggle open">▶</span>
+                  <div class="milestone-icon active">🔵</div>
+                  <div class="milestone-info">
+                    <div class="milestone-name">里程碑2：服务拆分策略与通信机制</div>
+                    <div class="milestone-sub">进行中 · 2/4 任务完成 · 截止 2026-06-20</div>
+                  </div>
+                  <div class="milestone-progress">
+                    <div style="color: var(--primary); font-weight: 600;">50%</div>
+                    <div class="mini-progress"><div class="mini-fill" style="width:50%"></div></div>
+                  </div>
+                </div>
+                <div class="tasks-list">
+                  <div class="task-item">
+                    <div class="task-check done">✓</div>
+                    <div class="task-priority priority-high"></div>
+                    <div class="task-body">
+                      <div class="task-title done-text">DDD 领域驱动拆分方法论</div>
+                      <div class="task-meta">
+                        <span class="task-tag">⏱️ 实际 120min（预计 90min）</span>
+                      </div>
+                    </div>
+                    <div class="task-actions">
+                      <button class="btn btn-ghost btn-sm">✏️</button>
+                    </div>
+                  </div>
+                  <div class="task-item">
+                    <div class="task-check done">✓</div>
+                    <div class="task-priority priority-high"></div>
+                    <div class="task-body">
+                      <div class="task-title done-text">RESTful API 设计规范与实践</div>
+                      <div class="task-meta">
+                        <span class="task-tag">✅ 2026-06-05</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="task-item">
+                    <div class="task-check in-progress"></div>
+                    <div class="task-priority priority-high"></div>
+                    <div class="task-body">
+                      <div class="task-title" style="color: var(--primary);">🔵 gRPC vs REST 深度对比分析（进行中）</div>
+                      <div class="task-meta">
+                        <span class="task-tag today">📅 截止 2026-06-12（明天）</span>
+                        <span class="task-tag">⏱️ 预计 90min</span>
+                        <span class="badge badge-ai" style="font-size: 11px; padding: 1px 6px;">🤖 AI辅助</span>
+                      </div>
+                    </div>
+                    <div class="task-actions">
+                      <button class="btn btn-success btn-sm" onclick="openCompleteModal()">完成 ✓</button>
+                    </div>
+                  </div>
+                  <div class="task-item">
+                    <div class="task-check"></div>
+                    <div class="task-priority priority-mid"></div>
+                    <div class="task-body">
+                      <div class="task-title">消息队列在微服务中的应用（Kafka/RabbitMQ）</div>
+                      <div class="task-meta">
+                        <span class="task-tag">📅 截止 2026-06-20</span>
+                        <span class="task-tag">⏱️ 预计 120min</span>
+                      </div>
+                    </div>
+                    <div class="task-actions">
+                      <button class="btn btn-ghost btn-sm">✏️</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 里程碑3 待开始 -->
+              <div class="milestone-item">
+                <div class="milestone-header" onclick="toggleMilestone(this)">
+                  <span class="milestone-toggle">▶</span>
+                  <div class="milestone-icon pending">⚪</div>
+                  <div class="milestone-info">
+                    <div class="milestone-name">里程碑3：服务治理与可观测性</div>
+                    <div class="milestone-sub">待开始 · 0/3 任务 · 计划 2026-06-21</div>
+                  </div>
+                  <div class="milestone-progress">
+                    <div style="color: var(--gray-400); font-weight: 600;">0%</div>
+                    <div class="mini-progress"><div class="mini-fill" style="width:0%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 里程碑4 待开始 -->
+              <div class="milestone-item">
+                <div class="milestone-header" onclick="toggleMilestone(this)">
+                  <span class="milestone-toggle">▶</span>
+                  <div class="milestone-icon pending">⚪</div>
+                  <div class="milestone-info">
+                    <div class="milestone-name">里程碑4：实战项目 — 电商微服务改造</div>
+                    <div class="milestone-sub">待开始 · 0/4 任务 · 计划 2026-07-15</div>
+                  </div>
+                  <div class="milestone-progress">
+                    <div style="color: var(--gray-400); font-weight: 600;">0%</div>
+                    <div class="mini-progress"><div class="mini-fill" style="width:0%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 里程碑5 -->
+              <div class="milestone-item">
+                <div class="milestone-header" onclick="toggleMilestone(this)">
+                  <span class="milestone-toggle">▶</span>
+                  <div class="milestone-icon pending">⚪</div>
+                  <div class="milestone-info">
+                    <div class="milestone-name">里程碑5：输出与分享</div>
+                    <div class="milestone-sub">待开始 · 0/2 任务 · 计划 2026-08-01</div>
+                  </div>
+                  <div class="milestone-progress">
+                    <div style="color: var(--gray-400); font-weight: 600;">0%</div>
+                    <div class="mini-progress"><div class="mini-fill" style="width:0%"></div></div>
+                  </div>
+                </div>
+              </div>
+
+            </div><!-- end milestones-wrap -->
+          </div><!-- end detail-main -->
+
+          <!-- 右侧面板 -->
+          <div class="detail-sidebar">
+            <!-- AI每周诊断 -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">🤖 AI 进度诊断</div>
+                <span style="font-size: 11.5px; color: var(--gray-400);">2026-06-09 更新</span>
+              </div>
+              <div class="panel-body">
+                <div class="ai-diag-header">
+                  <div class="ai-avatar">AI</div>
+                  <div style="font-size: 13px; color: var(--gray-600);">本周综合得分</div>
+                  <div style="font-size: 20px; font-weight: 700; color: var(--warning); margin-left: auto;">72分</div>
+                </div>
+                <div class="diag-section">
+                  <div class="diag-label">📊 本周数据</div>
+                  <div class="diag-item"><span class="diag-icon">✅</span> 完成 3 / 计划 4 个任务（75%）</div>
+                  <div class="diag-item"><span class="diag-icon">⏱️</span> 学习 6.5h（比计划少 1.5h）</div>
+                  <div class="diag-item"><span class="diag-icon">🎯</span> 当前里程碑完成度 50%</div>
+                </div>
+                <div class="diag-section">
+                  <div class="diag-label">⚠️ 卡点分析</div>
+                  <div class="diag-suggest">
+                    <strong>发现卡点：DDD拆分</strong>
+                    「DDD拆分」耗时超预期 33%，建议先看完 gRPC 实践后再回头理解上下文边界，会更易消化。
+                  </div>
+                </div>
+                <div class="diag-section">
+                  <div class="diag-label">💡 下周建议</div>
+                  <div class="diag-item"><span class="diag-icon">📌</span> 优先完成 gRPC 对比分析</div>
+                  <div class="diag-item"><span class="diag-icon">📌</span> 消息队列可调整至下下周</div>
+                  <div class="diag-item"><span class="diag-icon">🚀</span> 在截止日前仍可按时完成</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" style="width:100%" onclick="openDiagModal()">查看完整诊断报告 →</button>
+              </div>
+            </div>
+
+            <!-- 时间预测 -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">⏱️ AI 耗时预测</div>
+              </div>
+              <div class="panel-body">
+                <div class="estimate-row">
+                  <span style="font-size:12.5px; color: var(--gray-600);">gRPC 对比分析</span>
+                  <div class="estimate-bar">
+                    <span style="font-size: 12.5px; font-weight: 600; color: var(--gray-700);">80-100min</span>
+                    <span class="confid-badge confid-high">P70</span>
+                  </div>
+                </div>
+                <div class="estimate-row">
+                  <span style="font-size:12.5px; color: var(--gray-600);">消息队列应用</span>
+                  <div class="estimate-bar">
+                    <span style="font-size: 12.5px; font-weight: 600; color: var(--gray-700);">100-150min</span>
+                    <span class="confid-badge confid-med">P70</span>
+                  </div>
+                </div>
+                <div class="estimate-row">
+                  <span style="font-size:12.5px; color: var(--gray-600);">里程碑3（整体）</span>
+                  <div class="estimate-bar">
+                    <span style="font-size: 12.5px; font-weight: 600; color: var(--gray-700);">约 5h</span>
+                    <span class="confid-badge confid-med">P70</span>
+                  </div>
+                </div>
+                <div style="font-size: 12px; color: var(--gray-400); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--gray-100);">P70 = 70% 概率在该时间内完成，基于历史学习速度</div>
+              </div>
+            </div>
+
+            <!-- 难度曲线 -->
+            <div class="panel">
+              <div class="panel-header">
+                <div class="panel-title">📈 难度曲线</div>
+              </div>
+              <div class="panel-body">
+                <div style="font-size: 12px; color: var(--gray-400); margin-bottom: 6px;">每个里程碑预估难度</div>
+                <div class="difficulty-chart">
+                  <div class="diff-bar easy" style="height: 30%;" title="里程碑1：入门"></div>
+                  <div class="diff-bar medium" style="height: 60%;" title="里程碑2：进阶"></div>
+                  <div class="diff-bar hard" style="height: 85%;" title="里程碑3：高阶"></div>
+                  <div class="diff-bar hard" style="height: 95%;" title="里程碑4：实战"></div>
+                  <div class="diff-bar medium" style="height: 45%;" title="里程碑5：输出"></div>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 11.5px; color: var(--gray-400);">
+                  <span>M1</span><span>M2</span><span>M3</span><span>M4</span><span>M5</span>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 8px; font-size: 11.5px;">
+                  <span style="color: var(--success);">● 易</span>
+                  <span style="color: var(--warning);">● 中</span>
+                  <span style="color: var(--danger);">● 难</span>
+                </div>
+              </div>
+            </div>
+          </div><!-- end detail-sidebar -->
+        </div><!-- end detail-layout -->
+      </div><!-- end detailView -->
+    </div><!-- end content -->
+  </main>
+</div>
+
+<!-- ===== Toast容器 ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== 新建目标弹窗（AI辅助 3步流程）===== -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">✨ 创建新学习目标</div>
+        <div class="modal-subtitle">AI 将帮你拆解为具体的里程碑和学习任务</div>
+      </div>
+      <span class="modal-close" onclick="closeModal('createModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <!-- 步骤指示 -->
+      <div class="steps">
+        <div class="step active" id="step1Indicator"><span class="step-num">1</span> 描述目标</div>
+        <div class="step" id="step2Indicator"><span class="step-num">2</span> AI澄清</div>
+        <div class="step" id="step3Indicator"><span class="step-num">3</span> 确认方案</div>
+      </div>
+
+      <!-- 步骤1 -->
+      <div id="createStep1">
+        <div class="hint-box">
+          💡 可以模糊描述，AI 会帮你澄清和细化。例如："我想学微服务"、"掌握 React"、"提升写作能力"
+        </div>
+        <div class="form-group">
+          <label class="form-label">学习目标 <span class="required">*</span></label>
+          <input type="text" class="form-input" id="goalInput" placeholder="我想学……" value="我想系统学习 Kafka 消息队列">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">期望完成时间</label>
+            <input type="date" class="form-input" value="2026-09-30">
+          </div>
+          <div class="form-group">
+            <label class="form-label">每周可投入时间</label>
+            <select class="form-select">
+              <option>1-2 小时</option>
+              <option selected>3-5 小时</option>
+              <option>5-10 小时</option>
+              <option>10小时以上</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">当前基础（可选）</label>
+          <textarea class="form-textarea" style="min-height: 60px;" placeholder="例如：已了解基本消息队列概念，使用过 RabbitMQ">了解基本消息队列概念，用过 Redis 发布订阅</textarea>
+        </div>
+        <div style="display: flex; gap: 10px; margin-bottom: 16px;">
+          <button class="btn btn-primary" onclick="goToStep2()">🤖 AI 智能拆解</button>
+          <button class="btn btn-secondary" onclick="showManualCreate()">✍️ 手动创建</button>
+        </div>
+      </div>
+
+      <!-- 步骤2：AI对话澄清 -->
+      <div id="createStep2" style="display:none;">
+        <div class="ai-chat-wrap" id="aiChatWrap">
+          <div class="chat-bubble">
+            <div class="chat-avatar ai">AI</div>
+            <div class="chat-content ai">
+              收到！你想系统学习 Kafka 消息队列，当前已了解消息队列基本概念和 Redis 发布订阅。
+              <br><br>
+              有几个问题帮我更好地为你规划：
+              <br><br>
+              <strong>1. 学习深度</strong>：你的目标是"能用"（生产落地）还是"深挖"（源码级理解）？
+              <br>
+              <strong>2. 应用场景</strong>：是否有具体的项目/工作场景？（如电商订单消峰、日志收集等）
+              <br>
+              <strong>3. 技术栈</strong>：你主要用什么语言开发？（Java/Go/Python）
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" rows="2" placeholder="回答AI的问题，或直接描述补充信息…">生产落地，场景是订单服务解耦，用 Java 开发</textarea>
+          <button class="btn btn-primary" onclick="sendChat()">发送</button>
+        </div>
+      </div>
+
+      <!-- 步骤3：生成结果预览 -->
+      <div id="createStep3" style="display:none;">
+        <div class="gen-result">
+          <div class="gen-result-title">🤖 AI 生成方案 — Kafka 消息队列实战</div>
+          <div style="display: flex; gap: 16px; margin-bottom: 12px; font-size: 13px; color: var(--primary-dark);">
+            <span>📋 5个里程碑</span>
+            <span>📌 18个任务</span>
+            <span>⏱️ 预计 38-45 小时</span>
+            <span>📅 按周3-5h，约2.5个月</span>
+          </div>
+          <div class="milestone-preview">
+            <div class="milestone-preview-title">
+              里程碑1：Kafka 核心架构与原理
+              <span style="font-size: 12px; color: var(--gray-400);">4任务 · 预计8h</span>
+            </div>
+            <ul class="milestone-task-list">
+              <li>Kafka 架构全景：Broker/Topic/Partition/Consumer Group</li>
+              <li>高吞吐原理：顺序写/零拷贝/批量发送</li>
+              <li>可靠性机制：副本同步/ISR/ACK</li>
+              <li>动手实验：本地搭建 Kafka 并发送第一条消息</li>
+            </ul>
+          </div>
+          <div class="milestone-preview">
+            <div class="milestone-preview-title">
+              里程碑2：Java 客户端开发
+              <span style="font-size: 12px; color: var(--gray-400);">4任务 · 预计10h</span>
+            </div>
+            <ul class="milestone-task-list">
+              <li>Producer API 深度使用（分区策略/自定义序列化）</li>
+              <li>Consumer API 详解（手动提交/再均衡监听）</li>
+              <li>Spring Kafka 集成实践</li>
+              <li>消费幂等性设计方案</li>
+            </ul>
+          </div>
+          <div style="text-align: center; font-size: 12.5px; color: var(--primary-dark); cursor: pointer;" onclick="showToast('展开全部里程碑', 'info')">
+            + 查看全部 5 个里程碑 →
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">目标标题（AI自动生成，可修改）</label>
+          <input type="text" class="form-input" value="Kafka 消息队列实战 — 订单解耦落地">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">所属领域</label>
+            <select class="form-select">
+              <option selected>学习 › 后端开发</option>
+              <option>学习 › 架构设计</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">主题锁定</label>
+            <select class="form-select">
+              <option>不设置主题锁定</option>
+              <option selected>设置为当前锁定主题</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer" id="createModalFooter">
+      <button class="btn btn-secondary" onclick="closeModal('createModal')">取消</button>
+      <button class="btn btn-primary" id="createNextBtn" onclick="goToStep2()">下一步：AI澄清 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹性排期弹窗 ===== -->
+<div class="modal-overlay" id="rescheduleModal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📅 弹性排期调整</div>
+        <div class="modal-subtitle">「gRPC 对比分析」已延期 2 天，选择处理方式</div>
+      </div>
+      <span class="modal-close" onclick="closeModal('rescheduleModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius); padding: 12px; margin-bottom: 16px; font-size: 13px; color: #9a3412;">
+        ⚠️ <strong>影响分析：</strong>该任务延期将影响里程碑2的完成时间（原计划 2026-06-20），可能导致里程碑3推迟启动约 4 天。
+      </div>
+
+      <div class="diag-label" style="margin-bottom: 10px;">选择处理方案：</div>
+      <div class="reschedule-option selected" onclick="selectReschedule(this)">
+        <div class="reschedule-option-title">方案A：顺延当前里程碑
+          <span class="impact-tag impact-low">影响较小</span>
+        </div>
+        <div class="reschedule-option-desc">当前任务截止延至 2026-06-15，里程碑2整体推迟 5 天。后续里程碑自动顺延，总目标截止日期不变（有3周缓冲）。</div>
+      </div>
+      <div class="reschedule-option" onclick="selectReschedule(this)">
+        <div class="reschedule-option-title">方案B：跳过此任务，先推进下一任务
+          <span class="impact-tag impact-med">需后补</span>
+        </div>
+        <div class="reschedule-option-desc">跳过「gRPC对比」先学「消息队列应用」，下周再补回。适合当前时间紧张的情况，AI会标记此任务为"待补学"。</div>
+      </div>
+      <div class="reschedule-option" onclick="selectReschedule(this)">
+        <div class="reschedule-option-title">方案C：拆分任务，减少单次投入
+          <span class="impact-tag impact-low">推荐</span>
+        </div>
+        <div class="reschedule-option-desc">AI将「gRPC对比分析」拆分为2个子任务（基础对比30min + 性能对比60min），每次碎片时间可完成一个子任务。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('rescheduleModal')">暂不调整</button>
+      <button class="btn btn-primary" onclick="closeModal('rescheduleModal'); showToast('已按方案A调整排期，后续任务已自动顺延', 'success')">确认调整</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 任务完成弹窗 ===== -->
+<div class="modal-overlay" id="completeModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">完成任务确认</div>
+      <span class="modal-close" onclick="closeModal('completeModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="complete-success">
+        <div class="complete-emoji">🎉</div>
+        <div class="complete-title">「gRPC vs REST 深度对比」完成！</div>
+        <div class="complete-desc">里程碑2 进度：3/4 任务 · 75%<br>自动生成复习卡片，将在 <strong>2天后</strong> 推送复习</div>
+      </div>
+      <div class="complete-options">
+        <div class="complete-option" onclick="closeModal('completeModal'); showToast('已跳转到知识沉淀编辑器', 'success')">
+          <span class="complete-option-icon">✍️</span>
+          <div class="complete-option-text">
+            <div class="complete-option-title">趁热打铁：写一篇学习笔记</div>
+            <div class="complete-option-desc">AI 已准备好 gRPC 和 REST 的对比笔记初稿</div>
+          </div>
+          <span style="color: var(--gray-300);">→</span>
+        </div>
+        <div class="complete-option" onclick="closeModal('completeModal'); showToast('知识已添加到复习队列', 'success')">
+          <span class="complete-option-icon">🔄</span>
+          <div class="complete-option-text">
+            <div class="complete-option-title">只生成复习卡片，继续下一任务</div>
+            <div class="complete-option-desc">2天后提醒复习此知识点</div>
+          </div>
+          <span style="color: var(--gray-300);">→</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('completeModal')">暂不处理</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI进度诊断报告弹窗 ===== -->
+<div class="modal-overlay" id="diagModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🤖 AI 进度诊断报告</div>
+        <div class="modal-subtitle">微服务架构实战 · 第9周诊断 · 2026-06-09</div>
+      </div>
+      <span class="modal-close" onclick="closeModal('diagModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="diag-score">
+        <div class="diag-score-num">72</div>
+        <div class="diag-score-label">综合学习健康度（满分100）<br><span style="color: var(--warning);">⚠️ 轻微落后</span></div>
+      </div>
+
+      <div class="diag-metric">
+        <span class="diag-metric-icon">✅</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">任务完成率</div>
+          <div class="diag-metric-desc">本周完成3个，计划4个</div>
+        </div>
+        <div class="diag-metric-val val-good">75%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">⏱️</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">学习时长</div>
+          <div class="diag-metric-desc">实际 6.5h，计划 8h</div>
+        </div>
+        <div class="diag-metric-val val-warn">81%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">🎯</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">进度符合率</div>
+          <div class="diag-metric-desc">当前65%，按时完成需达75%</div>
+        </div>
+        <div class="diag-metric-val val-warn">落后10%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">📈</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">估时准确度</div>
+          <div class="diag-metric-desc">实际/预期耗时偏差</div>
+        </div>
+        <div class="diag-metric-val val-good">+18%</div>
+      </div>
+      <div class="diag-metric" style="border-bottom: none;">
+        <span class="diag-metric-icon">🔥</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">连续打卡</div>
+          <div class="diag-metric-desc">连续7天有学习记录</div>
+        </div>
+        <div class="diag-metric-val val-good">7天🔥</div>
+      </div>
+
+      <div style="margin: 16px 0 10px; font-size: 13.5px; font-weight: 600; color: var(--gray-700);">💡 AI 调整建议</div>
+      <div class="advice-card">
+        <div class="advice-title">建议1：先跳过「DDD」重新看，直到学完里程碑3</div>
+        <div class="advice-body">DDD 领域驱动设计在没有实战背景时比较抽象。建议先完成服务治理的学习后，再回头看 DDD，那时会有更多"对号入座"的感触，理解效率高 40%。</div>
+      </div>
+      <div class="advice-card">
+        <div class="advice-title">建议2：下周适当减量，专注里程碑2收尾</div>
+        <div class="advice-body">下周专注完成剩余2个任务（gRPC对比 + 消息队列），不要开新坑。完成里程碑2后再规划里程碑3。"完成一个 > 开始三个"。</div>
+      </div>
+
+      <div style="margin: 16px 0 10px; font-size: 13.5px; font-weight: 600; color: var(--gray-700);">📅 下周规划建议</div>
+      <div style="background: var(--gray-50); border-radius: var(--radius); padding: 14px; font-size: 13px; color: var(--gray-600); line-height: 1.8;">
+        <strong>周一/周三 晚（碎片 30min 各）</strong>：完成 gRPC 对比分析的2个子任务<br>
+        <strong>周六上午（深度 2h）</strong>：消息队列应用 + 完成里程碑2<br>
+        <strong>周日（轻松 1h）</strong>：复习里程碑1-2的内容 + 规划里程碑3
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('diagModal')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('diagModal'); openRescheduleModal()">📅 按建议调整排期</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 添加任务弹窗 ===== -->
+<div class="modal-overlay" id="addTaskModal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title">+ 添加学习任务</div>
+      <span class="modal-close" onclick="closeModal('addTaskModal')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">任务名称 <span class="required">*</span></label>
+        <input type="text" class="form-input" placeholder="例如：学习 Kubernetes Service 原理">
+      </div>
+      <div class="form-group">
+        <label class="form-label">所属里程碑 <span class="required">*</span></label>
+        <select class="form-select">
+          <option>里程碑2：服务拆分策略与通信机制（当前）</option>
+          <option>里程碑3：服务治理与可观测性</option>
+          <option>里程碑4：实战项目</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">截止日期</label>
+          <input type="date" class="form-input" value="2026-06-20">
+        </div>
+        <div class="form-group">
+          <label class="form-label">预计耗时</label>
+          <select class="form-select">
+            <option>15-30 分钟</option>
+            <option>30-60 分钟</option>
+            <option selected>1-2 小时</option>
+            <option>2-4 小时</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select class="form-select">
+            <option>🔴 高</option>
+            <option selected>🟡 中</option>
+            <option>🟢 低</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI 辅助类型</label>
+          <select class="form-select">
+            <option selected>无</option>
+            <option>AI 提供学习资源</option>
+            <option>AI 生成练习题</option>
+            <option>AI 引导学习</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">任务描述（可选）</label>
+        <textarea class="form-textarea" placeholder="补充任务背景、学习重点等…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('addTaskModal')">取消</button>
+      <button class="btn btn-primary" onclick="closeModal('addTaskModal'); showToast('任务已添加到里程碑2', 'success')">添加任务</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 视图切换 =====
+function openDetail() {
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('detailView').style.display = 'block';
+  document.getElementById('pageTitle').textContent = '🎯 微服务架构实战';
+  document.querySelector('.topbar .btn-primary').style.display = 'none';
+  document.querySelector('.topbar .btn-secondary').style.display = 'flex';
+}
+function closeDetail() {
+  document.getElementById('listView').style.display = 'block';
+  document.getElementById('detailView').style.display = 'none';
+  document.getElementById('pageTitle').textContent = '🎯 学习计划';
+  document.querySelector('.topbar .btn-primary').style.display = 'flex';
+}
+
+// ===== 里程碑展开/折叠 =====
+function toggleMilestone(header) {
+  const item = header.parentElement;
+  const toggle = header.querySelector('.milestone-toggle');
+  const tasksEl = item.querySelector('.tasks-list');
+  if (tasksEl) {
+    const isOpen = tasksEl.style.display !== 'none';
+    tasksEl.style.display = isOpen ? 'none' : 'block';
+    toggle.classList.toggle('open', !isOpen);
+  } else {
+    // 没有tasks的里程碑，显示空状态
+    showToast('该里程碑暂无任务，可点击"添加任务"', 'info');
+  }
+}
+
+// ===== Sub Tab =====
+function switchSubTab(el) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== Modal 控制 =====
+function openCreateModal() {
+  document.getElementById('createModal').classList.add('show');
+  resetCreateModal();
+}
+function openRescheduleModal() {
+  document.getElementById('rescheduleModal').classList.add('show');
+}
+function openCompleteModal() {
+  document.getElementById('completeModal').classList.add('show');
+}
+function openDiagModal() {
+  document.getElementById('diagModal').classList.add('show');
+}
+function openAddTaskModal() {
+  document.getElementById('addTaskModal').classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+// 点击背景关闭
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.classList.remove('show');
+  });
+});
+
+// ===== 创建目标3步流程 =====
+let createStep = 1;
+function resetCreateModal() {
+  createStep = 1;
+  document.getElementById('createStep1').style.display = 'block';
+  document.getElementById('createStep2').style.display = 'none';
+  document.getElementById('createStep3').style.display = 'none';
+  document.getElementById('createNextBtn').textContent = '下一步：AI澄清 →';
+  document.getElementById('createNextBtn').onclick = goToStep2;
+  updateStepIndicators();
+}
+
+function goToStep2() {
+  createStep = 2;
+  document.getElementById('createStep1').style.display = 'none';
+  document.getElementById('createStep2').style.display = 'block';
+  document.getElementById('createNextBtn').textContent = 'AI生成方案 →';
+  document.getElementById('createNextBtn').onclick = goToStep3;
+  updateStepIndicators();
+}
+
+function goToStep3() {
+  createStep = 3;
+  document.getElementById('createStep2').style.display = 'none';
+  document.getElementById('createStep3').style.display = 'block';
+  document.getElementById('createNextBtn').textContent = '✅ 确认创建';
+  document.getElementById('createNextBtn').onclick = confirmCreate;
+  updateStepIndicators();
+}
+
+function confirmCreate() {
+  closeModal('createModal');
+  showToast('目标已创建！AI已规划5个里程碑、18个任务', 'success');
+}
+
+function updateStepIndicators() {
+  ['step1Indicator','step2Indicator','step3Indicator'].forEach((id, idx) => {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done');
+    if (idx + 1 < createStep) el.classList.add('done');
+    else if (idx + 1 === createStep) el.classList.add('active');
+  });
+}
+
+function showManualCreate() {
+  showToast('手动创建模式：直接填写目标信息', 'info');
+  goToStep3();
+}
+
+// AI 对话
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const wrap = document.getElementById('aiChatWrap');
+  // 添加用户消息
+  wrap.innerHTML += `
+    <div class="chat-bubble user">
+      <div class="chat-avatar user">👤</div>
+      <div class="chat-content user">${val}</div>
+    </div>
+    <div class="chat-bubble" id="typingBubble">
+      <div class="chat-avatar ai">AI</div>
+      <div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+    </div>`;
+  input.value = '';
+  wrap.scrollTop = wrap.scrollHeight;
+  setTimeout(() => {
+    document.getElementById('typingBubble').remove();
+    wrap.innerHTML += `
+      <div class="chat-bubble">
+        <div class="chat-avatar ai">AI</div>
+        <div class="chat-content ai">
+          很好！生产落地 + 订单解耦 + Java 技术栈，这是一个非常清晰的目标。<br><br>
+          我已经有足够的信息来规划学习路径了。将为你生成 5 个里程碑、18 个任务的完整方案，预计总投入 38-45 小时。<br><br>
+          点击"AI生成方案"查看详细规划 →
+        </div>
+      </div>`;
+    wrap.scrollTop = wrap.scrollHeight;
+  }, 1500);
+}
+
+// ===== 弹性排期选择 =====
+function selectReschedule(el) {
+  document.querySelectorAll('.reschedule-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ===== 暖身引擎 =====
+function showWarmupAnswer() {
+  const ans = document.getElementById('warmupAnswer');
+  ans.style.display = 'block';
+  event.target.style.display = 'none';
+}
+
+// ===== Toast =====
+function showToast(msg, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const icons = { success: '✅', info: 'ℹ️', warning: '⚠️' };
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `<span class="toast-icon">${icons[type] || '💬'}</span> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// 初始化：隐藏detail视图
+document.getElementById('detailView').style.display = 'none';
+</script>
+</body>
+</html>

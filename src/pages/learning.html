@@ -1,0 +1,581 @@
+<div class="learning-page">
+  <div class="page-header">
+    <h1 class="page-title">🎯 学习计划</h1>
+    <button id="create-goal-btn" class="btn btn-primary">创建目标</button>
+  </div>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">📋 进行中目标</h3>
+        <span class="badge badge-primary" id="active-count">0</span>
+      </div>
+      <div id="active-goals" class="goal-list">
+        <div class="empty-state">暂无进行中的目标</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">⏳ 待开始目标</h3>
+        <span class="badge badge-secondary" id="pending-count">0</span>
+      </div>
+      <div id="pending-goals" class="goal-list">
+        <div class="empty-state">暂无待开始的目标</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">✅ 已完成目标</h3>
+        <span class="badge badge-success" id="completed-count">0</span>
+      </div>
+      <div id="completed-goals" class="goal-list">
+        <div class="empty-state">暂无已完成的目标</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📊 目标进度统计</h3>
+    </div>
+    <div class="progress-summary">
+      <div class="progress-item">
+        <div class="progress-label">完成进度</div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" style="width: 35%;"></div>
+        </div>
+        <div class="progress-value">35%</div>
+      </div>
+      <div class="progress-item">
+        <div class="progress-label">今日完成</div>
+        <div class="progress-bar-container">
+          <div class="progress-bar progress-today" style="width: 60%;"></div>
+        </div>
+        <div class="progress-value">6/10 任务</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="goal-detail-card" style="display: none;">
+    <div class="card-header">
+      <h3 class="card-title" id="detail-title">目标详情</h3>
+      <button id="close-detail" class="btn btn-secondary btn-sm">关闭</button>
+    </div>
+    <div id="goal-detail-content">
+      <div class="detail-section">
+        <label>目标名称</label>
+        <span id="detail-name">-</span>
+      </div>
+      <div class="detail-section">
+        <label>目标描述</label>
+        <span id="detail-description">-</span>
+      </div>
+      <div class="detail-section">
+        <label>开始日期</label>
+        <span id="detail-start">-</span>
+      </div>
+      <div class="detail-section">
+        <label>预计完成</label>
+        <span id="detail-end">-</span>
+      </div>
+      <div class="detail-section">
+        <label>状态</label>
+        <span id="detail-status" class="badge">-</span>
+      </div>
+      
+      <div class="milestone-section">
+        <h4>里程碑</h4>
+        <div id="milestone-list"></div>
+        <button id="add-milestone" class="btn btn-secondary btn-sm" style="margin-top: 12px;">添加里程碑</button>
+      </div>
+      
+      <div class="task-section">
+        <h4>任务列表</h4>
+        <div id="task-list"></div>
+        <button id="add-task" class="btn btn-secondary btn-sm" style="margin-top: 12px;">添加任务</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .learning-page {
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  
+  .page-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 0;
+  }
+  
+  .goal-list {
+    padding: 8px 0;
+  }
+  
+  .goal-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .goal-item:hover {
+    background: #f3f4f6;
+    transform: translateX(4px);
+  }
+  
+  .goal-item.completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+  }
+  
+  .goal-icon {
+    font-size: 20px;
+    margin-right: 12px;
+  }
+  
+  .goal-info {
+    flex: 1;
+  }
+  
+  .goal-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  
+  .goal-meta {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+  
+  .progress-summary {
+    padding: 16px 0;
+  }
+  
+  .progress-item {
+    margin-bottom: 16px;
+  }
+  
+  .progress-item:last-child {
+    margin-bottom: 0;
+  }
+  
+  .progress-label {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 8px;
+    display: block;
+  }
+  
+  .progress-bar-container {
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary) 0%, #818cf8 100%);
+    border-radius: 6px;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-bar.progress-today {
+    background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  }
+  
+  .progress-value {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: block;
+    text-align: right;
+  }
+  
+  .detail-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .detail-section label {
+    font-size: 12px;
+    color: #6b7280;
+    display: block;
+    margin-bottom: 4px;
+  }
+  
+  .detail-section span {
+    font-size: 14px;
+    color: #1f2937;
+  }
+  
+  .milestone-section, .task-section {
+    margin-top: 24px;
+  }
+  
+  .milestone-section h4, .task-section h4 {
+    font-size: 16px;
+    margin-bottom: 12px;
+    color: #374151;
+  }
+  
+  .milestone-item, .task-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .milestone-item.completed, .task-item.completed {
+    background: #dcfce7;
+  }
+  
+  .milestone-checkbox, .task-checkbox {
+    margin-right: 12px;
+    width: 18px;
+    height: 18px;
+  }
+  
+  .milestone-name, .task-name {
+    flex: 1;
+    font-size: 14px;
+  }
+  
+  .milestone-date, .task-date {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  
+  .badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  
+  .badge-primary {
+    background: #e0e7ff;
+    color: #4f46e5;
+  }
+  
+  .badge-secondary {
+    background: #e5e7eb;
+    color: #4b5563;
+  }
+  
+  .badge-success {
+    background: #dcfce7;
+    color: #16a34a;
+  }
+  
+  .btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', async function() {
+    await initCloudbase().catch(err => console.error('CloudBase init failed:', err));
+    loadGoals();
+  });
+  
+  async function loadGoals() {
+    try {
+      const goals = await getData('goals');
+      const activeGoals = goals.data?.filter(g => g.status === 'active') || [];
+      const pendingGoals = goals.data?.filter(g => g.status === 'pending') || [];
+      const completedGoals = goals.data?.filter(g => g.status === 'completed') || [];
+      
+      renderGoalList('active-goals', activeGoals);
+      renderGoalList('pending-goals', pendingGoals);
+      renderGoalList('completed-goals', completedGoals);
+      
+      document.getElementById('active-count').textContent = activeGoals.length;
+      document.getElementById('pending-count').textContent = pendingGoals.length;
+      document.getElementById('completed-count').textContent = completedGoals.length;
+    } catch (error) {
+      console.error('加载目标失败:', error);
+    }
+  }
+  
+  function renderGoalList(containerId, goals) {
+    const container = document.getElementById(containerId);
+    
+    if (goals.length === 0) {
+      container.innerHTML = '<div class="empty-state">暂无目标</div>';
+      return;
+    }
+    
+    container.innerHTML = goals.map(goal => `
+      <div class="goal-item ${goal.status === 'completed' ? 'completed' : ''}" onclick="showGoalDetail('${goal._id}')">
+        <span class="goal-icon">${getGoalIcon(goal.status)}</span>
+        <div class="goal-info">
+          <div class="goal-name">${goal.name || '未命名目标'}</div>
+          <div class="goal-meta">${formatDate(goal.startDate)} - ${formatDate(goal.endDate)}</div>
+        </div>
+        <span class="badge ${getStatusBadgeClass(goal.status)}">${getStatusText(goal.status)}</span>
+      </div>
+    `).join('');
+  }
+  
+  function getGoalIcon(status) {
+    const icons = {
+      active: '🎯',
+      pending: '⏳',
+      completed: '✅'
+    };
+    return icons[status] || '📌';
+  }
+  
+  function getStatusBadgeClass(status) {
+    const classes = {
+      active: 'badge-primary',
+      pending: 'badge-secondary',
+      completed: 'badge-success'
+    };
+    return classes[status] || 'badge-secondary';
+  }
+  
+  function getStatusText(status) {
+    const texts = {
+      active: '进行中',
+      pending: '待开始',
+      completed: '已完成'
+    };
+    return texts[status] || '未知';
+  }
+  
+  function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+  
+  async function showGoalDetail(goalId) {
+    try {
+      const goal = await getDataById('goals', goalId);
+      if (!goal.data) return;
+      
+      const data = goal.data;
+      document.getElementById('detail-title').textContent = data.name || '目标详情';
+      document.getElementById('detail-name').textContent = data.name || '-';
+      document.getElementById('detail-description').textContent = data.description || '-';
+      document.getElementById('detail-start').textContent = formatDate(data.startDate);
+      document.getElementById('detail-end').textContent = formatDate(data.endDate);
+      
+      const statusBadge = document.getElementById('detail-status');
+      statusBadge.textContent = getStatusText(data.status);
+      statusBadge.className = `badge ${getStatusBadgeClass(data.status)}`;
+      
+      renderMilestones(data._id);
+      renderTasks(data._id);
+      
+      document.getElementById('goal-detail-card').style.display = 'block';
+    } catch (error) {
+      console.error('加载目标详情失败:', error);
+    }
+  }
+  
+  async function renderMilestones(goalId) {
+    try {
+      const milestones = await getData('milestones', { goalId });
+      const list = document.getElementById('milestone-list');
+      
+      if (!milestones.data || milestones.data.length === 0) {
+        list.innerHTML = '<div class="empty-state">暂无里程碑</div>';
+        return;
+      }
+      
+      list.innerHTML = milestones.data.map(m => `
+        <div class="milestone-item ${m.completed ? 'completed' : ''}">
+          <input type="checkbox" class="milestone-checkbox" ${m.completed ? 'checked' : ''} onchange="toggleMilestone('${m._id}', ${!m.completed})">
+          <span class="milestone-name">${m.name || '未命名里程碑'}</span>
+          <span class="milestone-date">${formatDate(m.targetDate)}</span>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('加载里程碑失败:', error);
+    }
+  }
+  
+  async function renderTasks(goalId) {
+    try {
+      const tasks = await getData('tasks', { goalId });
+      const list = document.getElementById('task-list');
+      
+      if (!tasks.data || tasks.data.length === 0) {
+        list.innerHTML = '<div class="empty-state">暂无任务</div>';
+        return;
+      }
+      
+      list.innerHTML = tasks.data.map(t => `
+        <div class="task-item ${t.completed ? 'completed' : ''}">
+          <input type="checkbox" class="task-checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTask('${t._id}', ${!t.completed})">
+          <span class="task-name">${t.name || '未命名任务'}</span>
+          <span class="task-date">${formatDate(t.dueDate)}</span>
+        </div>
+      `).join('');
+    } catch (error) {
+      console.error('加载任务失败:', error);
+    }
+  }
+  
+  async function toggleMilestone(id, completed) {
+    try {
+      await updateData('milestones', id, { completed });
+      loadGoals();
+    } catch (error) {
+      console.error('更新里程碑失败:', error);
+    }
+  }
+  
+  async function toggleTask(id, completed) {
+    try {
+      await updateData('tasks', id, { completed });
+      loadGoals();
+    } catch (error) {
+      console.error('更新任务失败:', error);
+    }
+  }
+  
+  const createBtn = document.getElementById('create-goal-btn');
+  if (createBtn) {
+    createBtn.addEventListener('click', showCreateGoalModal);
+  }
+  
+  const closeDetailBtn = document.getElementById('close-detail');
+  if (closeDetailBtn) {
+    closeDetailBtn.addEventListener('click', () => {
+      document.getElementById('goal-detail-card').style.display = 'none';
+    });
+  }
+  
+  function showCreateGoalModal() {
+    StudyMind.modal.create({
+      title: '创建学习目标',
+      content: `
+        <div class="form-group">
+          <label class="form-label">目标名称</label>
+          <input type="text" id="goal-name" class="form-input" placeholder="例如：学习 Python 编程">
+        </div>
+        <div class="form-group">
+          <label class="form-label">目标描述</label>
+          <textarea id="goal-description" class="form-input" rows="3" placeholder="描述你的学习目标..."></textarea>
+        </div>
+        <div class="grid grid-2 gap-4">
+          <div class="form-group">
+            <label class="form-label">开始日期</label>
+            <input type="date" id="goal-start" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">预计完成</label>
+            <input type="date" id="goal-end" class="form-input">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">目标类型</label>
+          <select id="goal-type" class="form-input">
+            <option value="knowledge">知识学习</option>
+            <option value="skill">技能提升</option>
+            <option value="exam">备考考试</option>
+            <option value="project">项目实践</option>
+          </select>
+        </div>
+      `,
+      size: 'lg',
+      buttons: [
+        { text: '取消', type: 'secondary', action: 'close' },
+        { text: '创建', type: 'primary', action: () => createGoal() },
+        { text: 'AI辅助生成', type: 'secondary', action: () => aiGenerateGoal() }
+      ]
+    });
+  }
+  
+  async function createGoal() {
+    const name = document.getElementById('goal-name').value;
+    const description = document.getElementById('goal-description').value;
+    const startDate = document.getElementById('goal-start').value;
+    const endDate = document.getElementById('goal-end').value;
+    const type = document.getElementById('goal-type').value;
+    
+    if (!name) {
+      StudyMind.toast.error('请输入目标名称');
+      return;
+    }
+    
+    StudyMind.toast.info('创建中...');
+    
+    try {
+      await addData('goals', {
+        name,
+        description,
+        startDate: startDate ? new Date(startDate) : new Date(),
+        endDate: endDate ? new Date(endDate) : null,
+        type,
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      StudyMind.modal.closeAll();
+      loadGoals();
+      StudyMind.toast.success('目标创建成功');
+    } catch (error) {
+      console.error('创建目标失败:', error);
+      StudyMind.toast.error('创建失败，请重试');
+    }
+  }
+  
+  async function aiGenerateGoal() {
+    const name = document.getElementById('goal-name').value || '学习编程';
+    
+    StudyMind.toast.info('AI生成中...');
+    
+    try {
+      const result = await callAIProxy({
+        messages: [{ role: 'user', content: `帮我生成一个学习目标计划：${name}。请输出JSON格式，包含name（目标名称）、description（描述）、milestones（里程碑数组，包含name和targetDate）、tasks（任务数组，包含name和dueDate）` }],
+        model: 'silicon'
+      });
+      
+      if (result.success && result.content) {
+        try {
+          const data = JSON.parse(result.content);
+          document.getElementById('goal-name').value = data.name || name;
+          document.getElementById('goal-description').value = data.description || '';
+          StudyMind.toast.success('AI生成成功');
+        } catch {
+          StudyMind.toast.info('AI返回非JSON格式，请手动填写');
+        }
+      }
+    } catch (error) {
+      console.error('AI生成失败:', error);
+      StudyMind.toast.error('AI生成失败');
+    }
+  }
+</script>

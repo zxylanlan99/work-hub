@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>资讯 - StudyMind</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li class="menu-item">
+          <a href="../../index.html">
+            <i class="fas fa-chart-pie"></i>
+            <span>首页</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="learning.html">
+            <i class="fas fa-bullseye"></i>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="review.html">
+            <i class="fas fa-redo"></i>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="knowledge.html">
+            <i class="fas fa-book-open"></i>
+            <span>知识库</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="ai-chat.html">
+            <i class="fas fa-comments"></i>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li class="menu-item active">
+          <a href="news.html">
+            <i class="fas fa-rss"></i>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="output.html">
+            <i class="fas fa-file-alt"></i>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="settings.html">
+            <i class="fas fa-cog"></i>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title">资讯</div>
+      </header>
+
+      <div class="content">
+        <div class="grid grid-3">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fee2e2;">
+              <i class="fas fa-eye-slash" style="color: #ef4444;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="unread-count">0</div>
+              <div class="stat-label">未读</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e0e7ff;">
+              <i class="fas fa-check-circle" style="color: #6366f1;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="read-count">0</div>
+              <div class="stat-label">已读</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #dcfce7;">
+              <i class="fas fa-archive" style="color: #22c55e;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="imported-count">0</div>
+              <div class="stat-label">已入库</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">AI推荐资讯</div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary active" data-tab="recommend">推荐</button>
+              <button class="btn btn-secondary" data-tab="unread">未读</button>
+              <button class="btn btn-secondary" data-tab="all">全部</button>
+            </div>
+          </div>
+          <div id="news-list">
+            <div class="empty-state">
+              <i class="fas fa-newspaper"></i>
+              <div class="empty-title">暂无资讯</div>
+              <div class="empty-desc">AI会根据您的学习内容推荐相关资讯</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/cloudbase.js"></script>
+  <script src="../js/news.js"></script>
+</body>
+</html>

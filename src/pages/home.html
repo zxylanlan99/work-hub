@@ -1,0 +1,463 @@
+<div class="home-page">
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">📊 今日概览</h3>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #e0e7ff;">🎯</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-goals">0</div>
+            <div class="stat-label">进行中目标</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #dcfce7;">🔄</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-review">0</div>
+            <div class="stat-label">待复习卡片</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #fef3c7;">📰</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-news">0</div>
+            <div class="stat-label">未读资讯</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #fce7f3;">📝</div>
+          <div class="stat-info">
+            <div class="stat-value" id="stat-output">0</div>
+            <div class="stat-label">草稿文档</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="warmup-card">
+      <div class="card-header">
+        <h3 class="card-title">🌅 今日暖身</h3>
+        <button id="skip-warmup" class="btn btn-secondary btn-sm" style="font-size: 12px;">跳过</button>
+      </div>
+      
+      <div id="yesterday-summary" style="margin-bottom: 16px; padding: 12px; background: #f9fafb; border-radius: 8px;">
+        准备开始今天的学习之旅吧！
+      </div>
+      
+      <div class="quiz-section">
+        <div id="quiz-question" style="font-weight: 500; margin-bottom: 12px;">
+          加载问题中...
+        </div>
+        <div id="quiz-options" style="margin-bottom: 12px;"></div>
+        <div id="quiz-answer" style="display: none; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 14px; white-space: pre-line;"></div>
+        <button id="quiz-answer-btn" class="btn btn-primary" style="display: none;">查看答案</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📅 学习日历</h3>
+    </div>
+    <div class="heatmap-container">
+      <div class="heatmap-labels">
+        <span>周一</span>
+        <span>周三</span>
+        <span>周五</span>
+        <span>周日</span>
+      </div>
+      <div id="heatmap" class="heatmap"></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">⚡ 快捷入口</h3>
+      </div>
+      <div class="quick-actions">
+        <button class="action-btn" onclick="navigateTo('learning')">
+          <span class="action-icon">🎯</span>
+          <span class="action-text">创建目标</span>
+        </button>
+        <button class="action-btn" onclick="navigateTo('review')">
+          <span class="action-icon">🔄</span>
+          <span class="action-text">开始复习</span>
+        </button>
+        <button class="action-btn" onclick="navigateTo('ai-chat')">
+          <span class="action-icon">🤖</span>
+          <span class="action-text">AI助手</span>
+        </button>
+        <button class="action-btn" onclick="navigateTo('knowledge')">
+          <span class="action-icon">📖</span>
+          <span class="action-text">知识库</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">📈 本周趋势</h3>
+      </div>
+      <div class="trend-chart">
+        <div class="chart-bars">
+          <div class="bar-item">
+            <div class="bar-label">周一</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 60%;"></div>
+            </div>
+            <div class="bar-value">6</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">周二</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 80%;"></div>
+            </div>
+            <div class="bar-value">8</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">周三</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 45%;"></div>
+            </div>
+            <div class="bar-value">4</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">周四</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 90%;"></div>
+            </div>
+            <div class="bar-value">9</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">周五</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 70%;"></div>
+            </div>
+            <div class="bar-value">7</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">周六</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 55%;"></div>
+            </div>
+            <div class="bar-value">5</div>
+          </div>
+          <div class="bar-item">
+            <div class="bar-label">今天</div>
+            <div class="bar-container">
+              <div class="bar" style="height: 30%; background: var(--primary);"></div>
+            </div>
+            <div class="bar-value">3</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .home-page {
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .heatmap-container {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    padding: 12px 0;
+  }
+  
+  .heatmap-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #6b7280;
+    padding: 4px 0;
+  }
+  
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+  
+  .action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .action-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+  }
+  
+  .action-icon {
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  
+  .action-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+  }
+  
+  .trend-chart {
+    padding: 12px 0;
+  }
+  
+  .chart-bars {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 120px;
+    gap: 8px;
+  }
+  
+  .bar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+  
+  .bar-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+  
+  .bar-container {
+    width: 100%;
+    height: 80px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+  }
+  
+  .bar {
+    width: 100%;
+    background: linear-gradient(180deg, var(--primary) 0%, #818cf8 100%);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.3s ease;
+  }
+  
+  .bar-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: #374151;
+    margin-top: 4px;
+  }
+  
+  .btn-sm {
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  
+  .quiz-option:hover {
+    background: var(--gray-100);
+  }
+</style>
+
+<script>
+  function navigateTo(page) {
+    window.location.hash = page;
+  }
+  
+  document.addEventListener('DOMContentLoaded', async function() {
+    await initCloudbase().catch(err => console.error('CloudBase init failed:', err));
+    loadHomePage();
+  });
+  
+  async function loadHomePage() {
+    loadStatistics();
+    loadHeatmap();
+    loadWarmup();
+  }
+  
+  async function loadStatistics() {
+    try {
+      const goals = await getData('goals', { status: 'active' });
+      const reviewCards = await getData('review_cards', { nextReview: { $lte: new Date() } });
+      const newsItems = await getData('news_items', { hasRead: false });
+      const outputDocs = await getData('output_docs', { status: 'draft' });
+      
+      document.getElementById('stat-goals').textContent = goals.data?.length || 0;
+      document.getElementById('stat-review').textContent = reviewCards.data?.length || 0;
+      document.getElementById('stat-news').textContent = newsItems.data?.length || 0;
+      document.getElementById('stat-output').textContent = outputDocs.data?.length || 0;
+    } catch (error) {
+      console.error('加载统计数据失败:', error);
+    }
+  }
+  
+  function loadHeatmap() {
+    const heatmap = document.getElementById('heatmap');
+    if (!heatmap) return;
+    
+    heatmap.innerHTML = '';
+    const today = new Date();
+    
+    for (let i = 99; i >= 0; i--) {
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      
+      const level = Math.floor(Math.random() * 5);
+      const cell = document.createElement('div');
+      cell.className = `heatmap-cell heatmap-level-${level}`;
+      cell.title = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+      heatmap.appendChild(cell);
+    }
+  }
+  
+  async function loadWarmup() {
+    loadYesterdaySummary();
+    loadQuiz();
+  }
+  
+  async function loadYesterdaySummary() {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+      
+      const tomorrow = new Date(yesterday);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const history = await getData('review_history', {
+        reviewedAt: {
+          $gte: yesterday,
+          $lt: tomorrow
+        }
+      });
+      
+      if (history.data?.length > 0) {
+        const count = history.data.length;
+        document.getElementById('yesterday-summary').textContent = `昨日完成了 ${count} 道复习题，继续保持！`;
+      }
+    } catch (error) {
+      console.error('加载昨日回顾失败:', error);
+    }
+  }
+  
+  async function loadQuiz() {
+    try {
+      const questions = [
+        {
+          question: 'SM-2 算法中，当你对一张卡片的记忆评分是 4 分时（满分 5 分），下次复习间隔会如何变化？',
+          options: ['间隔不变', '间隔增加 50%', '间隔翻倍', '间隔增加 20%'],
+          answer: '间隔翻倍',
+          explanation: 'SM-2 算法中，评分 4 分表示记得很好，间隔会翻倍。'
+        },
+        {
+          question: '在学习计划中，什么是里程碑（Milestone）？',
+          options: ['一个学习目标', '目标的重要节点', '每日任务', '复习卡片'],
+          answer: '目标的重要节点',
+          explanation: '里程碑是学习目标的重要节点，帮助将大目标分解为可管理的部分。'
+        },
+        {
+          question: '以下哪个不是有效的学习方法？',
+          options: ['间隔重复', '主动回忆', '被动阅读', '实践应用'],
+          answer: '被动阅读',
+          explanation: '被动阅读是最无效的学习方法之一，主动参与才能更好地记住知识。'
+        }
+      ];
+      
+      const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+      
+      document.getElementById('quiz-question').textContent = randomQuestion.question;
+      
+      const optionsContainer = document.getElementById('quiz-options');
+      optionsContainer.innerHTML = '';
+      
+      randomQuestion.options.forEach((option, index) => {
+        const optionElement = document.createElement('div');
+        optionElement.className = 'quiz-option';
+        optionElement.textContent = `${['A', 'B', 'C', 'D'][index]}. ${option}`;
+        optionElement.style.padding = '10px 14px';
+        optionElement.style.border = '1px solid #e5e7eb';
+        optionElement.style.borderRadius = '8px';
+        optionElement.style.marginBottom = '8px';
+        optionElement.style.cursor = 'pointer';
+        optionElement.addEventListener('click', () => selectQuizOption(option, randomQuestion.answer));
+        optionsContainer.appendChild(optionElement);
+      });
+      
+      window.currentQuizAnswer = randomQuestion.answer;
+      window.currentQuizExplanation = randomQuestion.explanation;
+      
+      document.getElementById('quiz-answer-btn').style.display = 'block';
+    } catch (error) {
+      console.error('加载快问快答失败:', error);
+      document.getElementById('quiz-question').textContent = '加载问题失败，请重试';
+    }
+  }
+  
+  function selectQuizOption(selected, correct) {
+    const options = document.querySelectorAll('.quiz-option');
+    options.forEach(opt => {
+      if (opt.textContent.includes(correct)) {
+        opt.style.background = '#dcfce7';
+        opt.style.borderColor = '#22c55e';
+      } else if (opt.textContent.includes(selected) && selected !== correct) {
+        opt.style.background = '#fee2e2';
+        opt.style.borderColor = '#ef4444';
+      }
+      opt.style.cursor = 'default';
+    });
+    
+    showQuizAnswer();
+  }
+  
+  function showQuizAnswer() {
+    const answerEl = document.getElementById('quiz-answer');
+    const btnEl = document.getElementById('quiz-answer-btn');
+    
+    if (answerEl && btnEl) {
+      answerEl.textContent = `答案：${window.currentQuizAnswer}\n${window.currentQuizExplanation}`;
+      answerEl.style.display = 'block';
+      btnEl.style.display = 'none';
+    }
+  }
+  
+  const skipBtn = document.getElementById('skip-warmup');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', skipWarmup);
+  }
+  
+  function skipWarmup() {
+    const warmupCard = document.getElementById('warmup-card');
+    if (warmupCard) {
+      warmupCard.style.display = 'none';
+    }
+  }
+  
+  const answerBtn = document.getElementById('quiz-answer-btn');
+  if (answerBtn) {
+    answerBtn.addEventListener('click', showQuizAnswer);
+  }
+</script>

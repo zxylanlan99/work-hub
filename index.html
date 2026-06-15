@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyMind - 学思</title>
+  <link rel="stylesheet" href="src/css/global.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li class="menu-item active">
+          <a href="index.html">
+            <i class="fas fa-chart-pie"></i>
+            <span>首页</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/learning.html">
+            <i class="fas fa-bullseye"></i>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/review.html">
+            <i class="fas fa-redo"></i>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/knowledge.html">
+            <i class="fas fa-book-open"></i>
+            <span>知识库</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/ai-chat.html">
+            <i class="fas fa-comments"></i>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/news.html">
+            <i class="fas fa-rss"></i>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/output.html">
+            <i class="fas fa-file-alt"></i>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="src/pages/settings.html">
+            <i class="fas fa-cog"></i>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title">学习仪表盘</div>
+        <div class="user-info">
+          <span>欢迎回来</span>
+          <i class="fas fa-user-circle" style="font-size: 24px; color: #6b7280;"></i>
+        </div>
+      </header>
+
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">今日暖身</div>
+          </div>
+          <div id="warmup-card">
+            <div class="warmup-content">
+              <h3>🌞 昨日回顾</h3>
+              <p id="yesterday-summary">暂无学习记录</p>
+              <hr>
+              <h3>❓ 快问快答</h3>
+              <div id="quiz-container">
+                <p id="quiz-question">加载中...</p>
+                <div id="quiz-options"></div>
+                <button class="btn btn-secondary" id="quiz-answer-btn">查看答案</button>
+                <p id="quiz-answer" style="display: none; color: #22c55e; margin-top: 10px;"></p>
+              </div>
+              <div style="margin-top: 15px;">
+                <button class="btn btn-secondary" id="skip-warmup">跳过暖身</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-4">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e0e7ff;">
+              <i class="fas fa-bullseye" style="color: #6366f1;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-goals">0</div>
+              <div class="stat-label">学习计划</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #dcfce7;">
+              <i class="fas fa-redo" style="color: #22c55e;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-review">0</div>
+              <div class="stat-label">今日复习</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fef3c7;">
+              <i class="fas fa-rss" style="color: #f59e0b;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-news">0</div>
+              <div class="stat-label">待处理资讯</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fce7f3;">
+              <i class="fas fa-file-alt" style="color: #ec4899;"></i>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-output">0</div>
+              <div class="stat-label">输出草稿</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">学习热力图</div>
+            <span style="font-size: 14px; color: #6b7280;">近14天学习记录</span>
+          </div>
+          <div class="heatmap" id="heatmap"></div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">本周趋势</div>
+            </div>
+            <div id="weekly-trend">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <span>复习完成率</span>
+                <span style="font-weight: 600;">75%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 75%;"></div>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px;">
+                <span style="color: #6b7280;">环比上周</span>
+                <span style="color: #22c55e;">+12%</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 14px;">
+                <span style="color: #6b7280;">连续学习</span>
+                <span style="font-weight: 600;">7 天</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">智能续接</div>
+            </div>
+            <div id="continue-learning">
+              <div class="empty-state">
+                <i class="fas fa-play-circle"></i>
+                <div class="empty-title">暂无学习断点</div>
+                <div class="empty-desc">开始学习计划后，这里会显示上次学习位置</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
+  <script src="src/js/config.js"></script>
+  <script src="src/js/cloudbase.js"></script>
+  <script src="src/js/home.js"></script>
+</body>
+</html>

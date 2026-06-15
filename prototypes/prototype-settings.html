@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — 系统设置原型</title>
+<style>
+:root{
+  --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#eef2ff;
+  --success:#22c55e;--success-light:#dcfce7;
+  --warning:#f59e0b;--warning-light:#fef3c7;
+  --danger:#ef4444;--danger-light:#fee2e2;
+  --info:#3b82f6;--info-light:#dbeafe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:var(--gray-800);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--gray-50);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 12px;font-size:18px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:22px}
+.sidebar-nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--gray-600);font-size:13.5px;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:var(--gray-200);color:var(--gray-800)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:600;color:var(--gray-900);flex:1}
+.content{flex:1;overflow-y:auto;padding:24px;max-width:720px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13.5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
+.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{background:#dc2626}
+.btn-sm{padding:5px 10px;font-size:12.5px}.btn-xs{padding:3px 7px;font-size:11.5px}
+
+.section{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.section-header{padding:16px 20px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center}
+.section-title{font-size:14px;font-weight:600;color:var(--gray-800);display:flex;align-items:center;gap:8px}
+.section-body{padding:20px}
+.form-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--gray-50)}
+.form-row:last-child{border-bottom:none}
+.form-row-left{flex:1;margin-right:20px}
+.form-row-label{font-size:13.5px;font-weight:500;color:var(--gray-800);margin-bottom:3px}
+.form-row-desc{font-size:12px;color:var(--gray-400)}
+.form-input,.form-select{padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;color:var(--gray-800);font-family:inherit;outline:none;width:200px}
+.form-input:focus,.form-select:focus{border-color:var(--primary)}
+.form-input-sm{width:120px}
+
+/* Toggle开关 */
+.toggle{position:relative;width:44px;height:24px;cursor:pointer;flex-shrink:0}
+.toggle-track{position:absolute;inset:0;background:var(--gray-300);border-radius:12px;transition:all .2s}
+.toggle.active .toggle-track{background:var(--primary)}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle.active .toggle-thumb{left:22px}
+
+/* 主题选择 */
+.theme-options{display:flex;gap:12px}
+.theme-option{padding:12px 20px;border:2px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;text-align:center;transition:all .15s;min-width:100px}
+.theme-option:hover{border-color:var(--primary)}
+.theme-option.active{border-color:var(--primary);background:var(--primary-light)}
+.theme-option-icon{font-size:24px;margin-bottom:4px}
+.theme-option-name{font-size:13px;font-weight:500;color:var(--gray-700)}
+
+/* API Key列表 */
+.api-key-list{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.api-key-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius)}
+.api-key-provider{font-size:13px;font-weight:500;color:var(--gray-800);width:120px}
+.api-key-value{flex:1;font-size:13px;color:var(--gray-500);font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.api-key-status{font-size:11px;padding:2px 7px;border-radius:10px}
+.status-active{background:var(--success-light);color:#16a34a}
+.status-inactive{background:var(--gray-100);color:var(--gray-400)}
+
+/* 预算 */
+.budget-row{display:flex;align-items:center;gap:10px}
+.budget-bar-wrap{width:200px;height:6px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.budget-bar-fill{height:100%;background:var(--success);border-radius:4px}
+.budget-warn .budget-bar-fill{background:var(--warning)}
+.budget-exceed .budget-bar-fill{background:var(--danger)}
+
+/* 通知设置 */
+.time-input{display:flex;align-items:center;gap:6px}
+
+/* 数据操作 */
+.danger-zone{padding:16px 20px;border:1px solid var(--danger-light);border-radius:var(--radius);margin-top:8px}
+.danger-zone-title{font-size:13px;font-weight:600;color:var(--danger);margin-bottom:4px}
+.danger-zone-desc{font-size:12px;color:var(--gray-500);margin-bottom:10px}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#fff;border-radius:var(--radius);padding:12px 16px;box-shadow:0 10px 15px rgba(0,0,0,.1);display:flex;align-items:center;gap:10px;min-width:240px;animation:toastIn .3s ease;border-left:3px solid var(--primary);pointer-events:auto}
+.toast.success{border-left-color:var(--success)}.toast.warning{border-left-color:var(--warning)}.toast.danger{border-left-color:var(--danger)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}.toast-text{font-size:13px;color:var(--gray-700)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo"><span>🧠</span> StudyMind</div>
+    <div class="sidebar-nav">
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📊</span> 首页</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🎯</span> 学习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📡</span> 资讯</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📚</span> 知识库</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">💬</span> AI对话</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🔁</span> 复习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">✍️</span> 知识沉淀</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">⚙️ 系统设置</div>
+      <span style="font-size:12px;color:var(--gray-400)">设置即时生效 · 自动保存</span>
+    </div>
+
+    <div class="content">
+      <!-- 1. 主题设置 -->
+      <div class="section">
+        <div class="section-header"><div class="section-title">🎨 主题</div></div>
+        <div class="section-body">
+          <div class="form-row" style="display:block">
+            <div class="form-row-label">界面主题</div>
+            <div class="form-row-desc" style="margin-bottom:10px">选择你喜欢的显示模式</div>
+            <div class="theme-options">
+              <div class="theme-option active" onclick="selTheme(this)">
+                <div class="theme-option-icon">☀️</div><div class="theme-option-name">亮色</div>
+              </div>
+              <div class="theme-option" onclick="selTheme(this)">
+                <div class="theme-option-icon">🌙</div><div class="theme-option-name">暗色</div>
+              </div>
+              <div class="theme-option" onclick="selTheme(this)">
+                <div class="theme-option-icon">🔄</div><div class="theme-option-name">跟随系统</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AI 配置 -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">🤖 AI 配置</div>
+          <button class="btn btn-primary btn-sm" onclick="toast('API Key 已添加','success')">+ 添加 Key</button>
+        </div>
+        <div class="section-body">
+          <div class="api-key-list">
+            <div class="api-key-item">
+              <span class="api-key-provider">DeepSeek</span>
+              <span class="api-key-value">sk-7a8b9c••••••••d4e5f6</span>
+              <span class="api-key-status status-active">● 已启用</span>
+              <button class="btn btn-ghost btn-xs">编辑</button>
+              <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="toast('API Key 已删除','warning')">删除</button>
+            </div>
+            <div class="api-key-item">
+              <span class="api-key-provider">Kimi</span>
+              <span class="api-key-value">sk-kimi••••••••••••xYz</span>
+              <span class="api-key-status status-active">● 已启用</span>
+              <button class="btn btn-ghost btn-xs">编辑</button>
+              <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="toast('API Key 已删除','warning')">删除</button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">默认模型</div><div class="form-row-desc">新对话的默认 AI 模型</div></div>
+            <select class="form-select"><option selected>DeepSeek</option><option>Kimi</option><option>豆包</option><option>Claude</option><option>DeepSeek-R1</option></select>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">月度预算</div><div class="form-row-desc">超出预算后将自动停止 AI 调用</div></div>
+            <div class="form-input-sm" style="text-align:right;font-size:15px;font-weight:600;color:var(--gray-800);padding:8px 12px">¥20</div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">预算提醒</div><div class="form-row-desc">当月费用的80%时发送提醒</div></div>
+            <div class="toggle active" onclick="this.classList.toggle('active')"><div class="toggle-track"></div><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">超预算停止</div><div class="form-row-desc">达到100%后停止所有AI调用</div></div>
+            <div class="toggle active" onclick="this.classList.toggle('active')"><div class="toggle-track"></div><div class="toggle-thumb"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 通知设置 -->
+      <div class="section">
+        <div class="section-header"><div class="section-title">🔔 通知</div></div>
+        <div class="section-body">
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">复习提醒</div><div class="form-row-desc">每日待复习卡片到达时推送</div></div>
+            <div class="toggle active" onclick="this.classList.toggle('active')"><div class="toggle-track"></div><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">截止提醒</div><div class="form-row-desc">学习任务临近截止日期时提醒</div></div>
+            <div class="toggle active" onclick="this.classList.toggle('active')"><div class="toggle-track"></div><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">系统通知</div><div class="form-row-desc">产品更新、知识体检等系统消息</div></div>
+            <div class="toggle active" onclick="this.classList.toggle('active')"><div class="toggle-track"></div><div class="toggle-thumb"></div></div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">提醒时间</div><div class="form-row-desc">每日推送通知的时间</div></div>
+            <div class="time-input"><input type="time" class="form-input" value="09:00" style="width:110px"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">免打扰时段</div><div class="form-row-desc">该时段内暂停所有通知推送</div></div>
+            <div class="time-input" style="gap:4px;">
+              <input type="time" class="form-input" value="22:00" style="width:110px">
+              <span style="color:var(--gray-400)">—</span>
+              <input type="time" class="form-input" value="08:00" style="width:110px">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 数据管理 -->
+      <div class="section">
+        <div class="section-header"><div class="section-title">💾 数据管理</div></div>
+        <div class="section-body">
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">导出数据</div><div class="form-row-desc">导出所有数据为 JSON 文件</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="toast('数据已导出','success')">导出 JSON</button>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">导入数据</div><div class="form-row-desc">从 JSON 文件还原数据（导入前可预览）</div></div>
+            <button class="btn btn-secondary btn-sm" onclick="toast('请选择导入文件')">导入 JSON</button>
+          </div>
+
+          <div class="danger-zone">
+            <div class="danger-zone-title">⚠️ 危险操作</div>
+            <div class="danger-zone-desc">清空所有数据后不可恢复，建议先导出备份</div>
+            <button class="btn btn-danger btn-sm" onclick="if(confirm('确定清空所有数据？'))toast('数据已清空','danger')">清空所有数据</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. 备份 -->
+      <div class="section">
+        <div class="section-header"><div class="section-title">☁️ 自动备份</div></div>
+        <div class="section-body">
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">备份频率</div><div class="form-row-desc">自动备份数据的间隔</div></div>
+            <select class="form-select" style="width:140px">
+              <option selected>每天</option>
+              <option>每周</option>
+              <option>关闭</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">云存储目标</div><div class="form-row-desc">备份文件存储位置</div></div>
+            <select class="form-select" style="width:140px">
+              <option selected>微云</option>
+              <option>腾讯云 COS</option>
+              <option>本地</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-row-left"><div class="form-row-label">手动备份</div><div class="form-row-desc">立即执行一次数据备份</div></div>
+            <button class="btn btn-primary btn-sm" onclick="toast('备份完成','success')">立即备份</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">
+        StudyMind v1.0 · 所有设置自动保存
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+function toast(msg,type){
+  type=type||'info';
+  var c=document.getElementById('toastContainer');
+  var icons={success:'✅',warning:'⚠️',danger:'❌',info:'ℹ️'};
+  var el=document.createElement('div');el.className='toast '+(type||'info');
+  el.innerHTML='<span class="toast-icon">'+(icons[type]||icons.info)+'</span><span class="toast-text">'+msg+'</span>';
+  c.appendChild(el);
+  setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove()},300)},2200);
+}
+function navSide(el){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+}
+function selTheme(el){
+  document.querySelectorAll('.theme-option').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  toast('主题已切换: '+el.querySelector('.theme-option-name').textContent,'success');
+}
+</script>
+</body>
+</html>

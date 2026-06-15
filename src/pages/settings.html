@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>系统设置 - StudyMind</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li class="menu-item">
+          <a href="../../index.html">
+            <i class="fas fa-chart-pie"></i>
+            <span>首页</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="learning.html">
+            <i class="fas fa-bullseye"></i>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="review.html">
+            <i class="fas fa-redo"></i>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="knowledge.html">
+            <i class="fas fa-book-open"></i>
+            <span>知识库</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="ai-chat.html">
+            <i class="fas fa-comments"></i>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="news.html">
+            <i class="fas fa-rss"></i>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="output.html">
+            <i class="fas fa-file-alt"></i>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li class="menu-item active">
+          <a href="settings.html">
+            <i class="fas fa-cog"></i>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title">系统设置</div>
+      </header>
+
+      <div class="content">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">AI配置</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="form-group">
+              <label class="form-label">默认模型</label>
+              <select class="form-select" id="default-model">
+                <option value="mimo">MiMo</option>
+                <option value="silicon">硅基流动</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">温度参数</label>
+              <input type="range" class="form-input" id="temperature" min="0" max="2" step="0.1" value="0.7" style="width: 100%;">
+              <span style="font-size: 14px; color: #6b7280;">0.7</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">通知设置</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 500;">复习提醒</div>
+                <div style="font-size: 14px; color: #6b7280;">每天定时提醒复习</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="reminder-enabled" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div style="font-weight: 500;">每日报告</div>
+                <div style="font-size: 14px; color: #6b7280;">每天发送学习报告</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="report-enabled">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">数据管理</div>
+          </div>
+          <div style="display: flex; gap: 16px;">
+            <button class="btn btn-secondary" id="export-btn">
+              <i class="fas fa-download"></i> 导出数据
+            </button>
+            <button class="btn btn-secondary" id="import-btn">
+              <i class="fas fa-upload"></i> 导入数据
+            </button>
+            <button class="btn btn-danger" id="backup-btn">
+              <i class="fas fa-backup"></i> 立即备份
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">关于</div>
+          </div>
+          <div style="font-size: 14px; color: #6b7280;">
+            <p>版本：v1.0.0</p>
+            <p>StudyMind - 智能学习助手</p>
+            <p>帮助您更高效地学习和复习</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <style>
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #6366f1;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+  </style>
+
+  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/cloudbase.js"></script>
+  <script src="../js/settings.js"></script>
+</body>
+</html>

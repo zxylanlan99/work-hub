@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyMind — 复习计划模块原型</title>
+<style>
+:root{
+  --primary:#6366f1;--primary-dark:#4f46e5;--primary-light:#eef2ff;
+  --success:#22c55e;--success-light:#dcfce7;
+  --warning:#f59e0b;--warning-light:#fef3c7;
+  --danger:#ef4444;--danger-light:#fee2e2;
+  --info:#3b82f6;--info-light:#dbeafe;
+  --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
+  --gray-400:#9ca3af;--gray-500:#6b7280;--gray-600:#4b5563;--gray-700:#374151;
+  --gray-800:#1f2937;--gray-900:#111827;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px rgba(0,0,0,.07),0 2px 4px rgba(0,0,0,.06);
+  --shadow-lg:0 10px 15px rgba(0,0,0,.1),0 4px 6px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;color:var(--gray-800);font-size:14px;min-height:100vh}
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:var(--gray-50);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-logo{padding:20px 16px 12px;font-size:18px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px}
+.sidebar-logo span{font-size:22px}
+.sidebar-nav{flex:1;padding:8px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius);cursor:pointer;color:var(--gray-600);font-size:13.5px;margin-bottom:2px;transition:all .15s}
+.nav-item:hover{background:var(--gray-200);color:var(--gray-800)}
+.nav-item.active{background:var(--primary-light);color:var(--primary);font-weight:600}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;padding:0 24px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:17px;font-weight:600;color:var(--gray-900);flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);border:none;cursor:pointer;font-size:13.5px;font-weight:500;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-secondary:hover{background:var(--gray-50)}
+.btn-ghost{background:transparent;color:var(--gray-500);padding:6px 10px}.btn-ghost:hover{background:var(--gray-100);color:var(--gray-700)}
+.btn-sm{padding:5px 10px;font-size:12.5px}.btn-xs{padding:3px 8px;font-size:11.5px}
+.btn-success{background:var(--success);color:#fff}.btn-warning{background:var(--warning);color:#fff}.btn-danger{background:var(--danger);color:#fff}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+.sub-tabs{display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:var(--radius);margin-bottom:20px;width:fit-content}
+.sub-tab{padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--gray-500);transition:all .15s}
+.sub-tab.active{background:#fff;color:var(--gray-800);font-weight:600;box-shadow:var(--shadow)}
+.sub-tab:hover:not(.active){background:var(--gray-200)}
+
+/* 概览卡片 */
+.overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.overview-card{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:20px;box-shadow:var(--shadow);text-align:center}
+.overview-num{font-size:32px;font-weight:700;margin-bottom:4px}
+.overview-label{font-size:13px;color:var(--gray-500)}
+.overview-num.primary{color:var(--primary)}.overview-num.success{color:var(--success)}.overview-num.warning{color:var(--warning)}.overview-num.danger{color:var(--danger)}
+
+/* 提醒条 */
+.alert-banner{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:13px}
+.alert-warning{background:var(--warning-light);border:1px solid #fcd34d;color:#92400e}
+.alert-info{background:var(--info-light);border:1px solid #bfdbfe;color:#1e40af}
+.alert-icon{font-size:18px}
+.alert-actions{margin-left:auto;display:flex;gap:8px}
+
+/* 复习布局 */
+.review-layout{display:grid;grid-template-columns:1fr 280px;gap:20px}
+.review-main{display:flex;flex-direction:column;gap:16px}
+.review-sidebar{display:flex;flex-direction:column;gap:16px}
+
+/* 复习卡片 — 翻转 */
+.flashcard-perspective{perspective:1000px}
+.flashcard{position:relative;min-height:280px;cursor:pointer}
+.flashcard-inner{position:relative;width:100%;min-height:280px;transition:transform .5s;transform-style:preserve-3d}
+.flashcard.flipped .flashcard-inner{transform:rotateY(180deg)}
+.flashcard-front,.flashcard-back{position:absolute;inset:0;backface-visibility:hidden;background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow-md);padding:28px;display:flex;flex-direction:column}
+.flashcard-back{transform:rotateY(180deg);display:flex;flex-direction:column}
+
+.card-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.card-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.badge-overdue{background:var(--danger-light);color:var(--danger)}
+.badge-normal{background:var(--primary-light);color:var(--primary)}
+.badge-easy{background:var(--success-light);color:#16a34a}
+.card-type{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:var(--gray-100);border-radius:4px;font-size:12px;color:var(--gray-600)}
+.card-progress{font-size:12px;color:var(--gray-400);margin-left:auto}
+
+.card-question{flex:1;display:flex;align-items:center;justify-content:center;text-align:center}
+.card-question-text{font-size:17px;font-weight:600;color:var(--gray-900);line-height:1.6;max-width:500px}
+
+.card-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}
+.card-option{padding:12px 16px;border:2px solid var(--gray-200);border-radius:var(--radius);font-size:14px;color:var(--gray-700);cursor:pointer;transition:all .15s;text-align:left}
+.card-option:hover{border-color:var(--primary);background:var(--primary-light)}
+.card-option.selected{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:500}
+.card-option.correct{border-color:var(--success);background:var(--success-light);color:#16a34a}
+.card-option.wrong{border-color:var(--danger);background:var(--danger-light);color:var(--danger)}
+
+.card-flip-hint{text-align:center;color:var(--gray-400);font-size:13px;margin-top:12px}
+.card-flip-hint span{display:inline-flex;align-items:center;gap:4px;cursor:pointer;color:var(--primary)}
+.card-flip-hint span:hover{text-decoration:underline}
+
+.card-answer{flex:1}
+.answer-correct{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:var(--success-light);color:#16a34a;border-radius:20px;font-size:13px;font-weight:500;margin-bottom:16px}
+.answer-explanation{font-size:13.5px;color:var(--gray-600);line-height:1.8;margin-bottom:16px}
+.answer-source{font-size:12px;color:var(--gray-400);margin-bottom:4px}
+.answer-related{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.answer-related span{padding:3px 8px;background:var(--info-light);color:var(--info);border-radius:20px;font-size:11.5px;cursor:pointer}
+
+.rating-section{border-top:1px solid var(--gray-200);padding-top:16px;margin-top:auto}
+.rating-label{font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:10px}
+.rating-btns{display:flex;gap:8px;flex-wrap:wrap}
+.rating-btn{padding:10px 16px;border:2px solid var(--gray-200);border-radius:var(--radius);cursor:pointer;font-size:13px;color:var(--gray-600);transition:all .15s;background:#fff;font-family:inherit;text-align:center;min-width:100px}
+.rating-btn:hover{border-color:var(--primary)}
+.rating-btn.active{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
+.rating-sm2-result{display:none;margin-top:12px;padding:12px 16px;background:var(--gray-50);border-radius:var(--radius);font-size:13px;line-height:1.8;color:var(--gray-600)}
+.rating-sm2-result.show{display:block}
+
+.card-nav{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
+.card-counter{font-size:13px;color:var(--gray-500)}
+.card-arrows{display:flex;gap:8px}
+
+/* 侧边面板 */
+.side-panel{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow);overflow:hidden}
+.side-panel-header{padding:14px 16px;border-bottom:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center}
+.side-panel-title{font-size:13.5px;font-weight:600;color:var(--gray-800)}
+.side-panel-body{padding:14px 16px}
+.meta-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px;border-bottom:1px solid var(--gray-50)}
+.meta-row:last-child{border-bottom:none}
+.meta-label{color:var(--gray-500)}.meta-value{color:var(--gray-800);font-weight:500}
+.meta-link{color:var(--primary);cursor:pointer;font-size:12.5px}
+.meta-link:hover{text-decoration:underline}
+
+.mastery-trend{display:flex;align-items:flex-end;gap:8px;height:60px;padding:4px 0}
+.trend-bar{flex:1;border-radius:4px 4px 0 0;min-width:20px;transition:all .3s}
+.trend-val{font-size:10px;text-align:center;margin-top:4px;color:var(--gray-400)}
+
+.related-list{display:flex;flex-direction:column;gap:4px}
+.related-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;transition:bg .15s}
+.related-item:hover{background:var(--gray-50)}
+.related-item.overdue{border-left:3px solid var(--danger)}
+.related-name{font-size:12.5px;color:var(--gray-700);flex:1}
+.related-risk{font-size:11px;padding:1px 6px;border-radius:4px}
+.risk-high{background:var(--danger-light);color:var(--danger)}
+.risk-mid{background:var(--warning-light);color:#b45309}
+.risk-low{background:var(--success-light);color:#16a34a}
+
+/* 页面2：复习历史 */
+.page-hidden{display:none}
+.history-layout{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+.heatmap-panel{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:20px;box-shadow:var(--shadow)}
+.heatmap-title{font-size:14px;font-weight:600;color:var(--gray-800);margin-bottom:12px}
+.heatmap-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.heatmap-cell{aspect-ratio:1;border-radius:3px;transition:all .15s}
+.heatmap-cell.h0{background:var(--gray-100)}
+.heatmap-cell.h1{background:#c7d2fe}
+.heatmap-cell.h2{background:#a5b4fc}
+.heatmap-cell.h3{background:#818cf8}
+.heatmap-cell.h4{background:#6366f1}
+.heatmap-cell:hover{transform:scale(1.2)}
+.heatmap-legend{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--gray-400)}
+.heatmap-days{display:flex;justify-content:space-around;margin-bottom:4px;font-size:10px;color:var(--gray-400)}
+
+.history-list{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);box-shadow:var(--shadow);overflow:hidden}
+.history-header{padding:14px 20px;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-size:14px;font-weight:600;color:var(--gray-800)}
+.history-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--gray-50);font-size:13px}
+.history-row:last-child{border-bottom:none}
+.history-date{width:90px;color:var(--gray-600);font-weight:500}
+.history-count{width:80px;color:var(--gray-500)}
+.history-accuracy{width:80px}
+.history-accuracy .good{color:var(--success)}.history-accuracy .mid{color:var(--warning)}.history-accuracy .bad{color:var(--danger)}
+.history-bar{flex:1;height:6px;background:var(--gray-100);border-radius:4px;display:flex;overflow:hidden}
+.history-bar-correct{background:var(--success)}
+.history-bar-wrong{background:var(--danger)}
+.history-actions{display:flex;gap:6px}
+
+/* 页面3：统计 */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
+.stat-panel{background:#fff;border-radius:var(--radius-lg);border:1px solid var(--gray-200);padding:20px;box-shadow:var(--shadow)}
+.stat-panel-title{font-size:13px;font-weight:600;color:var(--gray-800);margin-bottom:14px}
+
+/* 掌握度分布简图 */
+.mastery-dist{display:flex;align-items:flex-end;gap:16px;height:100px;justify-content:center;padding-top:10px}
+.mastery-bar{width:40px;border-radius:6px 6px 0 0;text-align:center}
+.mastery-bar-label{font-size:11px;color:var(--gray-500);margin-top:6px}
+.mastery-bar-val{font-size:12px;font-weight:600;margin-bottom:4px}
+
+/* 遗忘曲线简图 */
+.forgetting-chart{position:relative;height:120px}
+.forgetting-line{position:absolute;bottom:0;left:0;right:0;height:100%;border-bottom:2px solid var(--gray-200);border-left:2px solid var(--gray-200)}
+.forgetting-points{position:absolute;inset:0}
+.forgetting-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--danger);transform:translate(-50%,-50%)}
+.forgetting-connect{position:absolute;height:2px;background:var(--danger);opacity:.3;transform-origin:left center}
+.forgetting-label{position:absolute;font-size:10px;color:var(--gray-400)}
+
+/* 薄弱主题 */
+.weak-list{display:flex;flex-direction:column;gap:8px}
+.weak-item{display:flex;align-items:center;gap:10px}
+.weak-name{font-size:13px;color:var(--gray-700);width:110px}
+.weak-bar-wrap{flex:1;height:8px;background:var(--gray-100);border-radius:4px;overflow:hidden}
+.weak-bar{height:100%;border-radius:4px}
+.weak-val{font-size:12px;color:var(--gray-500);width:36px;text-align:right}
+
+.stats-summary{display:flex;gap:20px;margin-top:16px}
+.stats-num{text-align:center;flex:1}
+.stats-num-val{font-size:22px;font-weight:700;color:var(--gray-800)}
+.stats-num-label{font-size:12px;color:var(--gray-500);margin-top:2px}
+
+/* 弹窗 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:var(--radius-lg);box-shadow:0 20px 60px rgba(0,0,0,.3);width:90%;max-width:600px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column;animation:modalIn .2s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(-16px)}to{opacity:1;transform:translateY(0)}}
+.modal-lg{max-width:700px}
+.modal-header{padding:18px 24px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-size:16px;font-weight:600;color:var(--gray-900)}
+.modal-close{background:none;border:none;font-size:22px;color:var(--gray-400);cursor:pointer;padding:0 4px}
+.modal-close:hover{color:var(--gray-700)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.modal-footer{padding:14px 24px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:10px}
+
+.form-group{margin-bottom:16px}
+.form-label{display:block;font-size:13px;font-weight:500;color:var(--gray-700);margin-bottom:6px}
+
+/* 串联复习弹窗 */
+.link-card{border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px}
+.link-card:hover{border-color:var(--primary)}
+.link-card-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.link-card-title{font-size:14px;font-weight:600;color:var(--gray-800);flex:1}
+.link-card-meta{font-size:12px;color:var(--gray-500);margin-bottom:8px}
+
+/* 遗忘预警 */
+.risk-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:8px}
+.risk-item.critical{border-color:var(--danger);background:var(--danger-light)}
+.risk-item.warning{border-color:var(--warning);background:var(--warning-light)}
+.risk-info{flex:1}
+.risk-name{font-size:13.5px;font-weight:500;color:var(--gray-800)}
+.risk-detail{font-size:12px;color:var(--gray-500);margin-top:2px}
+.risk-ratio{font-size:13px;font-weight:600}
+.risk-ratio.danger{color:var(--danger)}.risk-ratio.warning{color:var(--warning)}
+
+/* Toast */
+.toast-container{position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:#fff;border-radius:var(--radius);padding:12px 16px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;min-width:240px;animation:toastIn .3s ease;border-left:3px solid var(--primary);pointer-events:auto}
+.toast.success{border-left-color:var(--success)}.toast.warning{border-left-color:var(--warning)}.toast.danger{border-left-color:var(--danger)}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-icon{font-size:18px}.toast-text{font-size:13px;color:var(--gray-700)}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo"><span>🧠</span> StudyMind</div>
+    <div class="sidebar-nav">
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📊</span> 首页</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">🎯</span> 学习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📡</span> 资讯</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">📚</span> 知识库</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">💬</span> AI对话</div>
+      <div class="nav-item active" onclick="navSide(this)"><span class="nav-icon">🔁</span> 复习计划</div>
+      <div class="nav-item" onclick="navSide(this)"><span class="nav-icon">✍️</span> 知识沉淀</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">🔁 今日复习</div>
+      <button class="btn btn-secondary btn-sm" onclick="openModal('modal-risk')">⚠️ 遗忘预警</button>
+      <button class="btn btn-primary btn-sm">⚙️ 设置</button>
+    </div>
+
+    <div class="content">
+      <div class="sub-tabs">
+        <div class="sub-tab active" onclick="switchPage('today')">📋 今日复习</div>
+        <div class="sub-tab" onclick="switchPage('history')">📅 复习历史</div>
+        <div class="sub-tab" onclick="switchPage('stats')">📊 统计总览</div>
+      </div>
+      <!-- ===== 页面1：今日复习 ===== -->
+      <div id="page-today">
+        <!-- 概览 -->
+        <div class="overview-grid">
+          <div class="overview-card">
+            <div class="overview-num primary">15</div>
+            <div class="overview-label">📋 应复习卡片</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-num success" id="doneCount">6</div>
+            <div class="overview-label">✅ 已完成</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-num warning">9</div>
+            <div class="overview-label">⏳ 剩余</div>
+          </div>
+          <div class="overview-card">
+            <div class="overview-num" style="color:#f97316">7</div>
+            <div class="overview-label">🔥 连续天数</div>
+          </div>
+        </div>
+
+        <!-- 提醒条 -->
+        <div class="alert-banner alert-warning" id="overdueAlert">
+          <span class="alert-icon">⚠️</span> 有 <strong>3张</strong> 卡片已逾期，建议优先处理
+          <div class="alert-actions"><button class="btn btn-warning btn-sm" onclick="openModal('modal-risk')">查看详情</button></div>
+        </div>
+        <div class="alert-banner alert-info">
+          <span class="alert-icon">💡</span> 检测到「Go并发模型」与「Channel原理」、「GMP调度」可串联复习
+          <div class="alert-actions"><button class="btn btn-primary btn-sm" onclick="openModal('modal-link')">串联复习</button></div>
+        </div>
+
+        <div class="review-layout">
+          <!-- 复习卡片 -->
+          <div class="review-main">
+            <div class="flashcard-perspective">
+              <div class="flashcard" id="reviewCard" onclick="flipCard()">
+                <div class="flashcard-inner">
+                  <!-- 正面 -->
+                  <div class="flashcard-front" id="cardFront">
+                    <div class="card-header">
+                      <span class="card-badge badge-overdue" id="cardBadge">⚠️ 逾期</span>
+                      <span class="card-type">📝 选择题</span>
+                      <span class="card-progress" id="cardProgress">卡片 1/9</span>
+                    </div>
+                    <div class="card-question">
+                      <div class="card-question-text">Go 语言的并发模型基于什么理论？</div>
+                    </div>
+                    <div class="card-options" onclick="event.stopPropagation()">
+                      <div class="card-option" onclick="selectOption(this,'A')">A. Actor Model</div>
+                      <div class="card-option" onclick="selectOption(this,'B')">B. CSP（通信顺序进程）</div>
+                      <div class="card-option" onclick="selectOption(this,'C')">C. Pipeline Pattern</div>
+                      <div class="card-option" onclick="selectOption(this,'D')">D. Event Loop</div>
+                    </div>
+                    <div class="card-flip-hint">选择答案后 <span onclick="event.stopPropagation();flipCard()">👉 翻转查看解析</span></div>
+                  </div>
+                  <!-- 反面 -->
+                  <div class="flashcard-back">
+                    <div class="card-header">
+                      <span class="answer-correct">✅ 正确答案：B. CSP（通信顺序进程）</span>
+                      <span class="card-progress" id="cardBackProgress">卡片 1/9</span>
+                    </div>
+                    <div class="card-answer">
+                      <div class="answer-source">📄 来源：《Go语言并发模型深度解析》· 📁 技术/后端/Go</div>
+                      <div class="answer-explanation">
+                        <strong>📖 解析：</strong>Go 语言的并发哲学是"通过通信来共享内存"，基于 Tony Hoare 在 1978 年提出的 <strong>CSP（Communicating Sequential Processes）</strong> 理论。Go 通过 goroutine 和 channel 实现了这一模型。<br><br>
+                        其他选项说明：A. Actor Model 是 Erlang/Elixir 的并发模型；C 和 D 是 Node.js 等事件驱动框架的模式。
+                      </div>
+                      <div class="answer-related">
+                        <span onclick="toast('打开: GMP调度模型')">📎 GMP调度模型</span>
+                        <span onclick="toast('打开: Channel原理')">📎 Channel原理</span>
+                      </div>
+                    </div>
+                    <div class="rating-section">
+                      <div class="rating-label">自评掌握度：</div>
+                      <div class="rating-btns" onclick="event.stopPropagation()">
+                        <button class="rating-btn" onclick="rate(0,this)">😰 0 — 完全忘记</button>
+                        <button class="rating-btn" onclick="rate(1,this)">🤔 1 — 有些印象</button>
+                        <button class="rating-btn" onclick="rate(3,this)">👍 3 — 勉强答对</button>
+                        <button class="rating-btn" onclick="rate(5,this)">🎯 5 — 非常熟练</button>
+                      </div>
+                      <div class="rating-sm2-result" id="sm2Result">
+                        <strong>📐 SM-2 算法计算结果：</strong><br>
+                        评分 <span id="sm2Score">—</span> → 间隔 <span id="sm2Interval">—</span> → 下次复习：<span id="sm2Next">—</span><br>
+                        掌握度 <span id="sm2Mastery">—</span><br>
+                        <span style="font-size:12px;color:var(--gray-400)">个性化因子：用户衰减快15% → 间隔 × 0.7</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-nav">
+              <div class="card-counter">🔁 今日队列：9 张剩余 · 已复习 6 张</div>
+              <div class="card-arrows">
+                <button class="btn btn-secondary btn-sm" onclick="prevCard()">← 上一张</button>
+                <button class="btn btn-primary btn-sm" onclick="nextCard()">下一张 →</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 侧边栏 -->
+          <div class="review-sidebar">
+            <div class="side-panel">
+              <div class="side-panel-header"><div class="side-panel-title">📄 知识点来源</div></div>
+              <div class="side-panel-body">
+                <div class="meta-row"><span class="meta-label">来源</span><span class="meta-link" onclick="toast('打开知识条目')">Go并发模型深度解析</span></div>
+                <div class="meta-row"><span class="meta-label">分类</span><span class="meta-value">技术/后端/Go</span></div>
+                <div class="meta-row"><span class="meta-label">创建</span><span class="meta-value">3个月前</span></div>
+              </div>
+            </div>
+
+            <div class="side-panel">
+              <div class="side-panel-header"><div class="side-panel-title">📈 掌握度趋势</div></div>
+              <div class="side-panel-body">
+                <div class="mastery-trend">
+                  <div style="text-align:center"><div class="trend-bar" style="height:20px;background:var(--danger)"></div><div class="trend-val">1.5</div></div>
+                  <div style="text-align:center"><div class="trend-bar" style="height:30px;background:var(--warning)"></div><div class="trend-val">2.0</div></div>
+                  <div style="text-align:center"><div class="trend-bar" style="height:40px;background:var(--warning)"></div><div class="trend-val">2.5</div></div>
+                  <div style="text-align:center"><div class="trend-bar" style="height:50px;background:var(--success)"></div><div class="trend-val">3.0 ⬆</div></div>
+                </div>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:4px">最近4次复习</div>
+              </div>
+            </div>
+
+            <div class="side-panel">
+              <div class="side-panel-header"><div class="side-panel-title">🔗 关联知识（2条待复习）</div></div>
+              <div class="side-panel-body">
+                <div class="related-list">
+                  <div class="related-item overdue">
+                    <span style="font-size:14px">🔗</span>
+                    <span class="related-name">Channel 原理</span>
+                    <span class="related-risk risk-high">逾期</span>
+                  </div>
+                  <div class="related-item">
+                    <span style="font-size:14px">🔗</span>
+                    <span class="related-name">GMP 调度模型</span>
+                    <span class="related-risk risk-low">正常</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="openModal('modal-link')">🔄 串联复习</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 页面2：复习历史 ===== -->
+      <div id="page-history" class="page-hidden">
+        <div class="history-layout">
+          <div class="heatmap-panel">
+            <div class="heatmap-title">📅 近3个月复习热力图</div>
+            <div class="heatmap-days"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+            <div class="heatmap-grid" id="heatmapGrid"></div>
+            <div class="heatmap-legend">
+              <span>少</span>
+              <div class="heatmap-cell h0" style="width:14px;height:14px"></div>
+              <div class="heatmap-cell h1" style="width:14px;height:14px"></div>
+              <div class="heatmap-cell h2" style="width:14px;height:14px"></div>
+              <div class="heatmap-cell h3" style="width:14px;height:14px"></div>
+              <div class="heatmap-cell h4" style="width:14px;height:14px"></div>
+              <span>多</span>
+            </div>
+          </div>
+          <div class="history-list">
+            <div class="history-header">📋 最近复习记录</div>
+            <div class="history-row"><span class="history-date">6月11日</span><span class="history-count">6 张</span><span class="history-accuracy good">83% 正确</span><div class="history-bar"><div class="history-bar-correct" style="width:83%"></div><div class="history-bar-wrong" style="width:17%"></div></div><button class="btn btn-ghost btn-xs">详情</button></div>
+            <div class="history-row"><span class="history-date">6月10日</span><span class="history-count">12 张</span><span class="history-accuracy good">75% 正确</span><div class="history-bar"><div class="history-bar-correct" style="width:75%"></div><div class="history-bar-wrong" style="width:25%"></div></div><button class="btn btn-ghost btn-xs">详情</button></div>
+            <div class="history-row"><span class="history-date">6月9日</span><span class="history-count">10 张</span><span class="history-accuracy mid">70% 正确</span><div class="history-bar"><div class="history-bar-correct" style="width:70%"></div><div class="history-bar-wrong" style="width:30%"></div></div><button class="btn btn-ghost btn-xs">详情</button></div>
+            <div class="history-row"><span class="history-date">6月8日</span><span class="history-count">14 张</span><span class="history-accuracy good">86% 正确</span><div class="history-bar"><div class="history-bar-correct" style="width:86%"></div><div class="history-bar-wrong" style="width:14%"></div></div><button class="btn btn-ghost btn-xs">详情</button></div>
+            <div class="history-row"><span class="history-date">6月7日</span><span class="history-count">8 张</span><span class="history-accuracy bad">63% 正确</span><div class="history-bar"><div class="history-bar-correct" style="width:63%"></div><div class="history-bar-wrong" style="width:37%"></div></div><button class="btn btn-ghost btn-xs">详情</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== 页面3：统计总览 ===== -->
+      <div id="page-stats" class="page-hidden">
+        <div class="overview-grid">
+          <div class="overview-card"><div class="overview-num primary">342</div><div class="overview-label">📋 累计复习次数</div></div>
+          <div class="overview-card"><div class="overview-num success">72%</div><div class="overview-label">✅ 平均正确率</div></div>
+          <div class="overview-card"><div class="overview-num" style="color:#f97316">14天</div><div class="overview-label">🔥 最长连续天数</div></div>
+          <div class="overview-card"><div class="overview-num" style="color:#7c3aed">48</div><div class="overview-label">📇 总知识卡片</div></div>
+        </div>
+
+        <div class="stats-grid">
+          <!-- 掌握度分布 -->
+          <div class="stat-panel">
+            <div class="stat-panel-title">📊 掌握度分布</div>
+            <div class="mastery-dist">
+              <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--danger)">8</div><div class="mastery-bar" style="height:40px;background:var(--danger)"></div><div class="mastery-bar-label">0-1</div></div>
+              <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--warning)">12</div><div class="mastery-bar" style="height:60px;background:var(--warning)"></div><div class="mastery-bar-label">2-3</div></div>
+              <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--success)">18</div><div class="mastery-bar" style="height:90px;background:var(--success)"></div><div class="mastery-bar-label">4-5</div></div>
+            </div>
+          </div>
+
+          <!-- 遗忘曲线 -->
+          <div class="stat-panel">
+            <div class="stat-panel-title">📉 平均遗忘曲线（30天）</div>
+            <div class="forgetting-chart">
+              <div class="forgetting-line"></div>
+              <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 200 120">
+                <polyline points="10,20 40,40 80,60 140,85 190,100" fill="none" stroke="var(--danger)" stroke-width="2" stroke-dasharray="4 2"/>
+                <circle cx="10" cy="20" r="4" fill="var(--danger)"/>
+                <circle cx="40" cy="40" r="4" fill="var(--danger)"/>
+                <circle cx="80" cy="60" r="4" fill="var(--danger)"/>
+                <circle cx="140" cy="85" r="4" fill="var(--danger)"/>
+                <circle cx="190" cy="100" r="4" fill="var(--danger)"/>
+                <text x="5" y="10" font-size="8" fill="var(--gray-400)">95%</text>
+                <text x="5" y="115" font-size="8" fill="var(--gray-400)">30天</text>
+              </svg>
+            </div>
+          </div>
+
+          <!-- 薄弱主题 -->
+          <div class="stat-panel">
+            <div class="stat-panel-title">⚠️ 薄弱主题（掌握度 < 2.5）</div>
+            <div class="weak-list">
+              <div class="weak-item"><span class="weak-name">分布式系统</span><div class="weak-bar-wrap"><div class="weak-bar" style="width:42%;background:var(--danger)"></div></div><span class="weak-val">2.1</span></div>
+              <div class="weak-item"><span class="weak-name">K8s 运维</span><div class="weak-bar-wrap"><div class="weak-bar" style="width:46%;background:var(--danger)"></div></div><span class="weak-val">2.3</span></div>
+              <div class="weak-item"><span class="weak-name">React Hooks</span><div class="weak-bar-wrap"><div class="weak-bar" style="width:48%;background:var(--warning)"></div></div><span class="weak-val">2.4</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="width:100%;margin-top:12px" onclick="openModal('modal-improve')">📋 生成补强计划</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗A：串联复习 ===== -->
+<div class="modal-overlay" id="modal-link" onclick="if(event.target===this)closeModal('modal-link')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">🔗 串联复习建议</div><button class="modal-close" onclick="closeModal('modal-link')">×</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">你刚复习了「Go 并发模型」，以下关联知识也处于待复习状态：</p>
+      <div class="link-card">
+        <div class="link-card-header"><span style="font-size:18px">🔗</span><span class="link-card-title">Channel 原理</span><span class="related-risk risk-high">⚠️ 逾期</span></div>
+        <div class="link-card-meta">掌握度 2.5 · 上次复习 5 天前 · 遗忘风险：中等</div>
+        <button class="btn btn-primary btn-sm" onclick="toast('已加入今日队列','success')">立即复习</button>
+      </div>
+      <div class="link-card">
+        <div class="link-card-header"><span style="font-size:18px">🔗</span><span class="link-card-title">GMP 调度模型</span><span class="related-risk risk-low">正常</span></div>
+        <div class="link-card-meta">掌握度 3.0 · 上次复习 3 天前 · 遗忘风险：低</div>
+        <button class="btn btn-secondary btn-sm" onclick="toast('已加入今日队列','success')">加入今天队列</button>
+      </div>
+      <div style="margin-top:16px;padding:12px;background:var(--primary-light);border-radius:var(--radius)">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px">🎯 同主题完成 3 条 → 可进行主题串联测试</div>
+        <button class="btn btn-primary btn-sm" onclick="toast('已生成串联测试','success')">生成「Go并发」主题综合测试</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-link')">跳过</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-link');toast('全部已加入今日复习','success')">全部加入今日复习</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗B：遗忘预警 ===== -->
+<div class="modal-overlay" id="modal-risk" onclick="if(event.target===this)closeModal('modal-risk')">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">⚠️ 遗忘预警</div><button class="modal-close" onclick="closeModal('modal-risk')">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">以下卡片遗忘风险较高，建议优先复习：</div>
+      <div class="risk-item critical">
+        <span style="font-size:20px">🔴</span>
+        <div class="risk-info"><div class="risk-name">Channel 原理</div><div class="risk-detail">上次复习 12天前 · 掌握度 1.5 · 临界 15天</div></div>
+        <span class="risk-ratio danger">风险比 0.80</span>
+        <button class="btn btn-danger btn-sm" onclick="toast('已加入今日队列','success')">复习</button>
+      </div>
+      <div class="risk-item critical">
+        <span style="font-size:20px">🔴</span>
+        <div class="risk-info"><div class="risk-name">Go 内存模型</div><div class="risk-detail">上次复习 10天前 · 掌握度 2.0 · 临界 12天</div></div>
+        <span class="risk-ratio danger">风险比 0.83</span>
+        <button class="btn btn-danger btn-sm" onclick="toast('已加入今日队列','success')">复习</button>
+      </div>
+      <div class="risk-item warning">
+        <span style="font-size:20px">🟡</span>
+        <div class="risk-info"><div class="risk-name">微服务设计模式</div><div class="risk-detail">上次复习 6天前 · 掌握度 2.5 · 临界 8天</div></div>
+        <span class="risk-ratio warning">风险比 0.75</span>
+        <button class="btn btn-warning btn-sm" onclick="toast('已加入今日队列','success')">复习</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-risk')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-risk');toast('全部已加入','success')">全部加入今日复习</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗C：补强计划 ===== -->
+<div class="modal-overlay" id="modal-improve" onclick="if(event.target===this)closeModal('modal-improve')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">📋 薄弱点补强计划</div><button class="modal-close" onclick="closeModal('modal-improve')">×</button></div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">以下 3 个主题掌握度偏低，建议优先补强：</div>
+      <div class="link-card">
+        <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">分布式系统 (2.1)</span></div>
+        <div class="link-card-meta">关联知识：一致性协议 · CAP 理论 · Raft 算法 · 3张待复习卡片</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：阅读《分布式系统设计》· 观看 MIT 6.824 课程</div>
+        <button class="btn btn-primary btn-sm" onclick="toast('已创建学习目标','success')">创建补强学习目标</button>
+      </div>
+      <div class="link-card">
+        <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">K8s 运维 (2.3)</span></div>
+        <div class="link-card-meta">关联知识：Pod 调度 · 网络策略 · Helm 部署 · 2张待复习卡片</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：阅读《Kubernetes in Action》· 练习 CKAD 真题</div>
+        <button class="btn btn-primary btn-sm" onclick="toast('已创建学习目标','success')">创建补强学习目标</button>
+      </div>
+      <div class="link-card">
+        <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">React Hooks (2.4)</span></div>
+        <div class="link-card-meta">关联知识：useEffect · useMemo · 自定义 Hook · 1张待复习卡片</div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：阅读 React 官方文档 Hooks 章节 · 重构 2 个组件</div>
+        <button class="btn btn-primary btn-sm" onclick="toast('已创建学习目标','success')">创建补强学习目标</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-improve')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-improve');toast('3个补强目标已创建','success')">一键生成所有补强目标</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗D：卡片详情放大 ===== -->
+<div class="modal-overlay" id="modal-card-detail" onclick="if(event.target===this)closeModal('modal-card-detail')">
+  <div class="modal modal-lg">
+    <div class="modal-header"><div class="modal-title">📝 复习详情</div><button class="modal-close" onclick="closeModal('modal-card-detail')">×</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;margin-bottom:16px"><span class="card-badge badge-overdue">⚠️ 逾期</span><span class="card-type">📝 选择题</span><span class="card-type">来自：「Go并发模型」</span></div>
+      <div style="background:var(--gray-50);padding:20px;border-radius:var(--radius);margin-bottom:16px">
+        <div style="font-size:16px;font-weight:600;color:var(--gray-900);margin-bottom:12px">Go 语言的并发模型基于什么理论？</div>
+        <div style="font-size:14px;color:var(--gray-500)">A. Actor Model &nbsp; B. CSP（通信顺序进程） ✓ &nbsp; C. Pipeline Pattern &nbsp; D. Event Loop</div>
+      </div>
+      <div style="font-size:13px;color:var(--gray-600);line-height:1.8">
+        <strong>📖 完整解析：</strong>Go 语言基于 CSP 理论设计了 goroutine 和 channel 的并发机制。CSP 的核心思想是将并发抽象为"进程间通过 channel 通信"，这比传统的锁+共享内存模式更安全、更易理解。
+      </div>
+      <div class="meta-row" style="margin-top:16px"><span class="meta-label">上次复习</span><span class="meta-value">5天前 · 评分 1</span></div>
+      <div class="meta-row"><span class="meta-label">掌握度</span><span class="meta-value">1.5 → (本次评分后更新)</span></div>
+      <div class="meta-row"><span class="meta-label">复习历史</span><span class="meta-value">第3次复习 · 间隔 6天 → ?天</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-card-detail')">关闭</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-card-detail');flipCard()">开始复习</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===== 工具函数 =====
+let toastTimer;
+function toast(msg,type){
+  type=type||'info';var c=document.getElementById('toastContainer');
+  var icons={success:'✅',warning:'⚠️',danger:'❌',info:'ℹ️'};
+  var el=document.createElement('div');el.className='toast '+type;
+  el.innerHTML='<span class="toast-icon">'+(icons[type]||icons.info)+'</span><span class="toast-text">'+msg+'</span>';
+  c.appendChild(el);clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(function(){el.remove()},300)},2500);
+}
+
+function navSide(el){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ===== 页面切换 =====
+function switchPage(page){
+  document.getElementById('page-today').classList.toggle('page-hidden',page!=='today');
+  document.getElementById('page-history').classList.toggle('page-hidden',page!=='history');
+  document.getElementById('page-stats').classList.toggle('page-hidden',page!=='stats');
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  if(page==='today'){document.getElementById('pageTitle').textContent='🔁 今日复习';document.querySelectorAll('.sub-tab')[0].classList.add('active')}
+  else if(page==='history'){document.getElementById('pageTitle').textContent='📋 复习历史';document.querySelectorAll('.sub-tab')[1].classList.add('active')}
+  else{document.getElementById('pageTitle').textContent='📊 统计总览';document.querySelectorAll('.sub-tab')[2].classList.add('active')}
+}
+
+// ===== 卡片翻转 =====
+function flipCard(){
+  var card=document.getElementById('reviewCard');
+  if(!card.classList.contains('flipped')){
+    card.classList.add('flipped');
+  }
+}
+
+function selectOption(el,letter){
+  document.querySelectorAll('.card-option').forEach(o=>o.classList.remove('selected','correct','wrong'));
+  el.classList.add('selected');
+  if(letter==='B'){el.classList.add('correct')}
+  else{el.classList.add('wrong');document.querySelector('.card-option:nth-child(2)').classList.add('correct')}
+}
+
+// ===== 评分 =====
+function rate(score,btn){
+  document.querySelectorAll('.rating-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+
+  var interval,next,mastery;
+  switch(score){
+    case 0:interval='1天';next='明天';mastery='1.5 → 1.0 (↓)';break;
+    case 1:interval='2天';next='2天后';mastery='1.5 → 1.5 (→)';break;
+    case 3:interval='当前×2.3 ≈ 14天→×0.7 ≈ 10天';next='10天后';mastery='1.5 → 2.5 (↑)';break;
+    case 5:interval='当前×2.8 ≈ 17天→×0.7 ≈ 12天';next='12天后';mastery='1.5 → 3.0 (↑↑)';break;
+  }
+  document.getElementById('sm2Score').textContent=score;
+  document.getElementById('sm2Interval').textContent=interval;
+  document.getElementById('sm2Next').textContent=next;
+  document.getElementById('sm2Mastery').textContent=mastery;
+  document.getElementById('sm2Result').classList.add('show');
+
+  var done=parseInt(document.getElementById('doneCount').textContent)+1;
+  document.getElementById('doneCount').textContent=done;
+  toast('评分 '+score+' · 下次复习：'+next,'success');
+}
+
+// ===== 卡片导航 =====
+function nextCard(){toast('切换到下一张卡片')}
+function prevCard(){toast('切换到上一张卡片')}
+
+// ===== 弹窗 =====
+function openModal(id){document.getElementById(id).classList.add('show')}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+// ===== 热力图 =====
+(function(){
+  var grid=document.getElementById('heatmapGrid');
+  if(!grid)return;
+  var levels=['h0','h1','h2','h3','h4'];
+  for(var i=0;i<77;i++){ // 11 weeks
+    var cell=document.createElement('div');
+    var lvl=levels[Math.floor(Math.random()*levels.length)];
+    cell.className='heatmap-cell '+lvl;
+    cell.title='复习 '+(Math.floor(Math.random()*20)+1)+' 张';
+    grid.appendChild(cell);
+  }
+})();
+
+// 键盘快捷键
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    var modals=document.querySelectorAll('.modal-overlay.show');
+    if(modals.length>0)closeModal(modals[modals.length-1].id);
+  }
+  if(e.key===' '||e.key==='Enter'){
+    var card=document.getElementById('reviewCard');
+    if(card&&!card.classList.contains('flipped')&&document.activeElement===document.body){
+      e.preventDefault();flipCard();
+    }
+  }
+});
+</script>
+</body>
+</html>

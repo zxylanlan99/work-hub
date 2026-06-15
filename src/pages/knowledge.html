@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>知识库 - StudyMind</title>
+  <link rel="stylesheet" href="../css/global.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="fas fa-brain"></i>
+        <span>StudyMind</span>
+      </div>
+      <ul class="menu">
+        <li class="menu-item">
+          <a href="../../index.html">
+            <i class="fas fa-chart-pie"></i>
+            <span>首页</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="learning.html">
+            <i class="fas fa-bullseye"></i>
+            <span>学习计划</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="review.html">
+            <i class="fas fa-redo"></i>
+            <span>复习计划</span>
+          </a>
+        </li>
+        <li class="menu-item active">
+          <a href="knowledge.html">
+            <i class="fas fa-book-open"></i>
+            <span>知识库</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="ai-chat.html">
+            <i class="fas fa-comments"></i>
+            <span>AI对话</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="news.html">
+            <i class="fas fa-rss"></i>
+            <span>资讯</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="output.html">
+            <i class="fas fa-file-alt"></i>
+            <span>知识沉淀</span>
+          </a>
+        </li>
+        <li class="menu-item">
+          <a href="settings.html">
+            <i class="fas fa-cog"></i>
+            <span>系统设置</span>
+          </a>
+        </li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <header class="header">
+        <div class="header-title">知识库</div>
+        <button class="btn btn-primary" id="create-item-btn">
+          <i class="fas fa-plus"></i>
+          新建条目
+        </button>
+      </header>
+
+      <div class="content">
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">分类管理</div>
+            </div>
+            <div id="category-tree">
+              <div class="empty-state">
+                <i class="fas fa-folder"></i>
+                <div class="empty-title">暂无分类</div>
+                <div class="empty-desc">创建知识条目时可以创建分类</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">知识条目</div>
+              <div style="display: flex; gap: 10px;">
+                <input type="text" id="search-input" class="form-input" placeholder="搜索知识..." style="width: 200px;">
+                <button class="btn btn-secondary" id="search-btn">搜索</button>
+              </div>
+            </div>
+            <div id="knowledge-list">
+              <div class="empty-state">
+                <i class="fas fa-file-text"></i>
+                <div class="empty-title">暂无知识条目</div>
+                <div class="empty-desc">点击右上角按钮创建知识条目</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/cloudbase.js"></script>
+  <script src="../js/knowledge.js"></script>
+</body>
+</html>

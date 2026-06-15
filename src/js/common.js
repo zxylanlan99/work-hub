@@ -193,20 +193,22 @@ const StudyMind = {
     },
 
     loadPage(page) {
-      const pageTitles = {
-        'home': '欢迎来到 StudyMind',
-        'learning': '学习计划',
-        'review': '复习计划',
-        'news': '资讯',
-        'ai-chat': 'AI对话',
-        'knowledge': '知识沉淀',
-        'output': '输出文档',
-        'settings': '系统设置'
+      const pageInfo = {
+        'home': { title: '欢迎来到 StudyMind', init: 'initHomePage' },
+        'learning': { title: '学习计划', init: 'initLearningPage' },
+        'review': { title: '复习计划', init: 'initReviewPage' },
+        'news': { title: '资讯', init: 'initNewsPage' },
+        'ai-chat': { title: 'AI对话', init: 'initAIChatPage' },
+        'knowledge': { title: '知识沉淀', init: 'initKnowledgePage' },
+        'output': { title: '输出文档', init: 'initOutputPage' },
+        'settings': { title: '系统设置', init: 'initSettingsPage' }
       };
       
+      const info = pageInfo[page] || pageInfo['home'];
+      
       const titleEl = document.getElementById('page-title');
-      if (titleEl && pageTitles[page]) {
-        titleEl.textContent = pageTitles[page];
+      if (titleEl) {
+        titleEl.textContent = info.title;
       }
 
       const container = document.getElementById('page-container');
@@ -220,7 +222,34 @@ const StudyMind = {
           throw new Error('Page not found');
         })
         .then(html => {
-          container.innerHTML = html;
+          const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
+          const scripts = [];
+          let match;
+          
+          while ((match = scriptRegex.exec(html)) !== null) {
+            const scriptContent = match[0];
+            const contentMatch = scriptContent.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+            if (contentMatch && contentMatch[1].trim()) {
+              scripts.push(contentMatch[1]);
+            }
+          }
+          
+          const htmlWithoutScripts = html.replace(scriptRegex, '');
+          container.innerHTML = htmlWithoutScripts;
+          
+          setTimeout(() => {
+            scripts.forEach(script => {
+              try {
+                eval(script);
+              } catch (e) {
+                console.error('执行脚本失败:', e);
+              }
+            });
+            
+            if (window[info.init]) {
+              window[info.init]();
+            }
+          }, 50);
         })
         .catch(() => {
           container.innerHTML = `<div class="empty-state"><span style="font-size:48px">📄</span><div class="empty-title">页面未找到</div><div class="empty-desc">该页面正在开发中...</div></div>`;

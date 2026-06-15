@@ -1,463 +1,192 @@
-<div class="home-page">
-  <div class="grid grid-2">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">📊 今日概览</h3>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon" style="background: #e0e7ff;">🎯</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-goals">0</div>
-            <div class="stat-label">进行中目标</div>
-          </div>
+<!-- 暖身卡 -->
+<!--
+  【DB-R-001】昨日学习回顾
+  调用方式: db.collection('review_history').where({ reviewedAt: yesterday }).get()
+  数据用途: 填充昨日学习回顾内容
+  【AI-001】快问快答
+  调用方式: app.callFunction('ai-proxy', { action:'quiz', topic })
+  数据用途: 生成快问快答问题+答案
+  【AGG-001】上次学习断点
+  调用方式: 多集合聚合查询（goals + tasks）
+  数据用途: 获取上次学习位置、剩余时间
+-->
+<div class="panel warmup" id="warmupPanel">
+  <div class="warmup-body">
+    <div class="warmup-left">
+      <div class="warmup-greeting">🌅 今日暖身 <span class="warmup-duration">（约1分钟）</span></div>
+      <div class="warmup-sections">
+        <div class="warmup-section">
+          <div class="warmup-section-label">📝 昨日回顾</div>
+          <div class="warmup-yesterday">你学习了<strong>「服务发现」</strong>概念，掌握了 Consul 的基本注册机制，并完成了 <strong>Go 并发模型</strong>的复习。</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: #dcfce7;">🔄</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-review">0</div>
-            <div class="stat-label">待复习卡片</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: #fef3c7;">📰</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-news">0</div>
-            <div class="stat-label">未读资讯</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background: #fce7f3;">📝</div>
-          <div class="stat-info">
-            <div class="stat-value" id="stat-output">0</div>
-            <div class="stat-label">草稿文档</div>
-          </div>
+        <div class="warmup-section">
+          <div class="warmup-section-label">❓ 快问快答</div>
+          <div class="warmup-quiz-q">Go 语言的并发模型基于什么理论？</div>
+          <div class="warmup-quiz-a" onclick="revealAnswer(this)">💡 点击查看答案</div>
         </div>
       </div>
     </div>
-
-    <div class="card" id="warmup-card">
-      <div class="card-header">
-        <h3 class="card-title">🌅 今日暖身</h3>
-        <button id="skip-warmup" class="btn btn-secondary btn-sm" style="font-size: 12px;">跳过</button>
-      </div>
-      
-      <div id="yesterday-summary" style="margin-bottom: 16px; padding: 12px; background: #f9fafb; border-radius: 8px;">
-        准备开始今天的学习之旅吧！
-      </div>
-      
-      <div class="quiz-section">
-        <div id="quiz-question" style="font-weight: 500; margin-bottom: 12px;">
-          加载问题中...
-        </div>
-        <div id="quiz-options" style="margin-bottom: 12px;"></div>
-        <div id="quiz-answer" style="display: none; padding: 12px; background: #f0fdf4; border-radius: 8px; font-size: 14px; white-space: pre-line;"></div>
-        <button id="quiz-answer-btn" class="btn btn-primary" style="display: none;">查看答案</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <h3 class="card-title">📅 学习日历</h3>
-    </div>
-    <div class="heatmap-container">
-      <div class="heatmap-labels">
-        <span>周一</span>
-        <span>周三</span>
-        <span>周五</span>
-        <span>周日</span>
-      </div>
-      <div id="heatmap" class="heatmap"></div>
-    </div>
-  </div>
-
-  <div class="grid grid-2">
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">⚡ 快捷入口</h3>
-      </div>
-      <div class="quick-actions">
-        <button class="action-btn" onclick="navigateTo('learning')">
-          <span class="action-icon">🎯</span>
-          <span class="action-text">创建目标</span>
-        </button>
-        <button class="action-btn" onclick="navigateTo('review')">
-          <span class="action-icon">🔄</span>
-          <span class="action-text">开始复习</span>
-        </button>
-        <button class="action-btn" onclick="navigateTo('ai-chat')">
-          <span class="action-icon">🤖</span>
-          <span class="action-text">AI助手</span>
-        </button>
-        <button class="action-btn" onclick="navigateTo('knowledge')">
-          <span class="action-icon">📖</span>
-          <span class="action-text">知识库</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h3 class="card-title">📈 本周趋势</h3>
-      </div>
-      <div class="trend-chart">
-        <div class="chart-bars">
-          <div class="bar-item">
-            <div class="bar-label">周一</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 60%;"></div>
-            </div>
-            <div class="bar-value">6</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">周二</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 80%;"></div>
-            </div>
-            <div class="bar-value">8</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">周三</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 45%;"></div>
-            </div>
-            <div class="bar-value">4</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">周四</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 90%;"></div>
-            </div>
-            <div class="bar-value">9</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">周五</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 70%;"></div>
-            </div>
-            <div class="bar-value">7</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">周六</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 55%;"></div>
-            </div>
-            <div class="bar-value">5</div>
-          </div>
-          <div class="bar-item">
-            <div class="bar-label">今天</div>
-            <div class="bar-container">
-              <div class="bar" style="height: 30%; background: var(--primary);"></div>
-            </div>
-            <div class="bar-value">3</div>
-          </div>
-        </div>
-      </div>
+    <div class="warmup-right">
+      <button class="warmup-continue" onclick="navigateTo('plan')">继续上次学习 →</button>
+      <button class="warmup-skip" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
     </div>
   </div>
 </div>
 
-<style>
-  .home-page {
-    animation: fadeIn 0.3s ease;
-  }
-  
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-  
-  .heatmap-container {
-    display: flex;
-    gap: 12px;
-    align-items: flex-end;
-    padding: 12px 0;
-  }
-  
-  .heatmap-labels {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    font-size: 12px;
-    color: #6b7280;
-    padding: 4px 0;
-  }
-  
-  .quick-actions {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-  
-  .action-btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 16px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .action-btn:hover {
-    background: var(--primary-light);
-    border-color: var(--primary);
-  }
-  
-  .action-icon {
-    font-size: 28px;
-    margin-bottom: 8px;
-  }
-  
-  .action-text {
-    font-size: 14px;
-    font-weight: 500;
-    color: #374151;
-  }
-  
-  .trend-chart {
-    padding: 12px 0;
-  }
-  
-  .chart-bars {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    height: 120px;
-    gap: 8px;
-  }
-  
-  .bar-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    flex: 1;
-  }
-  
-  .bar-label {
-    font-size: 11px;
-    color: #6b7280;
-    margin-bottom: 4px;
-  }
-  
-  .bar-container {
-    width: 100%;
-    height: 80px;
-    background: #f3f4f6;
-    border-radius: 4px;
-    display: flex;
-    align-items: flex-end;
-    overflow: hidden;
-  }
-  
-  .bar {
-    width: 100%;
-    background: linear-gradient(180deg, var(--primary) 0%, #818cf8 100%);
-    border-radius: 4px 4px 0 0;
-    transition: height 0.3s ease;
-  }
-  
-  .bar-value {
-    font-size: 11px;
-    font-weight: 600;
-    color: #374151;
-    margin-top: 4px;
-  }
-  
-  .btn-sm {
-    padding: 4px 12px;
-    font-size: 12px;
-  }
-  
-  .quiz-option:hover {
-    background: var(--gray-100);
-  }
-</style>
+<!-- 四宫格快捷入口 -->
+<!--
+  【AGG-002】学习计划统计 → db.collection('goals').where({ status:'active' }).count()
+  【AGG-003】今日复习统计 → db.collection('review_cards').where({ nextReview: dbCmd.lte(today) }).count()
+  【AGG-004】资讯统计     → db.collection('news_items').where({ hasRead:false }).count()
+  【AGG-005】知识沉淀统计  → db.collection('output_docs').where({ status:'draft' }).count()
+-->
+<div class="quick-grid">
+  <div class="quick-card" onclick="navigateTo('plan')">
+    <div class="quick-card-header">
+      <div class="quick-card-icon qc-plan">🎯</div>
+      <span class="quick-card-badge qbadge-active">进行中</span>
+    </div>
+    <div class="quick-card-num">2</div>
+    <div class="quick-card-sub">个学习目标进行中</div>
+    <div class="quick-card-link">查看详情 →</div>
+  </div>
+  <div class="quick-card" onclick="navigateTo('review')">
+    <div class="quick-card-header">
+      <div class="quick-card-icon qc-review">🔁</div>
+      <span class="quick-card-badge qbadge-warn">⚠ 逾期</span>
+    </div>
+    <div class="quick-card-num">9</div>
+    <div class="quick-card-sub">张卡片待复习 · 3张已逾期</div>
+    <div class="quick-card-link">开始复习 →</div>
+  </div>
+  <div class="quick-card" onclick="navigateTo('news')">
+    <div class="quick-card-header">
+      <div class="quick-card-icon qc-news">📡</div>
+      <span class="quick-card-badge qbadge-info">🤖 AI推荐</span>
+    </div>
+    <div class="quick-card-num">2</div>
+    <div class="quick-card-sub">条AI推荐资讯待处理</div>
+    <div class="quick-card-link">查看推荐 →</div>
+  </div>
+  <div class="quick-card" onclick="navigateTo('output')">
+    <div class="quick-card-header">
+      <div class="quick-card-icon qc-output">✍️</div>
+      <span class="quick-card-badge qbadge-edit">编辑中</span>
+    </div>
+    <div class="quick-card-num">3</div>
+    <div class="quick-card-sub">篇草稿待完成</div>
+    <div class="quick-card-link">继续写作 →</div>
+  </div>
+</div>
+
+<!-- 智能续接 -->
+<!--
+  【AGG-001】上次学习断点
+  调用方式: 多集合聚合查询（goals + tasks）
+  数据用途: 获取上次学习主题、时间、进度
+-->
+<div class="panel resume">
+  <div class="panel-body">
+    <div class="panel-header">
+      <div class="panel-title">📖 智能续接</div>
+    </div>
+    <div class="resume-info">
+      <div class="resume-topic"><strong>上次学习：</strong>Go 语言并发模型深度解析 &gt; 二、GMP 调度模型</div>
+      <div class="resume-meta">
+        <span>⏱ 昨天 22:30</span>
+        <span>📖 预计剩余约 25 分钟</span>
+        <span>📊 阅读进度 65%</span>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="navigateTo('plan')">回到上次位置 →</button>
+    <div class="resume-buttons">
+      <button class="btn btn-ghost btn-sm" onclick="toast('已生成上下文摘要')">查看上下文摘要</button>
+      <button class="btn btn-ghost btn-sm" onclick="toast('已关联: Channel 原理、GMP 调度')">关联知识点 (2)</button>
+    </div>
+  </div>
+</div>
+
+<!-- 学习日历热力图 -->
+<!--
+  【DB-R-002】学习热力图
+  调用方式: db.collection('review_history').where({ reviewedAt: dbCmd.gte(startDate) }).get()
+  数据用途: 近2周学习热力图数据
+-->
+<div class="panel calendar">
+  <div class="panel-body">
+    <div class="panel-header">
+      <div class="panel-title">📅 近2周学习日历</div>
+    </div>
+    <div class="heatmap-days"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="heatmap" id="heatmap"></div>
+    <div class="heatmap-legend">
+      <span>少</span>
+      <div class="heatmap-cell h0"></div>
+      <div class="heatmap-cell h1"></div>
+      <div class="heatmap-cell h2"></div>
+      <div class="heatmap-cell h3"></div>
+      <div class="heatmap-cell h4"></div>
+      <span>多</span>
+    </div>
+  </div>
+</div>
+
+<!-- 本周趋势 -->
+<!--
+  【AGG-006】本周学习统计
+  调用方式: review_history + review_cards 聚合查询
+  数据用途: 本周复习完成率、连续学习天数
+-->
+<div class="trend">
+  <div class="trend-panel">
+    <span class="trend-icon">📈</span>
+    <div class="trend-info">
+      <div class="trend-value">72%</div>
+      <div class="trend-label">本周复习完成率</div>
+      <span class="trend-change trend-up">↑ 较上周 +8%</span>
+    </div>
+    <div class="trend-bar-wrap"><div class="trend-bar-fill" style="width:72%"></div></div>
+  </div>
+  <div class="trend-panel">
+    <span class="trend-icon">🔥</span>
+    <div class="trend-info">
+      <div class="trend-value">7 天</div>
+      <div class="trend-label">连续学习天数</div>
+      <span class="trend-change trend-up">↑ 创近30天新高</span>
+    </div>
+  </div>
+</div>
 
 <script>
-  function navigateTo(page) {
-    window.location.hash = page;
+function revealAnswer(el) {
+  el.textContent = 'CSP（通信顺序进程）';
+  el.classList.add('revealed');
+  toast('回答正确！', 'success');
+}
+
+// 【DB-R-002】渲染热力图
+(function () {
+  var g = document.getElementById('heatmap');
+  if (!g) return;
+  var levels = ['h0', 'h1', 'h2', 'h3', 'h4'];
+  var days = [];
+  for (var i = 0; i < 14; i++) {
+    var d = new Date();
+    d.setDate(d.getDate() - (13 - i));
+    days.push({ day: d.getDay() || 7, val: Math.floor(Math.random() * 5) });
   }
-  
-  document.addEventListener('DOMContentLoaded', async function() {
-    await initCloudbase().catch(err => console.error('CloudBase init failed:', err));
-    loadHomePage();
-  });
-  
-  async function loadHomePage() {
-    loadStatistics();
-    loadHeatmap();
-    loadWarmup();
+  // 填充前导空白（对齐周几）
+  var firstDay = days[0].day;
+  for (var i = 1; i < firstDay; i++) {
+    var cell = document.createElement('div');
+    cell.className = 'heatmap-cell h0';
+    g.appendChild(cell);
   }
-  
-  async function loadStatistics() {
-    try {
-      const goals = await getData('goals', { status: 'active' });
-      const reviewCards = await getData('review_cards', { nextReview: { $lte: new Date() } });
-      const newsItems = await getData('news_items', { hasRead: false });
-      const outputDocs = await getData('output_docs', { status: 'draft' });
-      
-      document.getElementById('stat-goals').textContent = goals.data?.length || 0;
-      document.getElementById('stat-review').textContent = reviewCards.data?.length || 0;
-      document.getElementById('stat-news').textContent = newsItems.data?.length || 0;
-      document.getElementById('stat-output').textContent = outputDocs.data?.length || 0;
-    } catch (error) {
-      console.error('加载统计数据失败:', error);
-    }
+  for (var i = 0; i < days.length; i++) {
+    var cell = document.createElement('div');
+    cell.className = 'heatmap-cell ' + levels[days[i].val];
+    cell.title = days[i].val * 5 + ' 分钟学习';
+    g.appendChild(cell);
   }
-  
-  function loadHeatmap() {
-    const heatmap = document.getElementById('heatmap');
-    if (!heatmap) return;
-    
-    heatmap.innerHTML = '';
-    const today = new Date();
-    
-    for (let i = 99; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      
-      const level = Math.floor(Math.random() * 5);
-      const cell = document.createElement('div');
-      cell.className = `heatmap-cell heatmap-level-${level}`;
-      cell.title = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
-      heatmap.appendChild(cell);
-    }
-  }
-  
-  async function loadWarmup() {
-    loadYesterdaySummary();
-    loadQuiz();
-  }
-  
-  async function loadYesterdaySummary() {
-    try {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-      
-      const tomorrow = new Date(yesterday);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      const history = await getData('review_history', {
-        reviewedAt: {
-          $gte: yesterday,
-          $lt: tomorrow
-        }
-      });
-      
-      if (history.data?.length > 0) {
-        const count = history.data.length;
-        document.getElementById('yesterday-summary').textContent = `昨日完成了 ${count} 道复习题，继续保持！`;
-      }
-    } catch (error) {
-      console.error('加载昨日回顾失败:', error);
-    }
-  }
-  
-  async function loadQuiz() {
-    try {
-      const questions = [
-        {
-          question: 'SM-2 算法中，当你对一张卡片的记忆评分是 4 分时（满分 5 分），下次复习间隔会如何变化？',
-          options: ['间隔不变', '间隔增加 50%', '间隔翻倍', '间隔增加 20%'],
-          answer: '间隔翻倍',
-          explanation: 'SM-2 算法中，评分 4 分表示记得很好，间隔会翻倍。'
-        },
-        {
-          question: '在学习计划中，什么是里程碑（Milestone）？',
-          options: ['一个学习目标', '目标的重要节点', '每日任务', '复习卡片'],
-          answer: '目标的重要节点',
-          explanation: '里程碑是学习目标的重要节点，帮助将大目标分解为可管理的部分。'
-        },
-        {
-          question: '以下哪个不是有效的学习方法？',
-          options: ['间隔重复', '主动回忆', '被动阅读', '实践应用'],
-          answer: '被动阅读',
-          explanation: '被动阅读是最无效的学习方法之一，主动参与才能更好地记住知识。'
-        }
-      ];
-      
-      const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-      
-      document.getElementById('quiz-question').textContent = randomQuestion.question;
-      
-      const optionsContainer = document.getElementById('quiz-options');
-      optionsContainer.innerHTML = '';
-      
-      randomQuestion.options.forEach((option, index) => {
-        const optionElement = document.createElement('div');
-        optionElement.className = 'quiz-option';
-        optionElement.textContent = `${['A', 'B', 'C', 'D'][index]}. ${option}`;
-        optionElement.style.padding = '10px 14px';
-        optionElement.style.border = '1px solid #e5e7eb';
-        optionElement.style.borderRadius = '8px';
-        optionElement.style.marginBottom = '8px';
-        optionElement.style.cursor = 'pointer';
-        optionElement.addEventListener('click', () => selectQuizOption(option, randomQuestion.answer));
-        optionsContainer.appendChild(optionElement);
-      });
-      
-      window.currentQuizAnswer = randomQuestion.answer;
-      window.currentQuizExplanation = randomQuestion.explanation;
-      
-      document.getElementById('quiz-answer-btn').style.display = 'block';
-    } catch (error) {
-      console.error('加载快问快答失败:', error);
-      document.getElementById('quiz-question').textContent = '加载问题失败，请重试';
-    }
-  }
-  
-  function selectQuizOption(selected, correct) {
-    const options = document.querySelectorAll('.quiz-option');
-    options.forEach(opt => {
-      if (opt.textContent.includes(correct)) {
-        opt.style.background = '#dcfce7';
-        opt.style.borderColor = '#22c55e';
-      } else if (opt.textContent.includes(selected) && selected !== correct) {
-        opt.style.background = '#fee2e2';
-        opt.style.borderColor = '#ef4444';
-      }
-      opt.style.cursor = 'default';
-    });
-    
-    showQuizAnswer();
-  }
-  
-  function showQuizAnswer() {
-    const answerEl = document.getElementById('quiz-answer');
-    const btnEl = document.getElementById('quiz-answer-btn');
-    
-    if (answerEl && btnEl) {
-      answerEl.textContent = `答案：${window.currentQuizAnswer}\n${window.currentQuizExplanation}`;
-      answerEl.style.display = 'block';
-      btnEl.style.display = 'none';
-    }
-  }
-  
-  const skipBtn = document.getElementById('skip-warmup');
-  if (skipBtn) {
-    skipBtn.addEventListener('click', skipWarmup);
-  }
-  
-  function skipWarmup() {
-    const warmupCard = document.getElementById('warmup-card');
-    if (warmupCard) {
-      warmupCard.style.display = 'none';
-    }
-  }
-  
-  const answerBtn = document.getElementById('quiz-answer-btn');
-  if (answerBtn) {
-    answerBtn.addEventListener('click', showQuizAnswer);
-  }
+})();
 </script>

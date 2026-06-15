@@ -1,119 +1,112 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>知识库 - StudyMind</title>
-  <link rel="stylesheet" href="../css/global.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-  <div id="app">
-    <aside class="sidebar">
-      <div class="logo">
-        <i class="fas fa-brain"></i>
-        <span>StudyMind</span>
-      </div>
-      <ul class="menu">
-        <li class="menu-item">
-          <a href="../../index.html">
-            <i class="fas fa-chart-pie"></i>
-            <span>首页</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="learning.html">
-            <i class="fas fa-bullseye"></i>
-            <span>学习计划</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="review.html">
-            <i class="fas fa-redo"></i>
-            <span>复习计划</span>
-          </a>
-        </li>
-        <li class="menu-item active">
-          <a href="knowledge.html">
-            <i class="fas fa-book-open"></i>
-            <span>知识库</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="ai-chat.html">
-            <i class="fas fa-comments"></i>
-            <span>AI对话</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="news.html">
-            <i class="fas fa-rss"></i>
-            <span>资讯</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="output.html">
-            <i class="fas fa-file-alt"></i>
-            <span>知识沉淀</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="settings.html">
-            <i class="fas fa-cog"></i>
-            <span>系统设置</span>
-          </a>
-        </li>
-      </ul>
-    </aside>
-
-    <main class="main-content">
-      <header class="header">
-        <div class="header-title">知识库</div>
-        <button class="btn btn-primary" id="create-item-btn">
-          <i class="fas fa-plus"></i>
-          新建条目
-        </button>
-      </header>
-
-      <div class="content">
-        <div class="grid grid-2">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">分类管理</div>
-            </div>
-            <div id="category-tree">
-              <div class="empty-state">
-                <i class="fas fa-folder"></i>
-                <div class="empty-title">暂无分类</div>
-                <div class="empty-desc">创建知识条目时可以创建分类</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">知识条目</div>
-              <div style="display: flex; gap: 10px;">
-                <input type="text" id="search-input" class="form-input" placeholder="搜索知识..." style="width: 200px;">
-                <button class="btn btn-secondary" id="search-btn">搜索</button>
-              </div>
-            </div>
-            <div id="knowledge-list">
-              <div class="empty-state">
-                <i class="fas fa-file-text"></i>
-                <div class="empty-title">暂无知识条目</div>
-                <div class="empty-desc">点击右上角按钮创建知识条目</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+<div class="knowledge-page">
+  <div class="page-header">
+    <div class="header-title">
+      <h2>知识库</h2>
+      <p>整理和管理你的知识体系</p>
+    </div>
+    <button class="btn btn-primary" onclick="showAddKnowledgeModal()">+ 添加条目</button>
   </div>
 
-  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
-  <script src="../js/config.js"></script>
-  <script src="../js/cloudbase.js"></script>
-  <script src="../js/knowledge.js"></script>
-</body>
-</html>
+  <!-- 分类筛选 -->
+  <div class="category-tabs">
+    {{mockData.knowledge.categories.map(cat => `
+      <button class="category-tab ${cat === '全部' ? 'active' : ''}" onclick="filterKnowledge('${cat}')">${cat}</button>
+    `).join('')}}
+  </div>
+
+  <!-- 知识条目列表 -->
+  <div class="knowledge-grid">
+    {{mockData.knowledge.items.map(item => `
+      <div class="knowledge-card" onclick="viewKnowledge('${item.id}')">
+        <div class="card-header">
+          <span class="card-icon">📚</span>
+          <span class="card-category">${item.category}</span>
+        </div>
+        <h3 class="card-title">${item.title}</h3>
+        <div class="card-tags">
+          ${item.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+        </div>
+        <div class="card-meta">
+          <span>📅 ${item.updateAt}</span>
+          <span>👁️ ${item.viewCount}</span>
+          <span>❤️ ${item.likeCount}</span>
+        </div>
+      </div>
+    `).join('')}}
+  </div>
+
+  <!-- 添加知识条目弹窗 -->
+  <div class="modal" id="add-knowledge-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('add-knowledge-modal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>添加知识条目</h3>
+        <button class="modal-close" onclick="closeModal('add-knowledge-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>标题</label>
+          <input type="text" id="knowledge-title" placeholder="输入知识条目标题">
+        </div>
+        <div class="form-group">
+          <label>分类</label>
+          <select id="knowledge-category">
+            <option value="分布式系统">分布式系统</option>
+            <option value="Go语言">Go语言</option>
+            <option value="学习方法">学习方法</option>
+            <option value="数据库">数据库</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>标签（逗号分隔）</label>
+          <input type="text" id="knowledge-tags" placeholder="输入标签，用逗号分隔">
+        </div>
+        <div class="form-group">
+          <label>内容</label>
+          <textarea id="knowledge-content" rows="5" placeholder="输入知识内容"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('add-knowledge-modal')">取消</button>
+        <button class="btn btn-primary" onclick="addKnowledge()">添加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showAddKnowledgeModal() {
+  document.getElementById('add-knowledge-modal').style.display = 'block';
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+function filterKnowledge(category) {
+  const tabs = document.querySelectorAll('.category-tab');
+  tabs.forEach(tab => tab.classList.toggle('active', tab.textContent === category));
+  
+  const cards = document.querySelectorAll('.knowledge-card');
+  cards.forEach(card => {
+    const cardCategory = card.querySelector('.card-category').textContent;
+    card.style.display = category === '全部' || cardCategory === category ? 'block' : 'none';
+  });
+}
+
+function viewKnowledge(id) {
+  utils.toast(`查看知识条目: ${id}`, 'info');
+}
+
+function addKnowledge() {
+  const title = document.getElementById('knowledge-title').value;
+  
+  if (!title.trim()) {
+    utils.toast('请输入标题', 'warning');
+    return;
+  }
+  
+  utils.toast('知识条目添加成功', 'success');
+  closeModal('add-knowledge-modal');
+}
+</script>

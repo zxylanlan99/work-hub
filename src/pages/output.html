@@ -1,122 +1,168 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>知识沉淀 - StudyMind</title>
-  <link rel="stylesheet" href="../css/global.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-  <div id="app">
-    <aside class="sidebar">
-      <div class="logo">
-        <i class="fas fa-brain"></i>
-        <span>StudyMind</span>
-      </div>
-      <ul class="menu">
-        <li class="menu-item">
-          <a href="../../index.html">
-            <i class="fas fa-chart-pie"></i>
-            <span>首页</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="learning.html">
-            <i class="fas fa-bullseye"></i>
-            <span>学习计划</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="review.html">
-            <i class="fas fa-redo"></i>
-            <span>复习计划</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="knowledge.html">
-            <i class="fas fa-book-open"></i>
-            <span>知识库</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="ai-chat.html">
-            <i class="fas fa-comments"></i>
-            <span>AI对话</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="news.html">
-            <i class="fas fa-rss"></i>
-            <span>资讯</span>
-          </a>
-        </li>
-        <li class="menu-item active">
-          <a href="output.html">
-            <i class="fas fa-file-alt"></i>
-            <span>知识沉淀</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="settings.html">
-            <i class="fas fa-cog"></i>
-            <span>系统设置</span>
-          </a>
-        </li>
-      </ul>
-    </aside>
-
-    <main class="main-content">
-      <header class="header">
-        <div class="header-title">知识沉淀</div>
-        <button class="btn btn-primary" id="create-doc-btn">
-          <i class="fas fa-plus"></i>
-          新建文档
-        </button>
-      </header>
-
-      <div class="content">
-        <div class="grid grid-2">
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">文档列表</div>
-              <div style="display: flex; gap: 10px;">
-                <button class="btn btn-secondary active" data-tab="draft">草稿</button>
-                <button class="btn btn-secondary" data-tab="published">已发布</button>
-              </div>
-            </div>
-            <div id="doc-list">
-              <div class="empty-state">
-                <i class="fas fa-file-text"></i>
-                <div class="empty-title">暂无文档</div>
-                <div class="empty-desc">点击右上角按钮创建新文档</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">灵感碎片</div>
-              <button class="btn btn-secondary" id="add-scrap-btn">
-                <i class="fas fa-plus"></i> 添加
-              </button>
-            </div>
-            <div id="scrap-list">
-              <div class="empty-state">
-                <i class="fas fa-lightbulb"></i>
-                <div class="empty-title">暂无灵感碎片</div>
-                <div class="empty-desc">记录您的突发奇想</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </main>
+<div class="output-page">
+  <div class="page-header">
+    <div class="header-title">
+      <h2>知识沉淀</h2>
+      <p>记录和整理你的学习成果</p>
+    </div>
+    <button class="btn btn-primary" onclick="showCreateDocModal()">+ 新建文档</button>
   </div>
 
-  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
-  <script src="../js/config.js"></script>
-  <script src="../js/cloudbase.js"></script>
-  <script src="../js/output.js"></script>
-</body>
-</html>
+  <!-- 统计信息 -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon">📝</div>
+      <div class="stat-info">
+        <div class="stat-value">{{mockData.output.stats.totalDocs}}</div>
+        <div class="stat-label">总文档</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📗</div>
+      <div class="stat-info">
+        <div class="stat-value">{{mockData.output.stats.draftCount}}</div>
+        <div class="stat-label">草稿</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📘</div>
+      <div class="stat-info">
+        <div class="stat-value">{{mockData.output.stats.publishedCount}}</div>
+        <div class="stat-label">已发布</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-info">
+        <div class="stat-value">{{mockData.output.stats.totalWords.toLocaleString()}}</div>
+        <div class="stat-label">总字数</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="output-content">
+    <!-- 文档列表 -->
+    <div class="section">
+      <div class="section-header">
+        <h3>📚 我的文档</h3>
+        <div class="view-tabs">
+          <button class="view-tab active" onclick="switchDocView('list')">列表</button>
+          <button class="view-tab" onclick="switchDocView('grid')">网格</button>
+        </div>
+      </div>
+      <div class="docs-list">
+        {{mockData.output.docs.map(doc => `
+          <div class="doc-card" onclick="openDoc('${doc.id}')">
+            <div class="doc-icon">${doc.status === 'published' ? '📄' : '📝'}</div>
+            <div class="doc-info">
+              <h4 class="doc-title">${doc.title}</h4>
+              <div class="doc-meta">
+                <span class="doc-status ${doc.status}">${doc.status === 'published' ? '已发布' : '草稿'}</span>
+                <span class="doc-category">${doc.category}</span>
+                <span class="doc-words">${doc.wordCount.toLocaleString()} 字</span>
+              </div>
+            </div>
+            <div class="doc-time">${doc.updatedAt}</div>
+          </div>
+        `).join('')}}
+      </div>
+    </div>
+
+    <!-- 灵感碎片 -->
+    <div class="section">
+      <div class="section-header">
+        <h3>💡 灵感碎片</h3>
+        <button class="btn btn-outline btn-sm" onclick="addScrap()">+ 添加</button>
+      </div>
+      <div class="scraps-list">
+        {{mockData.output.scraps.map(scrap => `
+          <div class="scrap-card">
+            <p>${scrap.content}</p>
+            <div class="scrap-meta">
+              <span>${scrap.createdAt}</span>
+              <button class="scrap-action">🗑️</button>
+            </div>
+          </div>
+        `).join('')}}
+      </div>
+    </div>
+  </div>
+
+  <!-- 创建文档弹窗 -->
+  <div class="modal" id="create-doc-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('create-doc-modal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>新建文档</h3>
+        <button class="modal-close" onclick="closeModal('create-doc-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>文档标题</label>
+          <input type="text" id="doc-title" placeholder="输入文档标题">
+        </div>
+        <div class="form-group">
+          <label>分类</label>
+          <select id="doc-category">
+            <option value="技术总结">技术总结</option>
+            <option value="学习笔记">学习笔记</option>
+            <option value="技术实现">技术实现</option>
+            <option value="面试准备">面试准备</option>
+            <option value="技术文档">技术文档</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>内容</label>
+          <textarea id="doc-content" rows="8" placeholder="开始写作..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('create-doc-modal')">取消</button>
+        <button class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
+        <button class="btn btn-primary" onclick="publishDoc()">发布</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showCreateDocModal() {
+  document.getElementById('create-doc-modal').style.display = 'block';
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+function switchDocView(view) {
+  const tabs = document.querySelectorAll('.view-tab');
+  tabs.forEach(tab => tab.classList.toggle('active', tab.textContent === view));
+}
+
+function openDoc(docId) {
+  utils.toast(`打开文档: ${docId}`, 'info');
+}
+
+function addScrap() {
+  utils.toast('添加灵感碎片', 'info');
+}
+
+function saveDraft() {
+  const title = document.getElementById('doc-title').value;
+  if (!title.trim()) {
+    utils.toast('请输入文档标题', 'warning');
+    return;
+  }
+  utils.toast('草稿已保存', 'success');
+  closeModal('create-doc-modal');
+}
+
+function publishDoc() {
+  const title = document.getElementById('doc-title').value;
+  if (!title.trim()) {
+    utils.toast('请输入文档标题', 'warning');
+    return;
+  }
+  utils.toast('文档已发布', 'success');
+  closeModal('create-doc-modal');
+}
+</script>

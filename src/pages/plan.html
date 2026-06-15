@@ -1,0 +1,113 @@
+<div class="plan-page">
+  <div class="page-header">
+    <div class="header-title">
+      <h2>学习计划</h2>
+      <p>管理你的学习目标和进度</p>
+    </div>
+    <button class="btn btn-primary" onclick="showAddGoalModal()">+ 创建目标</button>
+  </div>
+
+  <!-- 目标列表 -->
+  <div class="goals-list">
+    {{mockData.plan.goals.map(goal => `
+      <div class="goal-card" data-goal-id="${goal.id}">
+        <div class="goal-header">
+          <div class="goal-status ${goal.status}">
+            ${goal.status === 'active' ? '⏳' : '✅'}
+          </div>
+          <div class="goal-info">
+            <h3 class="goal-title">${goal.title}</h3>
+            <p class="goal-desc">${goal.description}</p>
+          </div>
+          <div class="goal-meta">
+            <span>截止: ${goal.deadline}</span>
+          </div>
+        </div>
+        
+        <div class="goal-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" style="width: ${goal.progress}%"></div>
+          </div>
+          <div class="progress-text">进度 ${goal.progress}%</div>
+        </div>
+        
+        <div class="goal-stats">
+          <div class="stat">
+            <span class="stat-num">${goal.completedMilestones}/${goal.milestones}</span>
+            <span class="stat-label">里程碑</span>
+          </div>
+          <div class="stat">
+            <span class="stat-num">${goal.completedTasks}/${goal.tasks}</span>
+            <span class="stat-label">任务</span>
+          </div>
+        </div>
+        
+        <div class="goal-actions">
+          <button class="btn btn-secondary" onclick="viewGoalDetail('${goal.id}')">查看详情</button>
+          <button class="btn btn-outline" onclick="editGoal('${goal.id}')">编辑</button>
+        </div>
+      </div>
+    `).join('')}}
+  </div>
+
+  <!-- 创建目标弹窗 -->
+  <div class="modal" id="add-goal-modal" style="display: none;">
+    <div class="modal-overlay" onclick="closeModal('add-goal-modal')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>创建学习目标</h3>
+        <button class="modal-close" onclick="closeModal('add-goal-modal')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>目标名称</label>
+          <input type="text" id="goal-title" placeholder="输入目标名称">
+        </div>
+        <div class="form-group">
+          <label>目标描述</label>
+          <textarea id="goal-desc" placeholder="输入目标描述"></textarea>
+        </div>
+        <div class="form-group">
+          <label>截止日期</label>
+          <input type="date" id="goal-deadline">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('add-goal-modal')">取消</button>
+        <button class="btn btn-primary" onclick="createGoal()">创建</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showAddGoalModal() {
+  document.getElementById('add-goal-modal').style.display = 'block';
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).style.display = 'none';
+}
+
+function createGoal() {
+  const title = document.getElementById('goal-title').value;
+  const desc = document.getElementById('goal-desc').value;
+  const deadline = document.getElementById('goal-deadline').value;
+  
+  if (!title.trim()) {
+    utils.toast('请输入目标名称', 'warning');
+    return;
+  }
+  
+  utils.toast('目标创建成功', 'success');
+  closeModal('add-goal-modal');
+}
+
+function viewGoalDetail(goalId) {
+  utils.toast(`查看目标详情: ${goalId}`, 'info');
+}
+
+function editGoal(goalId) {
+  utils.toast(`编辑目标: ${goalId}`, 'info');
+}
+</script>

@@ -1,0 +1,126 @@
+<div class="ai-chat-page">
+  <div class="chat-container">
+    <!-- 左侧对话列表 -->
+    <div class="chat-sidebar">
+      <div class="sidebar-header">
+        <h3>对话列表</h3>
+        <button class="btn btn-primary btn-sm" onclick="createNewChat()">+ 新对话</button>
+      </div>
+      <div class="conversation-list">
+        {{mockData.aiChat.conversations.map(conv => `
+          <div class="conversation-item active">
+            <div class="conv-icon">🤖</div>
+            <div class="conv-info">
+              <div class="conv-title">${conv.title}</div>
+              <div class="conv-preview">${conv.lastMessage}</div>
+            </div>
+            <div class="conv-time">${conv.createdAt.split(' ')[1]}</div>
+          </div>
+        `).join('')}}
+      </div>
+      <div class="model-selector">
+        <label>选择模型</label>
+        <div class="model-options">
+          {{mockData.aiChat.models.map(model => `
+            <button class="model-option ${model.selected ? 'selected' : ''}" onclick="selectModel('${model.id}')">
+              ${model.name}
+            </button>
+          `).join('')}}
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧对话区域 -->
+    <div class="chat-main">
+      <div class="chat-header">
+        <h3>AI助手</h3>
+        <div class="header-actions">
+          <button class="action-btn">📤 导出</button>
+          <button class="action-btn">🗑️ 删除</button>
+        </div>
+      </div>
+
+      <!-- 消息列表 -->
+      <div class="messages-container" id="messages-container">
+        {{mockData.aiChat.messages.map(msg => `
+          <div class="message ${msg.role}">
+            <div class="message-avatar">${msg.role === 'user' ? '👤' : '🤖'}</div>
+            <div class="message-content">
+              <pre>${msg.content}</pre>
+            </div>
+            <div class="message-time">${msg.timestamp}</div>
+          </div>
+        `).join('')}}
+      </div>
+
+      <!-- 输入区域 -->
+      <div class="chat-input-area">
+        <textarea id="chat-input" placeholder="输入你的问题..." rows="3"></textarea>
+        <div class="input-actions">
+          <button class="btn btn-outline">📎 上传文件</button>
+          <button class="btn btn-primary" onclick="sendMessage()">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function createNewChat() {
+  utils.toast('创建新对话', 'info');
+}
+
+function selectModel(modelId) {
+  const options = document.querySelectorAll('.model-option');
+  options.forEach(opt => opt.classList.remove('selected'));
+  event.target.classList.add('selected');
+  utils.toast(`已选择模型`, 'success');
+}
+
+function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  
+  if (!message) {
+    utils.toast('请输入消息', 'warning');
+    return;
+  }
+  
+  const container = document.getElementById('messages-container');
+  
+  const userMsg = `
+    <div class="message user">
+      <div class="message-avatar">👤</div>
+      <div class="message-content">
+        <pre>${message}</pre>
+      </div>
+      <div class="message-time">刚刚</div>
+    </div>
+  `;
+  container.innerHTML += userMsg;
+  
+  input.value = '';
+  container.scrollTop = container.scrollHeight;
+  
+  setTimeout(() => {
+    const aiMsg = `
+      <div class="message assistant">
+        <div class="message-avatar">🤖</div>
+        <div class="message-content">
+          <pre>这是AI的模拟回复。您的问题是：${message}</pre>
+        </div>
+        <div class="message-time">刚刚</div>
+      </div>
+    `;
+    container.innerHTML += aiMsg;
+    container.scrollTop = container.scrollHeight;
+  }, 1000);
+}
+
+document.getElementById('chat-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+</script>

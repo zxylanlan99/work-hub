@@ -1,113 +1,965 @@
-<div class="plan-page">
-  <div class="page-header">
-    <div class="header-title">
-      <h2>学习计划</h2>
-      <p>管理你的学习目标和进度</p>
+<!-- ===== 列表视图 ===== -->
+<div id="planListView">
+
+  <!-- 【DB-R-001 + AI-001】AI暖身卡 -->
+  <div class="warmup-banner" id="planWarmupBanner">
+    <div class="warmup-left">
+      <div class="warmup-title">🌅 今日暖身（1分钟）</div>
+      <div class="warmup-card" id="planYesterdayReview">
+        <strong>昨日回顾：</strong>
+        <span id="planYesterdayText">加载中...</span>
+      </div>
+      <div class="warmup-card" id="planQuizCard">
+        <strong>快问快答：</strong>
+        <span id="planQuizQuestion">加载中...</span>
+        <span id="planQuizAnswer" style="display:none;margin-top:4px;color:var(--success);font-weight:500;"></span>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;padding:4px 8px;font-size:12px;" onclick="showPlanWarmupAnswer()">查看答案</button>
+      </div>
     </div>
-    <button class="btn btn-primary" onclick="showAddGoalModal()">+ 创建目标</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('planWarmupBanner').style.display='none'">跳过 ✕</button>
   </div>
 
-  <!-- 目标列表 -->
-  <div class="goals-list">
-    {{mockData.plan.goals.map(goal => `
-      <div class="goal-card" data-goal-id="${goal.id}">
-        <div class="goal-header">
-          <div class="goal-status ${goal.status}">
-            ${goal.status === 'active' ? '⏳' : '✅'}
-          </div>
-          <div class="goal-info">
-            <h3 class="goal-title">${goal.title}</h3>
-            <p class="goal-desc">${goal.description}</p>
-          </div>
-          <div class="goal-meta">
-            <span>截止: ${goal.deadline}</span>
-          </div>
-        </div>
-        
-        <div class="goal-progress">
-          <div class="progress-bar">
-            <div class="progress-fill" style="width: ${goal.progress}%"></div>
-          </div>
-          <div class="progress-text">进度 ${goal.progress}%</div>
-        </div>
-        
-        <div class="goal-stats">
-          <div class="stat">
-            <span class="stat-num">${goal.completedMilestones}/${goal.milestones}</span>
-            <span class="stat-label">里程碑</span>
-          </div>
-          <div class="stat">
-            <span class="stat-num">${goal.completedTasks}/${goal.tasks}</span>
-            <span class="stat-label">任务</span>
-          </div>
-        </div>
-        
-        <div class="goal-actions">
-          <button class="btn btn-secondary" onclick="viewGoalDetail('${goal.id}')">查看详情</button>
-          <button class="btn btn-outline" onclick="editGoal('${goal.id}')">编辑</button>
-        </div>
-      </div>
-    `).join('')}}
+  <!-- 【AGG-001】续接卡 -->
+  <div class="resume-card" onclick="openPlanDetail('goal-1')">
+    <span class="resume-card-icon">⏭️</span>
+    <div class="resume-info">
+      <div class="resume-title" id="planResumeTitle">继续上次学习：微服务架构实战</div>
+      <div class="resume-sub" id="planResumeSub">上次停在「服务通信 — gRPC vs REST 对比」· 预计剩余 45 分钟</div>
+    </div>
+    <button class="btn btn-primary btn-sm">继续 →</button>
   </div>
 
-  <!-- 创建目标弹窗 -->
-  <div class="modal" id="add-goal-modal" style="display: none;">
-    <div class="modal-overlay" onclick="closeModal('add-goal-modal')"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>创建学习目标</h3>
-        <button class="modal-close" onclick="closeModal('add-goal-modal')">×</button>
+  <!-- 子标签筛选 -->
+  <div class="sub-tabs">
+    <div class="sub-tab active" onclick="switchPlanSubTab(this, 'all')">全部目标</div>
+    <div class="sub-tab" onclick="switchPlanSubTab(this, 'active')">进行中</div>
+    <div class="sub-tab" onclick="switchPlanSubTab(this, 'paused')">已暂停</div>
+    <div class="sub-tab" onclick="switchPlanSubTab(this, 'completed')">已完成</div>
+  </div>
+
+  <!-- 【AGG-002】筛选 & 统计 -->
+  <div class="goals-header">
+    <div class="goals-stats">
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--primary)"></span> 进行中 <span id="planActiveCount">3</span></div>
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--warning)"></span> 暂停中 <span id="planPausedCount">1</span></div>
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--success)"></span> 已完成 <span id="planDoneCount">2</span></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <select class="form-select" style="width:130px;padding:5px 10px;font-size:12.5px;" onchange="sortPlanGoals(this.value)">
+        <option value="recent">最近活跃</option>
+        <option value="created">创建时间</option>
+        <option value="progress">完成度</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 【DB-R-003】目标卡片网格 -->
+  <div class="goals-grid" id="planGoalsGrid">
+    <!-- 动态渲染 -->
+  </div>
+
+  <!-- 空状态 -->
+  <div class="empty-state" id="planEmptyState" style="display:none;">
+    <div class="empty-icon">🎯</div>
+    <div class="empty-title">还没有学习目标</div>
+    <div class="empty-desc">创建你的第一个学习目标，开始系统化学习吧</div>
+    <button class="btn btn-primary" onclick="openCreateModal()">+ 新建目标</button>
+  </div>
+</div>
+
+<!-- ===== 目标详情视图 ===== -->
+<div id="planDetailView" class="detail-view" style="display:none;">
+  <div class="detail-back" onclick="closePlanDetail()">← 返回列表</div>
+  <div class="detail-layout">
+    <div class="detail-main">
+      <!-- 【DB-R-004】目标概况 -->
+      <div class="detail-hero" id="detailHero">
+        <div class="detail-title-row">
+          <div class="detail-title" id="detailTitle">微服务架构实战</div>
+          <div style="display:flex;gap:8px;">
+            <span class="badge badge-active" id="detailStatusBadge">🟢 进行中</span>
+            <button class="btn btn-ghost btn-sm">✏️ 编辑</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)">⋯</button>
+          </div>
+        </div>
+        <div class="detail-desc" id="detailDesc">系统掌握微服务设计、开发与部署，能在工作中独立拆分并实施微服务架构。</div>
+        <div class="progress-big-wrap">
+          <div class="progress-big-label">
+            <span style="font-size:13px;color:var(--gray-500);" id="detailTaskSummary">8 / 12 任务完成</span>
+            <span class="progress-big-pct" id="detailProgress">65%</span>
+          </div>
+          <div class="progress-big-bar"><div class="progress-fill primary" id="detailProgressFill" style="width:65%;height:10px;"></div></div>
+        </div>
+        <div class="detail-meta-row" id="detailMeta">
+          <div class="detail-meta-item">📅 <strong>创建</strong> 2026-04-10</div>
+          <div class="detail-meta-item">🏁 <strong>截止</strong> 2026-08-30</div>
+          <div class="detail-meta-item">⏱️ <strong>总耗时</strong> 已用 28h / 预计 42h</div>
+          <div class="detail-meta-item">🔥 <strong>连续学习</strong> 7 天</div>
+        </div>
       </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>目标名称</label>
-          <input type="text" id="goal-title" placeholder="输入目标名称">
+
+      <!-- 里程碑与任务 -->
+      <div class="milestones-wrap">
+        <div class="milestones-header">
+          <div class="milestones-title">🗺️ 学习路径（里程碑 & 任务）</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="openAddTaskModal()">+ 添加任务</button>
+          </div>
         </div>
-        <div class="form-group">
-          <label>目标描述</label>
-          <textarea id="goal-desc" placeholder="输入目标描述"></textarea>
-        </div>
-        <div class="form-group">
-          <label>截止日期</label>
-          <input type="date" id="goal-deadline">
+        <div id="milestonesContainer">
+          <!-- 动态渲染 -->
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('add-goal-modal')">取消</button>
-        <button class="btn btn-primary" onclick="createGoal()">创建</button>
+    </div>
+
+    <!-- 右侧面板 -->
+    <div class="detail-sidebar">
+      <!-- 【AI-003】AI 进度诊断 -->
+      <div class="panel" id="aiDiagPanel">
+        <div class="panel-header">
+          <div class="panel-title">🤖 AI 进度诊断</div>
+          <span style="font-size:11px;color:var(--gray-400);">6月16日更新</span>
+        </div>
+        <div class="panel-body">
+          <div class="ai-diag-header">
+            <div class="ai-diag-avatar">🤖</div>
+            <div class="ai-diag-score-info">
+              <strong>本周综合得分 72分</strong><br>
+              比上周 <span style="color:var(--success);">↑ 3分</span>，节奏稳定
+            </div>
+          </div>
+          <div class="ai-diag-section">
+            <div class="ai-diag-section-title">📊 本周数据</div>
+            <div class="ai-diag-row"><span class="emoji">✅</span> 完成 3/4 任务（75%）</div>
+            <div class="ai-diag-row"><span class="emoji">⏱️</span> 学习 6.5h（比计划少 1.5h）</div>
+            <div class="ai-diag-row"><span class="emoji">🎯</span> 当前里程碑完成度 50%</div>
+          </div>
+          <div class="ai-diag-section">
+            <div class="ai-diag-section-title">⚠️ 卡点分析</div>
+            <div style="font-size:12.5px;color:var(--gray-600);line-height:1.6;">
+              发现 <strong style="color:var(--danger);">DDD 拆分</strong> 卡点——本周在领域驱动设计上耗时过长。建议优先完成概念理解，再进入实操练习。
+            </div>
+          </div>
+          <div class="ai-diag-section">
+            <div class="ai-diag-section-title">💡 下周建议</div>
+            <div class="ai-diag-row"><span class="emoji">📌</span> 优先完成 gRPC 对比分析</div>
+            <div class="ai-diag-row"><span class="emoji">📌</span> 消息队列可调整至下下周</div>
+            <div class="ai-diag-row"><span class="emoji">🚀</span> 在截止日前仍可按时完成</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;justify-content:center;" onclick="openDiagModal()">查看完整诊断报告 →</button>
+        </div>
+      </div>
+
+      <!-- 【AI-004】耗时预测 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⏱️ AI 耗时预测</div>
+        </div>
+        <div class="panel-body">
+          <div class="estimate-p70-row">
+            <span>gRPC 对比分析</span>
+            <div class="estimate-p70-right">
+              <span class="estimate-p70-time">80-100min</span>
+              <span class="estimate-p70-conf conf-high">P70</span>
+            </div>
+          </div>
+          <div class="estimate-p70-row">
+            <span>消息队列应用</span>
+            <div class="estimate-p70-right">
+              <span class="estimate-p70-time">100-150min</span>
+              <span class="estimate-p70-conf conf-med">P70</span>
+            </div>
+          </div>
+          <div class="estimate-p70-row">
+            <span>里程碑3（整体）</span>
+            <div class="estimate-p70-right">
+              <span class="estimate-p70-time">约 5h</span>
+              <span class="estimate-p70-conf conf-med">P70</span>
+            </div>
+          </div>
+          <div class="estimate-p70-hint">💡 P70 = 70% 概率在该时间内完成</div>
+        </div>
+      </div>
+
+      <!-- 难度曲线 -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📈 难度曲线</div>
+        </div>
+        <div class="panel-body">
+          <div class="difficulty-chart">
+            <div class="diff-bar easy" style="height:30%"></div>
+            <div class="diff-bar easy" style="height:40%"></div>
+            <div class="diff-bar medium" style="height:60%"></div>
+            <div class="diff-bar medium" style="height:55%"></div>
+            <div class="diff-bar hard" style="height:75%"></div>
+            <div class="diff-bar hard" style="height:80%"></div>
+            <div class="diff-bar medium" style="height:65%"></div>
+            <div class="diff-bar medium" style="height:50%"></div>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--gray-400);">
+            <span>🟢 简单</span><span>🟡 中等</span><span>🔴 困难</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ===== 弹窗1：新建目标 ===== -->
+<!-- 【AI-002 + DB-W-001】AI辅助创建目标 -->
+<div class="modal-overlay" id="createGoalModal">
+  <div class="modal modal-xl" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🤖 AI 辅助创建学习目标</div>
+        <div class="modal-subtitle">描述你想学习的内容，AI 会帮你拆解成可执行的目标</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('createGoalModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps" id="createSteps">
+        <div class="step active"><span class="step-num">1</span> 描述目标</div>
+        <div class="step"><span class="step-num">2</span> AI 澄清</div>
+        <div class="step"><span class="step-num">3</span> 确认方案</div>
+      </div>
+
+      <div id="createStep1">
+        <div class="form-group">
+          <label class="form-label">学习目标 <span class="required">*</span></label>
+          <input class="form-input" id="goalTitleInput" placeholder="例如：掌握微服务架构设计与实战">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">期望完成时间</label>
+            <input class="form-input" type="date" id="goalDeadline">
+          </div>
+          <div class="form-group">
+            <label class="form-label">每周可投入时间</label>
+            <select class="form-select" id="goalWeeklyHours">
+              <option>1-2 小时/周</option>
+              <option selected>3-5 小时/周</option>
+              <option>5-10 小时/周</option>
+              <option>10 小时以上/周</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">当前基础（可选）</label>
+          <textarea class="form-textarea" id="goalBackground" rows="2" placeholder="简述你目前的知识水平，帮助 AI 精准拆解…"></textarea>
+        </div>
+        <div class="form-hint">💡 也可以在下方向 AI 描述你的目标，它会自动拆解为里程碑和任务</div>
+        <div class="form-group" style="margin-top:12px;">
+          <label class="form-label">向 AI 描述你想学什么</label>
+          <textarea class="form-textarea" id="goalDescription" rows="3" placeholder="例如：我想在两个月内掌握 Docker 和 Kubernetes，能够独立部署和管理生产级容器化应用..."></textarea>
+        </div>
+      </div>
+
+      <div id="createStep2" style="display:none;">
+        <div class="ai-chat-wrap" id="aiChatWrap">
+          <div class="chat-bubble">
+            <div class="chat-avatar ai">🤖</div>
+            <div class="chat-content ai">根据你的描述，我正在思考几个澄清问题...</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" rows="1" placeholder="输入你的回答..."></textarea>
+          <button class="btn btn-primary btn-sm" onclick="sendChatReply()">发送</button>
+        </div>
+      </div>
+
+      <div id="createStep3" style="display:none;">
+        <div class="gen-result">
+          <div class="gen-result-title">✨ AI 生成的目标方案</div>
+          <div style="display:flex;gap:16px;margin-bottom:16px;font-size:12px;color:var(--gray-500);">
+            <span>📦 3 个里程碑</span>
+            <span>⏱️ ~6h/周</span>
+            <span>📅 预计 12 周</span>
+            <span>📊 中等难度</span>
+          </div>
+          <div id="genMilestones">
+            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
+              <div class="milestone-preview-title">
+                <span>里程碑1：微服务核心概念</span>
+                <span style="font-size:11px;color:var(--gray-400);">~2周</span>
+              </div>
+              <ul class="milestone-task-list">
+                <li>单体架构 vs 微服务对比分析</li>
+                <li>微服务设计原则与拆分策略</li>
+                <li>CAP 理论与数据一致性</li>
+              </ul>
+            </div>
+            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
+              <div class="milestone-preview-title">
+                <span>里程碑2：服务间通信</span>
+                <span style="font-size:11px;color:var(--gray-400);">~3周</span>
+              </div>
+              <ul class="milestone-task-list">
+                <li>REST API 设计最佳实践</li>
+                <li>gRPC 与 Protocol Buffers</li>
+                <li>消息队列（RabbitMQ/Kafka）</li>
+              </ul>
+            </div>
+            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
+              <div class="milestone-preview-title">
+                <span>里程碑3：服务治理与部署</span>
+                <span style="font-size:11px;color:var(--gray-400);">~4周</span>
+              </div>
+              <ul class="milestone-task-list">
+                <li>服务发现与注册中心</li>
+                <li>API 网关配置</li>
+                <li>容器化部署（Docker + K8s）</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">目标名称</label>
+          <input class="form-input" id="genGoalTitle" value="微服务架构实战" style="font-weight:600;">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">所属领域</label>
+            <select class="form-select" id="genGoalDomain">
+              <option>后端开发</option>
+              <option>前端开发</option>
+              <option>DevOps</option>
+              <option>数据科学</option>
+              <option>编程语言</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">主题锁定</label>
+            <select class="form-select" id="genGoalTopic">
+              <option>微服务</option>
+              <option>云原生</option>
+              <option>分布式系统</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('createGoalModal')">取消</button>
+      <button class="btn btn-secondary btn-sm" id="createPrevBtn" style="display:none;" onclick="createPrevStep()">← 上一步</button>
+      <button class="btn btn-primary" id="createNextBtn" onclick="createNextStep()">AI 智能拆解 →</button>
+      <button class="btn btn-primary" id="createManualBtn" style="display:none;" onclick="confirmCreateGoal()">手动创建</button>
+      <button class="btn btn-primary" id="createConfirmBtn" style="display:none;" onclick="confirmCreateGoal()">✅ 确认创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗2：弹性排期 ===== -->
+<!-- 【DB-U-004】弹性排期 -->
+<div class="modal-overlay" id="rescheduleModal">
+  <div class="modal modal-md" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">📅 弹性排期调整</div>
+        <div class="modal-subtitle">「gRPC 对比分析」已延期 2 天，选择处理方式</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('rescheduleModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius); padding: 12px; margin-bottom: 16px; font-size: 13px; color: #9a3412;">
+        ⚠️ <strong>影响分析：</strong>该任务延期将影响里程碑2的完成时间（原计划 2026-06-20），可能导致里程碑3推迟启动约 4 天。
+      </div>
+
+      <div class="diag-label" style="margin-bottom: 10px;">选择处理方案：</div>
+      <div class="reschedule-option selected" onclick="selectRescheduleOption(this)">
+        <div class="reschedule-option-title">方案A：顺延当前里程碑
+          <span class="impact-tag impact-low">影响较小</span>
+        </div>
+        <div class="reschedule-option-desc">当前任务截止延至 2026-06-15，里程碑2整体推迟 5 天。后续里程碑自动顺延，总目标截止日期不变（有3周缓冲）。</div>
+      </div>
+      <div class="reschedule-option" onclick="selectRescheduleOption(this)">
+        <div class="reschedule-option-title">方案B：跳过此任务，先推进下一任务
+          <span class="impact-tag impact-med">需后补</span>
+        </div>
+        <div class="reschedule-option-desc">跳过「gRPC对比」先学「消息队列应用」，下周再补回。适合当前时间紧张的情况，AI会标记此任务为"待补学"。</div>
+      </div>
+      <div class="reschedule-option" onclick="selectRescheduleOption(this)">
+        <div class="reschedule-option-title">方案C：拆分任务，减少单次投入
+          <span class="impact-tag impact-low">推荐</span>
+        </div>
+        <div class="reschedule-option-desc">AI将「gRPC对比分析」拆分为2个子任务（基础对比30min + 性能对比60min），每次碎片时间可完成一个子任务。</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('rescheduleModal')">暂不调整</button>
+      <button class="btn btn-primary" onclick="confirmReschedule()">确认调整</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗3：任务完成 ===== -->
+<!-- 【DB-U-006】完成任务 -->
+<div class="modal-overlay" id="taskCompleteModal">
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-body" style="text-align:center;padding:32px 24px;">
+      <div class="complete-success">
+        <div class="complete-emoji">🎉</div>
+        <div class="complete-title">任务完成！</div>
+        <div class="complete-desc">太棒了，继续保持！接下来你想做什么？</div>
+      </div>
+      <div class="complete-options">
+        <div class="complete-option" onclick="completeWith('note')">
+          <span class="complete-option-icon">✍️</span>
+          <div class="complete-option-text">
+            <div class="complete-option-title">写学习笔记</div>
+            <div class="complete-option-desc">记录学习心得，沉淀为知识条目</div>
+          </div>
+        </div>
+        <div class="complete-option" onclick="completeWith('card')">
+          <span class="complete-option-icon">🔖</span>
+          <div class="complete-option-text">
+            <div class="complete-option-title">仅生成复习卡片</div>
+            <div class="complete-option-desc">自动生成间隔重复复习卡片</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗4：AI 进度诊断报告 ===== -->
+<!-- 【AI-003】AI诊断报告完整版 -->
+<div class="modal-overlay" id="diagModal">
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🤖 AI 进度诊断报告</div>
+        <div class="modal-subtitle">微服务架构实战 · 第9周诊断 · 2026-06-09</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('diagModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="diag-score">
+        <div class="diag-score-num">72</div>
+        <div class="diag-score-label">综合学习健康度（满分100）<br><span style="color: var(--warning);">⚠️ 轻微落后</span></div>
+      </div>
+
+      <div class="diag-metric">
+        <span class="diag-metric-icon">✅</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">任务完成率</div>
+          <div class="diag-metric-desc">本周完成3个，计划4个</div>
+        </div>
+        <div class="diag-metric-val val-good">75%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">⏱️</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">学习时长</div>
+          <div class="diag-metric-desc">实际 6.5h，计划 8h</div>
+        </div>
+        <div class="diag-metric-val val-warn">81%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">🎯</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">进度符合率</div>
+          <div class="diag-metric-desc">当前65%，按时完成需达75%</div>
+        </div>
+        <div class="diag-metric-val val-warn">落后10%</div>
+      </div>
+      <div class="diag-metric">
+        <span class="diag-metric-icon">📈</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">估时准确度</div>
+          <div class="diag-metric-desc">实际/预期耗时偏差</div>
+        </div>
+        <div class="diag-metric-val val-good">+18%</div>
+      </div>
+      <div class="diag-metric" style="border-bottom: none;">
+        <span class="diag-metric-icon">🔥</span>
+        <div class="diag-metric-info">
+          <div class="diag-metric-name">连续打卡</div>
+          <div class="diag-metric-desc">连续7天有学习记录</div>
+        </div>
+        <div class="diag-metric-val val-good">7天🔥</div>
+      </div>
+
+      <div class="diag-section-title-lg">💡 AI 调整建议</div>
+      <div class="advice-card">
+        <div class="advice-title">建议1：先跳过「DDD」重新看，直到学完里程碑3</div>
+        <div class="advice-body">DDD 领域驱动设计在没有实战背景时比较抽象。建议先完成服务治理的学习后，再回头看 DDD，那时会有更多"对号入座"的感触，理解效率高 40%。</div>
+      </div>
+      <div class="advice-card">
+        <div class="advice-title">建议2：下周适当减量，专注里程碑2收尾</div>
+        <div class="advice-body">下周专注完成剩余2个任务（gRPC对比 + 消息队列），不要开新坑。完成里程碑2后再规划里程碑3。"完成一个 > 开始三个"。</div>
+      </div>
+
+      <div class="diag-section-title-lg">📅 下周规划建议</div>
+      <div class="planning-block">
+        <strong>周一/周三 晚（碎片 30min 各）</strong>：完成 gRPC 对比分析的2个子任务<br>
+        <strong>周六上午（深度 2h）</strong>：消息队列应用 + 完成里程碑2<br>
+        <strong>周日（轻松 1h）</strong>：复习里程碑1-2的内容 + 规划里程碑3
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('diagModal')">关闭</button>
+      <button class="btn btn-primary" onclick="closePlanModal('diagModal');openRescheduleModal()">📅 按建议调整排期</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗5：添加任务 ===== -->
+<!-- 【DB-W-002】创建任务 -->
+<div class="modal-overlay" id="addTaskModal">
+  <div class="modal modal-md" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">+ 添加任务</div>
+        <div class="modal-subtitle">为当前目标添加新的学习任务</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('addTaskModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">任务名称 <span class="required">*</span></label>
+        <input class="form-input" id="taskName" placeholder="输入任务名称">
+      </div>
+      <div class="form-group">
+        <label class="form-label">所属里程碑</label>
+        <select class="form-select" id="taskMilestone">
+          <option value="m2">里程碑2：服务拆分策略与通信机制</option>
+          <option value="m3">里程碑3：服务治理与可观测性</option>
+          <option value="m4">里程碑4：实战项目</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">截止日期</label>
+          <input class="form-input" type="date" id="taskDeadline">
+        </div>
+        <div class="form-group">
+          <label class="form-label">预计耗时</label>
+          <select class="form-select" id="taskDuration">
+            <option>30分钟</option>
+            <option>45分钟</option>
+            <option>60分钟</option>
+            <option>90分钟</option>
+            <option>120分钟</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select class="form-select" id="taskPriority">
+            <option value="high">高优先级</option>
+            <option value="mid">中优先级</option>
+            <option value="low">低优先级</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AI 辅助类型</label>
+          <select class="form-select" id="taskAiType">
+            <option>无</option>
+            <option>生成学习资料</option>
+            <option>生成练习题</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">任务描述（可选）</label>
+        <textarea class="form-textarea" id="taskDesc" rows="2" placeholder="补充任务背景、学习重点等…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('addTaskModal')">取消</button>
+      <button class="btn btn-primary" onclick="confirmAddTask()">创建任务</button>
+    </div>
+  </div>
+</div>
+
 <script>
-function showAddGoalModal() {
-  document.getElementById('add-goal-modal').style.display = 'block';
+// ============================================
+// 学习计划页面 — 接口调用注释
+// ============================================
+// 【DB-R-001】昨日学习回顾 — review_history.where({reviewedAt:yesterday}).get()
+// 【AI-001】快问快答 — ai-proxy({action:'quiz', topic})
+// 【AGG-001】上次学习断点 — 多集合聚合（goals + tasks）
+// 【AGG-002】学习计划统计 — goals.where({status}).count() 多次
+// 【DB-R-003】目标列表 — goals.where({status}).orderBy('createdAt','desc').get()
+// 【DB-R-004】目标详情 — goals.doc(goalId).get() + milestones + tasks 关联
+// 【DB-W-001】创建目标 — goals.add({title, description, deadline, ...})
+// 【AI-002】AI创建目标 — ai-proxy({action:'goal-create', description})
+// 【DB-U-001】更新目标 — goals.doc(goalId).update({...})
+// 【DB-U-002】暂停目标 — goals.doc(goalId).update({status:'paused'})
+// 【DB-U-003】恢复目标 — goals.doc(goalId).update({status:'active'})
+// 【DB-U-004】弹性排期 — 复合操作
+// 【DB-D-001】删除目标 — goals.doc(goalId).remove() 级联
+// 【AI-003】AI诊断 — ai-proxy({action:'goal-diagnosis', goalId})
+// 【AI-004】耗时预测 — ai-proxy({action:'time-estimate', goalId})
+// 【AI-005】学习总结 — ai-proxy({action:'goal-summary', goalId})
+// 【DB-W-002】创建任务 — tasks.add({goalId, milestoneId, title, ...})
+// 【DB-U-005】更新任务 — tasks.doc(taskId).update({...})
+// 【DB-U-006】完成任务 — tasks.doc(taskId).update({status:'completed'})
+
+// 当前筛选状态
+let planFilter = 'all';
+let currentDetailGoalId = null;
+let createStep = 1;
+
+// 初始化
+function initPlanPage() {
+  renderGoalCards(planFilter);
+  loadWarmupData();
+  loadResumeData();
 }
 
-function closeModal(modalId) {
-  document.getElementById(modalId).style.display = 'none';
+// 加载暖身数据
+function loadWarmupData() {
+  const warmupData = mockData.plan.warmup;
+  document.getElementById('planYesterdayText').textContent = warmupData.yesterday;
+  document.getElementById('planQuizQuestion').textContent = warmupData.quizQuestion;
+  document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + warmupData.quizAnswer;
 }
 
-function createGoal() {
-  const title = document.getElementById('goal-title').value;
-  const desc = document.getElementById('goal-desc').value;
-  const deadline = document.getElementById('goal-deadline').value;
-  
-  if (!title.trim()) {
-    utils.toast('请输入目标名称', 'warning');
-    return;
+// 加载续接数据
+function loadResumeData() {
+  document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
+  document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+}
+
+// 显示暖身答案
+function showPlanWarmupAnswer() {
+  const answer = document.getElementById('planQuizAnswer');
+  answer.style.display = 'block';
+  answer.nextElementSibling.style.display = 'none';
+}
+
+// 子标签切换
+function switchPlanSubTab(el, filter) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  planFilter = filter;
+  renderGoalCards(filter);
+}
+
+// 排序
+function sortPlanGoals(type) {
+  const goals = mockData.plan.goals;
+  if (type === 'progress') {
+    goals.sort((a, b) => b.progress - a.progress);
+  } else if (type === 'created') {
+    goals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  } else {
+    goals.sort((a, b) => {
+      const statusOrder = { active: 0, paused: 1, completed: 2 };
+      return statusOrder[a.status] - statusOrder[b.status];
+    });
   }
-  
-  utils.toast('目标创建成功', 'success');
-  closeModal('add-goal-modal');
+  renderGoalCards(planFilter);
 }
 
-function viewGoalDetail(goalId) {
-  utils.toast(`查看目标详情: ${goalId}`, 'info');
+// 渲染目标卡片
+function renderGoalCards(filter) {
+  const goals = mockData.plan.goals.filter(g => filter === 'all' || g.status === filter);
+  const grid = document.getElementById('planGoalsGrid');
+  const empty = document.getElementById('planEmptyState');
+
+  if (goals.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'flex';
+  } else {
+    empty.style.display = 'none';
+    grid.innerHTML = goals.map(g => {
+      const stateClass = g.status === 'active' ? 'active-state' : (g.status === 'paused' ? 'paused-state' : 'completed-state');
+      const badgeHtml = g.status === 'active' ? '<span class="badge badge-active">🟢 进行中</span>'
+        : (g.status === 'paused' ? '<span class="badge badge-paused">⏸️ 暂停中</span>'
+        : '<span class="badge badge-completed">✅ 已完成</span>');
+      const progressColor = g.status === 'completed' ? 'success' : (g.status === 'paused' ? 'warning' : 'primary');
+      const metaHtml = g.status === 'completed'
+        ? `<span>✅ 完成于 ${g.completedAt || g.deadline}</span><span>📋 ${g.completedTasks || g.tasks}/${g.tasks} 任务</span>`
+        : `<span>📅 截止 ${g.deadline}</span><span>📋 ${g.completedTasks}/${g.tasks} 任务</span><span>⏱️ 约${g.estimatedHours || 42}小时</span>`;
+      const footerLeft = g.tags ? g.tags.map(t => `<span class="tag">🏷️ ${t}</span>`).join('') : '';
+      const isPaused = g.status === 'paused';
+      const isCompleted = g.status === 'completed';
+
+      let footerRight = '';
+      if (isCompleted) {
+        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toast('查看学习总结','info')">📋 总结</button>`;
+      } else if (isPaused) {
+        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resumeGoal('${g.id}')">▶ 恢复</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+      } else {
+        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRescheduleModal()">📅 排期</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+      }
+
+      return `<div class="goal-card ${stateClass}" onclick="openPlanDetail('${g.id}')">
+        <div class="goal-header">
+          <div class="goal-title">${g.title}</div>
+          ${badgeHtml}
+        </div>
+        <div class="goal-desc">${g.description}</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-label"><span>总体进度</span><span style="color:var(--${progressColor});font-weight:600;">${g.progress}%</span></div>
+          <div class="progress-bar"><div class="progress-fill ${progressColor}" style="width:${g.progress}%"></div></div>
+        </div>
+        <div class="goal-meta">${metaHtml}</div>
+        <div class="goal-footer">
+          <div style="display:flex;gap:6px;">${footerLeft}</div>
+          <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">${footerRight}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // 更新统计
+  document.getElementById('planActiveCount').textContent = mockData.plan.goals.filter(g => g.status === 'active').length;
+  document.getElementById('planPausedCount').textContent = mockData.plan.goals.filter(g => g.status === 'paused').length;
+  document.getElementById('planDoneCount').textContent = mockData.plan.goals.filter(g => g.status === 'completed').length;
 }
 
-function editGoal(goalId) {
-  utils.toast(`编辑目标: ${goalId}`, 'info');
+// 打开详情
+function openPlanDetail(goalId) {
+  currentDetailGoalId = goalId;
+  const goal = mockData.plan.goals.find(g => g.id === goalId);
+  if (!goal) return;
+
+  document.getElementById('planListView').style.display = 'none';
+  document.getElementById('planDetailView').style.display = 'block';
+
+  // 更新顶栏
+  document.getElementById('page-title').textContent = '🎯 ' + goal.title;
+  var topbarRight = document.querySelector('.topbar-right');
+  if (topbarRight) {
+    topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
+  }
+
+  document.getElementById('detailTitle').textContent = goal.title;
+  document.getElementById('detailDesc').textContent = goal.description;
+  document.getElementById('detailProgress').textContent = goal.progress + '%';
+  document.getElementById('detailProgressFill').style.width = goal.progress + '%';
+  document.getElementById('detailTaskSummary').textContent = goal.completedTasks + ' / ' + goal.tasks + ' 任务完成';
+
+  // 状态徽章
+  const badge = document.getElementById('detailStatusBadge');
+  if (goal.status === 'active') {
+    badge.className = 'badge badge-active';
+    badge.textContent = '🟢 进行中';
+  } else if (goal.status === 'paused') {
+    badge.className = 'badge badge-paused';
+    badge.textContent = '⏸️ 暂停中';
+  } else {
+    badge.className = 'badge badge-completed';
+    badge.textContent = '✅ 已完成';
+  }
+
+  // 里程碑渲染
+  const milestones = mockData.plan.milestones.filter(m => m.goalId === goalId);
+  document.getElementById('milestonesContainer').innerHTML = milestones.map(m => {
+    const iconClass = m.status === 'completed' ? 'done' : (m.status === 'active' ? 'active' : 'pending');
+    const iconEmoji = m.status === 'completed' ? '✅' : (m.status === 'active' ? '🔵' : '⏳');
+    const progressColor = m.status === 'completed' ? 'success' : 'primary';
+    const tasks = mockData.plan.tasks.filter(t => t.milestoneId === m.id);
+    const completedTasks = tasks.filter(t => t.completed).length;
+    const hasTasks = tasks.length > 0;
+    const toggleClass = hasTasks ? 'open' : '';
+
+    const tasksHtml = hasTasks ? tasks.map(t => {
+      const checkClass = t.completed ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
+      const checkContent = t.completed ? '✓' : (t.status === 'in_progress' ? '●' : '');
+      const titleClass = t.completed ? 'done-text' : '';
+      const priorityClass = t.priority === 'high' ? 'priority-high' : (t.priority === 'mid' ? 'priority-mid' : 'priority-low');
+      const metaHtml = t.timeActual ? `<span class="task-tag">⏱️ 实际 ${t.timeActual}（预计 ${t.timeEst}）</span>`
+        : (t.completed ? `<span class="task-tag">✅ ${t.dueDate || ''}</span>`
+        : (t.dueDate ? `<span class="task-tag overdue">⚠️ 截止 ${t.dueDate}</span>` : ''));
+      return `<div class="task-item">
+        <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${t.id}', this)">${checkContent}</div>
+        <div class="task-priority ${priorityClass}"></div>
+        <div class="task-body">
+          <div class="task-title ${titleClass}">${t.title}</div>
+          <div class="task-meta">${metaHtml}</div>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-ghost btn-sm">✏️</button>
+        </div>
+      </div>`;
+    }).join('') : '<div style="padding:8px 0;color:var(--gray-400);font-size:12.5px;">暂无任务</div>';
+
+    return `<div class="milestone-item">
+      <div class="milestone-header" onclick="toggleMilestone(this)">
+        <span class="milestone-toggle ${toggleClass}">▶</span>
+        <div class="milestone-icon ${iconClass}">${iconEmoji}</div>
+        <div class="milestone-info">
+          <div class="milestone-name">${m.title}</div>
+          <div class="milestone-sub">${m.status === 'completed' ? '完成于 ' + m.completedAt : (m.status === 'active' ? '进行中 · ' + completedTasks + '/' + tasks.length + ' 任务完成' : '待开始 · ' + tasks.length + ' 个任务')}</div>
+        </div>
+        <div class="milestone-progress">
+          <div style="color:var(--${progressColor});font-weight:600;">${m.progress}%</div>
+          <div class="mini-progress"><div class="mini-fill ${progressColor === 'success' ? 'success' : ''}" style="width:${m.progress}%"></div></div>
+        </div>
+      </div>
+      <div class="tasks-list">${tasksHtml}</div>
+    </div>`;
+  }).join('');
+
+  // 滚动到顶部
+  document.getElementById('planDetailView').scrollIntoView();
 }
+
+// 关闭详情
+function closePlanDetail() {
+  document.getElementById('planListView').style.display = 'block';
+  document.getElementById('planDetailView').style.display = 'none';
+  // 恢复顶栏
+  document.getElementById('page-title').textContent = '📋 学习计划';
+  var topbarRight = document.querySelector('.topbar-right');
+  if (topbarRight) {
+    topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>' +
+      '<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>';
+  }
+}
+
+// 里程碑折叠
+function toggleMilestone(el) {
+  const toggle = el.querySelector('.milestone-toggle');
+  const list = el.nextElementSibling;
+  toggle.classList.toggle('open');
+  list.style.display = list.style.display === 'none' ? 'block' : 'none';
+}
+
+// 任务完成切换
+function toggleTaskComplete(taskId, el) {
+  const task = mockData.plan.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  if (!task.completed) {
+    openTaskCompleteModal(taskId);
+  }
+}
+
+// 弹窗控制
+function openCreateModal() { document.getElementById('createGoalModal').classList.add('show'); }
+function openRescheduleModal() { document.getElementById('rescheduleModal').classList.add('show'); }
+function openDiagModal() { document.getElementById('diagModal').classList.add('show'); }
+function openAddTaskModal() { document.getElementById('addTaskModal').classList.add('show'); }
+function openTaskCompleteModal(taskId) {
+  document.getElementById('taskCompleteModal').setAttribute('data-task-id', taskId);
+  document.getElementById('taskCompleteModal').classList.add('show');
+}
+function closePlanModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// 弹窗遮罩点击关闭
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('show');
+  }
+});
+
+// 新建目标步骤
+function createNextStep() {
+  createStep++;
+  document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
+    s.classList.toggle('active', i + 1 === createStep);
+    s.classList.toggle('done', i + 1 < createStep);
+  });
+  document.getElementById('createStep' + (createStep - 1)).style.display = 'none';
+  document.getElementById('createStep' + createStep).style.display = 'block';
+
+  if (createStep === 2) {
+    document.getElementById('createPrevBtn').style.display = 'inline-flex';
+    document.getElementById('createManualBtn').style.display = 'none';
+  }
+
+  if (createStep === 3) {
+    document.getElementById('createNextBtn').style.display = 'none';
+    document.getElementById('createConfirmBtn').style.display = 'inline-flex';
+    document.getElementById('createPrevBtn').style.display = 'inline-flex';
+  }
+}
+
+function createPrevStep() {
+  document.getElementById('createStep' + createStep).style.display = 'none';
+  createStep--;
+  document.getElementById('createStep' + createStep).style.display = 'block';
+  document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
+    s.classList.toggle('active', i + 1 === createStep);
+    s.classList.toggle('done', i + 1 < createStep);
+  });
+  if (createStep === 1) {
+    document.getElementById('createPrevBtn').style.display = 'none';
+    document.getElementById('createManualBtn').style.display = 'inline-flex';
+  }
+  if (createStep !== 3) {
+    document.getElementById('createNextBtn').style.display = 'inline-flex';
+    document.getElementById('createConfirmBtn').style.display = 'none';
+  }
+}
+
+function confirmCreateGoal() {
+  toast('目标创建成功！', 'success');
+  closePlanModal('createGoalModal');
+  createStep = 1;
+  document.getElementById('createStep2').style.display = 'none';
+  document.getElementById('createStep3').style.display = 'none';
+  document.getElementById('createStep1').style.display = 'block';
+  document.getElementById('createNextBtn').style.display = 'inline-flex';
+  document.getElementById('createConfirmBtn').style.display = 'none';
+  document.getElementById('createPrevBtn').style.display = 'none';
+  document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
+    s.classList.toggle('active', i === 0);
+    s.classList.toggle('done', false);
+  });
+}
+
+// AI对话发送
+function sendChatReply() {
+  const input = document.getElementById('chatInput');
+  if (!input.value.trim()) return;
+  const wrap = document.getElementById('aiChatWrap');
+  wrap.innerHTML += `<div class="chat-bubble user">
+    <div class="chat-avatar user">👤</div>
+    <div class="chat-content user">${input.value}</div>
+  </div>`;
+  input.value = '';
+
+  // 模拟AI回复
+  wrap.innerHTML += '<div class="chat-bubble"><div class="chat-avatar ai">🤖</div><div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>';
+  setTimeout(() => {
+    const typing = wrap.querySelector('.typing-indicator');
+    if (typing) typing.parentElement.innerHTML = '<div class="chat-content ai">了解了。那么你的目标时间范围是多久？每周能投入多少小时？</div>';
+  }, 2000);
+}
+
+// 弹性排期选择
+function selectRescheduleOption(el) {
+  el.parentElement.querySelectorAll('.reschedule-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function confirmReschedule() {
+  toast('排期已更新', 'success');
+  closePlanModal('rescheduleModal');
+}
+
+function resumeGoal(goalId) {
+  toast('目标已恢复进行中', 'success');
+}
+
+// 任务完成后续
+function completeWith(type) {
+  const taskId = document.getElementById('taskCompleteModal').getAttribute('data-task-id');
+  const task = mockData.plan.tasks.find(t => t.id === taskId);
+  if (task) task.completed = true;
+  closePlanModal('taskCompleteModal');
+  if (type === 'note') {
+    toast('已打开笔记编辑器', 'info');
+  } else {
+    toast('复习卡片已生成', 'success');
+  }
+  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
+}
+
+function confirmAddTask() {
+  const name = document.getElementById('taskName').value;
+  if (!name.trim()) { toast('请输入任务名称', 'warning'); return; }
+  toast('任务创建成功', 'success');
+  closePlanModal('addTaskModal');
+}
+
+initPlanPage();
 </script>

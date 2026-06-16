@@ -35,58 +35,87 @@ const mockData = {
 
   // 学习计划数据
   plan: {
+    // 暖身数据
+    warmup: {
+      yesterday: '你学习了「服务发现」概念，掌握了 Consul 的基本注册机制，并完成了 Go 并发模型的复习。',
+      quizQuestion: '服务注册中心的核心作用是什么？',
+      quizAnswer: '维护服务实例列表，提供服务发现和健康检查功能。'
+    },
+    // 续接数据
+    resume: {
+      title: '继续上次学习：微服务架构实战',
+      subtitle: '上次停在「服务通信 — gRPC vs REST 对比」· 预计剩余 45 分钟'
+    },
     goals: [
       {
         id: 'goal-1',
-        title: 'Go语言高级编程',
-        description: '深入学习Go语言的并发编程、内存管理和性能优化',
+        title: '微服务架构实战',
+        description: '系统掌握微服务设计、开发与部署，能在工作中独立拆分并实施微服务架构',
         status: 'active',
-        progress: 45,
-        milestones: 3,
-        completedMilestones: 1,
+        progress: 65,
         tasks: 12,
-        completedTasks: 5,
-        createdAt: '2026-06-01',
-        deadline: '2026-07-15'
+        completedTasks: 8,
+        estimatedHours: 42,
+        createdAt: '2026-04-10',
+        deadline: '2026-08-30',
+        tags: ['后端', '架构']
       },
       {
         id: 'goal-2',
-        title: '系统设计入门',
-        description: '学习分布式系统设计原理和常用模式',
+        title: 'React 深度学习',
+        description: '从 Hooks 到性能优化，掌握 React 生态系统，能构建生产级应用',
         status: 'active',
-        progress: 20,
-        milestones: 4,
-        completedMilestones: 0,
-        tasks: 8,
-        completedTasks: 2,
-        createdAt: '2026-06-10',
-        deadline: '2026-08-01'
+        progress: 38,
+        tasks: 13,
+        completedTasks: 5,
+        estimatedHours: 35,
+        createdAt: '2026-05-01',
+        deadline: '2026-07-15',
+        tags: ['前端']
       },
       {
         id: 'goal-3',
-        title: '算法与数据结构',
-        description: '复习常用算法和数据结构',
+        title: '英语口语提升',
+        description: '提升工作英语口语能力，能流畅参与英文技术会议和演讲',
+        status: 'paused',
+        progress: 22,
+        tasks: 15,
+        completedTasks: 3,
+        estimatedHours: 60,
+        createdAt: '2026-03-15',
+        deadline: '2026-12-31',
+        tags: ['语言']
+      },
+      {
+        id: 'goal-4',
+        title: 'Docker & K8s 入门',
+        description: '掌握容器化技术与 Kubernetes 基础，能部署生产应用',
         status: 'completed',
         progress: 100,
-        milestones: 5,
-        completedMilestones: 5,
-        tasks: 20,
-        completedTasks: 20,
-        createdAt: '2026-05-01',
-        deadline: '2026-06-01'
+        tasks: 12,
+        completedTasks: 12,
+        estimatedHours: 30,
+        createdAt: '2026-02-01',
+        deadline: '2026-05-20',
+        completedAt: '2026-05-20',
+        tags: ['DevOps']
       }
     ],
     milestones: [
-      { id: 'm1', goalId: 'goal-1', title: '并发编程基础', completed: true, dueDate: '2026-06-10' },
-      { id: 'm2', goalId: 'goal-1', title: '内存管理与GC', completed: false, dueDate: '2026-06-25' },
-      { id: 'm3', goalId: 'goal-1', title: '性能优化实战', completed: false, dueDate: '2026-07-15' }
+      { id: 'm1', goalId: 'goal-1', title: '里程碑1：理解微服务核心概念', status: 'completed', progress: 100, completedAt: '2026-05-01' },
+      { id: 'm2', goalId: 'goal-1', title: '里程碑2：服务拆分策略与通信机制', status: 'active', progress: 50, dueDate: '2026-06-20' },
+      { id: 'm3', goalId: 'goal-1', title: '里程碑3：服务治理与可观测性', status: 'pending', progress: 0 },
+      { id: 'm4', goalId: 'goal-1', title: '里程碑4：实战项目', status: 'pending', progress: 0 },
+      { id: 'm5', goalId: 'goal-1', title: '里程碑5：输出与分享', status: 'pending', progress: 0 }
     ],
     tasks: [
-      { id: 't1', goalId: 'goal-1', title: '学习goroutine和channel', completed: true, priority: 'high' },
-      { id: 't2', goalId: 'goal-1', title: '理解select和select超时', completed: true, priority: 'high' },
-      { id: 't3', goalId: 'goal-1', title: '并发安全与sync包', completed: true, priority: 'medium' },
-      { id: 't4', goalId: 'goal-1', title: 'context包的使用', completed: false, priority: 'high' },
-      { id: 't5', goalId: 'goal-1', title: '内存分配原理', completed: false, priority: 'medium' }
+      { id: 't1', milestoneId: 'm1', title: '阅读《微服务设计》前3章，整理核心概念', completed: true, priority: 'high', timeActual: '95min', timeEst: '90min', dueDate: '2026-04-15' },
+      { id: 't2', milestoneId: 'm1', title: '单体架构 vs 微服务对比分析（输出笔记）', completed: true, priority: 'mid', timeActual: '65min', timeEst: '60min' },
+      { id: 't3', milestoneId: 'm1', title: '绘制微服务架构全景图（含各组件）', completed: true, priority: 'mid', timeActual: '40min', timeEst: '45min' },
+      { id: 't4', milestoneId: 'm2', title: 'DDD 领域驱动拆分方法论', completed: true, priority: 'high', timeActual: '120min', timeEst: '90min' },
+      { id: 't5', milestoneId: 'm2', title: 'RESTful API 设计规范与实践', completed: true, priority: 'high', dueDate: '2026-06-05' },
+      { id: 't6', milestoneId: 'm2', title: 'gRPC vs REST 对比分析（含代码示例）', completed: false, status: 'in_progress', priority: 'high', dueDate: '2026-06-18' },
+      { id: 't7', milestoneId: 'm2', title: '服务发现对比：Consul vs Eureka vs Nacos', completed: false, priority: 'mid', dueDate: '2026-06-10', timeEst: '60min' }
     ]
   },
 

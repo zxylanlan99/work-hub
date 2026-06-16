@@ -9,6 +9,19 @@ const routes = {
   output: { title: '📝 知识沉淀', file: 'pages/output.html' }
 };
 
+// 页面顶栏右侧配置
+const topbarConfigs = {
+  home: `<span class="topbar-greeting" id="topbarGreeting"></span>
+         <span class="topbar-date" id="topbarDate"></span>`,
+  plan: `<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>
+         <button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
+  news: `<span class="topbar-greeting"></span>`,
+  knowledge: `<span class="topbar-greeting"></span>`,
+  'ai-chat': `<span class="topbar-greeting"></span>`,
+  review: `<span class="topbar-greeting"></span>`,
+  output: `<span class="topbar-greeting"></span>`
+};
+
 let currentPage = null;
 let isLoading = false;
 
@@ -35,6 +48,9 @@ function navigateTo(pageId) {
   
   // 更新标题
   document.getElementById('page-title').textContent = route.title;
+  
+  // 更新顶栏右侧内容
+  updateTopbarRight(pageId);
   
   // 加载页面内容
   loadPageContent(pageId, route.file);
@@ -137,14 +153,24 @@ function updateGreeting() {
   }
 }
 
+// 更新顶栏右侧
+function updateTopbarRight(pageId) {
+  const rightEl = document.querySelector('.topbar-right');
+  if (!rightEl) return;
+  const config = topbarConfigs[pageId];
+  if (config) {
+    rightEl.innerHTML = config;
+    if (pageId === 'home') {
+      updateGreeting();
+      updateDate();
+    }
+  }
+}
+
 // 初始化应用
 function initApp() {
   // 初始化导航
   initNavigation();
-  
-  // 更新日期和问候语
-  updateDate();
-  updateGreeting();
   
   // 监听hash变化
   window.addEventListener('hashchange', handleHashChange);

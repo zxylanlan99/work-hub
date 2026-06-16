@@ -392,6 +392,27 @@
   </div>
 </div>
 
+<!-- ===== 弹窗2.5：暂停目标确认 ===== -->
+<div class="modal-overlay" id="pauseGoalModal">
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-body pause-confirm-body">
+      <div class="pause-confirm-icon">⏸️</div>
+      <div class="pause-confirm-title">确定要暂停该目标吗？</div>
+      <div class="pause-confirm-desc">
+        暂停后，该目标的进度和排期将保留但不会发送提醒。<br>
+        当前目标进度为 <strong id="pauseGoalProgress">65%</strong>，恢复后可继续推进。
+      </div>
+      <div class="pause-confirm-reason" style="margin-bottom: 16px;">
+        <strong>建议：</strong>明确恢复条件后再暂停（如"完成XX任务后"），避免目标长期搁置。
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="closePlanModal('pauseGoalModal')">取消</button>
+        <button class="btn btn-primary" style="flex:1; background: var(--warning);" onclick="confirmPauseGoal()">确认暂停</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== 弹窗3：任务完成 ===== -->
 <!-- 【DB-U-006】完成任务 -->
 <div class="modal-overlay" id="taskCompleteModal">
@@ -726,7 +747,12 @@ function openPlanDetail(goalId) {
   document.getElementById('page-title').textContent = '🎯 ' + goal.title;
   var topbarRight = document.querySelector('.topbar-right');
   if (topbarRight) {
-    topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
+    var pauseBtnHtml = goal.status === 'active'
+      ? '<button class="btn btn-sm" style="background:var(--warning);color:#fff;" onclick="openPauseGoalModal()">⏸️ 暂停目标</button>'
+      : (goal.status === 'paused'
+        ? '<button class="btn btn-primary btn-sm" onclick="resumeGoal(\'' + goal.id + '\')">▶ 恢复目标</button>'
+        : '');
+    topbarRight.innerHTML = pauseBtnHtml + '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
   }
 
   document.getElementById('detailTitle').textContent = goal.title;
@@ -936,8 +962,34 @@ function confirmReschedule() {
   closePlanModal('rescheduleModal');
 }
 
+// 暂停目标弹窗
+function openPauseGoalModal() {
+  var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
+  if (goal) {
+    document.getElementById('pauseGoalProgress').textContent = goal.progress + '%';
+  }
+  document.getElementById('pauseGoalModal').classList.add('show');
+}
+
+function confirmPauseGoal() {
+  var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
+  if (goal) {
+    goal.status = 'paused';
+    toast('目标「' + goal.title + '」已暂停', 'info');
+  }
+  closePlanModal('pauseGoalModal');
+  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
+}
+
 function resumeGoal(goalId) {
-  toast('目标已恢复进行中', 'success');
+  var goal = mockData.plan.goals.find(function(g) { return g.id === goalId; });
+  if (goal) {
+    goal.status = 'active';
+    toast('目标「' + goal.title + '」已恢复进行中', 'success');
+  }
+  // 刷新列表和详情
+  renderGoalCards(planFilter);
+  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
 }
 
 // 任务完成后续

@@ -1854,18 +1854,58 @@
 
 .reschedule-option-desc {
   font-size: 12.5px;
-  color: var(--gray-400);
+  color: var(--gray-500);
 }
 
 .impact-tag {
-  font-size: 10px;
-  padding: 1px 6px;
+  display: inline-block;
+  padding: 2px 8px;
   border-radius: 10px;
+  font-size: 11.5px;
   font-weight: 500;
+  margin-left: 8px;
 }
 
 .impact-low { background: var(--success-light); color: #16a34a; }
 .impact-med { background: var(--warning-light); color: #d97706; }
+
+/* 暂停目标确认弹窗 */
+.pause-confirm-body {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.pause-confirm-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.pause-confirm-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 6px;
+}
+
+.pause-confirm-desc {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.pause-confirm-desc strong {
+  color: var(--warning);
+}
+
+.pause-confirm-reason {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
 
 /* 任务完成 */
 .complete-success {
@@ -2006,13 +2046,13 @@
 .advice-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--gray-700);
+  color: #92400e;
   margin-bottom: 4px;
 }
 
 .advice-body {
   font-size: 12.5px;
-  color: var(--gray-500);
+  color: #78350f;
   line-height: 1.5;
 }
 

@@ -16,6 +16,7 @@
   ],
   "author": "",
   "license": "MIT",
-  "devDependencies": {},
-  "dependencies": {}
+  "dependencies": {
+    "@cloudbase/cli": "^3.5.6"
+  }
 }

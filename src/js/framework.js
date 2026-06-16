@@ -31,7 +31,10 @@ const topbarConfigs = {
   },
   knowledge: {
     right: `<span class="topbar-greeting"></span>`,
-    center: ''
+    center: `<div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+              <button class="btn btn-secondary btn-sm" onclick="openModal('modal-health')">📋 知识体检</button>
+              <button class="btn btn-primary btn-sm" onclick="openModal('modal-new-entry')">+ 新建知识</button>
+            </div>`
   },
   'ai-chat': {
     right: `<span class="topbar-greeting"></span>`,

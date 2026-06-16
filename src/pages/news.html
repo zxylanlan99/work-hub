@@ -1,76 +1,970 @@
-<div class="news-page">
-  <div class="page-header">
-    <div class="header-title">
-      <h2>资讯动态</h2>
-      <p>AI推荐的学习资讯和技术文章</p>
+<!-- ===========================================
+  资讯页面 — 三视图 + 五弹窗
+  参考原型：prototypes/prototype-news.html
+  接口层：src/js/news.js (已在 components.css 中引入)
+  =========================================== -->
+
+<div class="news-page-section active" id="newsSectionRecommend">
+  <!-- 统计卡片 -->
+  <div class="news-stat-cards">
+    <div class="news-stat-card">
+      <div class="stat-label">今日处理</div>
+      <div class="stat-value" id="newsStatToday" style="color:var(--primary)">0</div>
+      <div class="stat-change">加载中...</div>
     </div>
-    <div class="search-box">
-      <input type="text" placeholder="搜索资讯..." id="news-search">
-      <button class="search-btn">🔍</button>
+    <div class="news-stat-card">
+      <div class="stat-label">待确认</div>
+      <div class="stat-value" id="newsStatPending" style="color:#d97706">0</div>
+      <div class="stat-change">需人工确认</div>
+    </div>
+    <div class="news-stat-card">
+      <div class="stat-label">今日入库</div>
+      <div class="stat-value" id="newsStatImported" style="color:var(--success)">0</div>
+      <div class="stat-change">加载中...</div>
+    </div>
+    <div class="news-stat-card">
+      <div class="stat-label">已忽略</div>
+      <div class="stat-value" id="newsStatIgnored" style="color:var(--gray-400)">0</div>
+      <div class="stat-change">本周累计</div>
     </div>
   </div>
 
-  <!-- 分类筛选 -->
-  <div class="category-tabs">
-    {{mockData.news.categories.map(cat => `
-      <button class="category-tab ${cat === '全部' ? 'active' : ''}" onclick="filterNews('${cat}')">${cat}</button>
-    `).join('')}}
+  <!-- 操作栏 -->
+  <div class="news-action-bar">
+    <input class="news-search-box" placeholder="搜索资讯标题或内容..." id="newsSearchInput" oninput="filterNewsCards()">
+    <button class="btn btn-secondary btn-sm" onclick="toggleNewsBatchMode()" id="newsBatchBtn">☑ 批量操作</button>
+    <button class="btn btn-primary btn-sm" onclick="openNewsModal('newsManualModal')">+ 手动录入</button>
+    <span style="font-size:12px;color:var(--gray-400);margin-left:auto;">💡 点击资讯卡片查看评分详情</span>
   </div>
 
-  <!-- 资讯列表 -->
-  <div class="news-list">
-    {{mockData.news.items.map(news => `
-      <div class="news-card ${news.hasRead ? 'read' : ''}" onclick="markAsRead('${news.id}')">
-        <div class="news-icon">📰</div>
-        <div class="news-content">
-          <div class="news-header">
-            <h3 class="news-title">${news.title}</h3>
-            ${news.isAIRecommended ? '<span class="ai-badge">AI推荐</span>' : ''}
-          </div>
-          <p class="news-summary">${news.summary}</p>
-          <div class="news-footer">
-            <span class="news-source">${news.source}</span>
-            <span class="news-date">${news.publishedAt}</span>
-            <span class="news-category">${news.category}</span>
-          </div>
-        </div>
-        <div class="news-status">
-          ${news.hasRead ? '' : '<span class="unread-dot"></span>'}
+  <!-- 子标签 -->
+  <div class="news-tabs-bar" id="newsRecommendTabs">
+    <div class="news-tab-item active" onclick="switchNewsRecTab('all')">待确认 <span class="tab-count" id="recCountAll">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsRecTab('high')">🔥 强烈推荐 <span class="tab-count" id="recCountHigh">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsRecTab('mid')">💡 推荐 <span class="tab-count" id="recCountMid">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsRecTab('low')">📋 可选 <span class="tab-count" id="recCountLow">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsRecTab('ignored')">🗑 已忽略 <span class="tab-count" id="recCountIgnored">0</span></div>
+  </div>
+
+  <!-- 全选栏 -->
+  <div class="news-select-all-bar" id="newsSelectAllBar" style="display:none;">
+    <input type="checkbox" class="checkbox" onchange="newsSelectAll(this.checked)"> 全选 (<span id="newsSelectedCount">0</span> 条已选)
+  </div>
+
+  <!-- 卡片列表 -->
+  <div id="newsCardList"></div>
+</div>
+
+<!-- ========== 资讯历史 ========== -->
+<div class="news-page-section" id="newsSectionHistory">
+  <div class="news-tabs-bar">
+    <div class="news-tab-item active" onclick="switchNewsHistoryTab('imported')">已入库 <span class="tab-count">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsHistoryTab('ignoredList')">已忽略 <span class="tab-count">0</span></div>
+    <div class="news-tab-item" onclick="switchNewsHistoryTab('trash')">回收站 <span class="tab-count">0</span></div>
+  </div>
+  <div id="newsHistoryContent"></div>
+</div>
+
+<!-- ========== 统计概览 ========== -->
+<div class="news-page-section" id="newsSectionStats">
+  <div class="news-stat-cards">
+    <div class="news-stat-card">
+      <div class="stat-label">本月处理总量</div>
+      <div class="stat-value" style="color:var(--primary)">86</div>
+      <div class="stat-change up">↑ 12% vs 上月</div>
+    </div>
+    <div class="news-stat-card">
+      <div class="stat-label">入库转化率</div>
+      <div class="stat-value" style="color:var(--success)">58%</div>
+      <div class="stat-change up">↑ 5% vs 上月</div>
+    </div>
+    <div class="news-stat-card">
+      <div class="stat-label">平均评分</div>
+      <div class="stat-value" style="color:var(--info)">72</div>
+      <div class="stat-change">目标 70 分</div>
+    </div>
+    <div class="news-stat-card">
+      <div class="stat-label">已转化输出</div>
+      <div class="stat-value" style="color:#d97706">20%</div>
+      <div class="stat-change down">↓ 目标 30%</div>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">📊 近7天处理趋势</div>
+      <svg viewBox="0 0 400 160" style="width:100%;height:auto;">
+        <polyline points="10,120 70,100 130,80 190,90 250,50 310,60 370,30" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/>
+        <polygon points="10,120 70,100 130,80 190,90 250,50 310,60 370,30 370,160 10,160" fill="url(#newsGrad1)" opacity="0.15"/>
+        <defs><linearGradient id="newsGrad1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
+        <text x="10" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/10</text>
+        <text x="70" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/11</text>
+        <text x="130" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/12</text>
+        <text x="190" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/13</text>
+        <text x="250" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/14</text>
+        <text x="310" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/15</text>
+        <text x="370" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">今天</text>
+      </svg>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">📈 近30天入库趋势</div>
+      <svg viewBox="0 0 400 160" style="width:100%;height:auto;">
+        <rect x="10" y="120" width="10" height="40" fill="var(--primary)" rx="2" opacity="0.45"/>
+        <rect x="25" y="100" width="10" height="60" fill="var(--primary)" rx="2" opacity="0.55"/>
+        <rect x="40" y="130" width="10" height="30" fill="var(--primary)" rx="2" opacity="0.35"/>
+        <rect x="55" y="95" width="10" height="65" fill="var(--primary)" rx="2" opacity="0.6"/>
+        <rect x="70" y="110" width="10" height="50" fill="var(--primary)" rx="2" opacity="0.5"/>
+        <rect x="85" y="80" width="10" height="80" fill="var(--primary)" rx="2" opacity="0.7"/>
+        <rect x="100" y="90" width="10" height="70" fill="var(--primary)" rx="2" opacity="0.65"/>
+        <rect x="115" y="105" width="10" height="55" fill="var(--primary)" rx="2" opacity="0.55"/>
+        <text x="200" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">第1周 → 第5周</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">🔝 推荐来源 TOP5</div>
+      <div style="padding:8px 0">
+        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">infoq.cn <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:85%;height:100%;background:var(--primary);border-radius:3px"></div></div> 85%</div>
+        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">csdn.net <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:72%;height:100%;background:var(--info);border-radius:3px"></div></div> 72%</div>
+        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">juejin.cn <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:65%;height:100%;background:var(--success);border-radius:3px"></div></div> 65%</div>
+        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">zhihu.com <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:48%;height:100%;background:#d97706;border-radius:3px"></div></div> 48%</div>
+        <div style="display:flex;align-items:center;font-size:12px;color:var(--gray-600);">其它来源 <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:30%;height:100%;background:var(--gray-400);border-radius:3px"></div></div> 30%</div>
+      </div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">🏷️ 热门AI推荐标签</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0">
+        <span style="font-size:18px;font-weight:700;color:var(--primary);">#微服务</span>
+        <span style="font-size:15px;font-weight:600;color:var(--info);">#AI</span>
+        <span style="font-size:14px;font-weight:600;color:var(--success);">#架构</span>
+        <span style="font-size:13px;color:var(--gray-600);">#前端</span>
+        <span style="font-size:12px;color:var(--gray-500);">#TypeScript</span>
+        <span style="font-size:16px;font-weight:600;color:#d97706;">#Rust</span>
+        <span style="font-size:11px;color:var(--gray-400);">#工具</span>
+        <span style="font-size:14px;color:var(--gray-600);">#性能优化</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 底部批量操作栏 ========== -->
+<div class="news-batch-bar" id="newsBatchBar">
+  <span class="batch-info">已选择 <span id="newsBatchCount">0</span> 条</span>
+  <div class="batch-actions">
+    <button class="btn btn-primary btn-sm" onclick="newsBatchImport()">批量入库</button>
+    <button class="btn btn-secondary btn-sm" onclick="newsBatchIgnore()">批量忽略</button>
+    <button class="btn btn-secondary btn-sm" onclick="newsBatchDelay()">批量暂缓</button>
+    <button class="btn btn-ghost btn-sm" onclick="toggleNewsBatchMode()">取消</button>
+  </div>
+</div>
+
+<!-- ========== 悬浮按钮 ========== -->
+<button class="news-quick-add" onclick="openNewsModal('newsManualModal')" title="手动录入">+</button>
+
+<!-- ================================================================
+  弹窗 1: 手动录入 — DB-W-010
+  ================================================================ -->
+<div class="modal-overlay" id="newsManualModal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <span class="modal-title">📝 手动录入资讯</span>
+      <button class="modal-close" onclick="closeNewsModal('newsManualModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">录入方式</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="newsEntryMode" checked onchange="toggleNewsEntryMode('url')"> 🔗 URL 链接</label>
+          <label class="radio-option"><input type="radio" name="newsEntryMode" onchange="toggleNewsEntryMode('text')"> 📄 全文粘贴</label>
         </div>
       </div>
-    `).join('')}}
+      <div class="entry-mode-section active" id="newsEntryUrl">
+        <div class="form-group">
+          <label class="form-label"><span class="required">*</span> 资讯 URL</label>
+          <input class="form-input" placeholder="https://..." id="newsUrlInput">
+          <div class="form-hint" style="font-size:12px;color:var(--gray-400);margin-top:4px;">系统将自动抓取原文内容进行 AI 分析</div>
+        </div>
+      </div>
+      <div class="entry-mode-section" id="newsEntryText">
+        <div class="form-group">
+          <label class="form-label"><span class="required">*</span> 标题</label>
+          <input class="form-input" placeholder="输入标题..." id="newsTitleInput">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span class="required">*</span> 内容</label>
+          <textarea class="form-textarea" placeholder="粘贴或输入全文内容..." id="newsContentInput"></textarea>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">来源</label>
+        <input class="form-input" placeholder="可选，标注来源便于评分" id="newsSourceInput">
+      </div>
+      <div style="background:var(--info-light);padding:10px;border-radius:var(--radius);font-size:12px;color:#1e40af;">
+        💡 提交后将进入 AI 处理队列：自动评分、生成摘要、推荐分类和标签，完成后出现在"AI推荐清单"中。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsManualModal')">取消</button>
+      <button class="btn btn-primary" onclick="submitNewsManual()">提交到 AI 处理队列</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+  弹窗 2: 预览原文 — DB-R-029
+  ================================================================ -->
+<div class="modal-overlay" id="newsPreviewModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📄 预览原文</span>
+      <button class="modal-close" onclick="closeNewsModal('newsPreviewModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--primary-light);padding:12px 16px;border-radius:var(--radius);margin-bottom:14px;">
+        <div style="font-size:12px;color:var(--primary);margin-bottom:4px;">🤖 AI 摘要</div>
+        <div id="newsPreviewAiSummary" style="font-size:13px;color:var(--gray-600);line-height:1.6;"></div>
+      </div>
+      <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px;">📖 原文</div>
+      <div class="article-content" id="newsPreviewContent"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsPreviewModal')">关闭</button>
+      <button class="btn btn-primary" onclick="closeNewsModal('newsPreviewModal');openNewsImportConfirm()">确认入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+  弹窗 3: 入库确认 — DB-U-029 / AI-014
+  ================================================================ -->
+<div class="modal-overlay" id="newsImportModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📥 确认入库</span>
+      <button class="modal-close" onclick="closeNewsModal('newsImportModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label"><span class="required">*</span> 标题</label>
+        <input class="form-input" id="newsImportTitle">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span class="required">*</span> 三级分类 <span style="color:var(--primary);font-size:11px">（AI推荐）</span></label>
+        <div class="form-row">
+          <select class="form-select"><option>学习</option><option>工作</option><option>生活</option></select>
+          <select class="form-select"><option>微服务架构</option><option>前端开发</option><option>AI与机器学习</option></select>
+          <select class="form-select"><option>服务演进</option><option>服务通信</option><option>服务发现</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">标签 <span style="color:var(--primary);font-size:11px">（AI推荐）</span></label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0">
+          <span class="news-tag ai" style="cursor:pointer">微服务</span>
+          <span class="news-tag ai" style="cursor:pointer">架构</span>
+          <span class="news-tag ai" style="cursor:pointer">演进</span>
+          <span class="news-tag" style="cursor:pointer;border:1px dashed var(--gray-300)">+ 添加标签</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">AI 已生成摘要</label>
+        <div style="background:var(--gray-50);padding:10px;border-radius:var(--radius);font-size:13px;color:var(--gray-600);line-height:1.6;" id="newsImportSummary">
+          本文系统梳理了微服务架构的发展脉络...
+        </div>
+        <div class="form-hint" style="font-size:12px;color:var(--gray-400);margin-top:4px;">摘要可编辑</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">存储级别</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="newsSensitivity" checked> 🔓 公开</label>
+          <label class="radio-option"><input type="radio" name="newsSensitivity"> 🔒 敏感</label>
+          <label class="radio-option"><input type="radio" name="newsSensitivity"> 🔐 机密</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联已有知识（AI推荐）</label>
+        <label class="radio-option" style="margin-bottom:4px"><input type="checkbox" checked> 关联到「服务发现原理详解」</label>
+        <label class="radio-option" style="margin-bottom:4px"><input type="checkbox"> 关联到「CAP定理详解」</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">是否加入当前学习计划</label>
+        <div class="radio-group">
+          <label class="radio-option"><input type="radio" name="newsAddToPlan" checked> 仅入库</label>
+          <label class="radio-option"><input type="radio" name="newsAddToPlan"> 入库并加入「掌握微服务架构」</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsImportModal')">取消</button>
+      <button class="btn btn-primary btn-lg" onclick="confirmNewsImport()">确认入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+  弹窗 4: 批量入库 — DB-U-031
+  ================================================================ -->
+<div class="modal-overlay" id="newsBatchImportModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📥 批量入库确认</span>
+      <button class="modal-close" onclick="closeNewsModal('newsBatchImportModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--primary-light);padding:10px 14px;border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--primary);">
+        将对 <strong id="newsBatchCountDisplay">0</strong> 条资讯执行批量入库
+      </div>
+      <div class="form-group">
+        <label class="form-label">统一分类（可选，可后续逐条调整）</label>
+        <div class="form-row">
+          <select class="form-select"><option>学习</option></select>
+          <select class="form-select"><option>微服务架构</option></select>
+          <select class="form-select"><option>服务演进</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">统一标签</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0">
+          <span class="news-tag ai" style="cursor:pointer">微服务</span>
+          <span class="news-tag ai" style="cursor:pointer">架构</span>
+          <span class="news-tag" style="cursor:pointer;border:1px dashed var(--gray-300)">+ 添加标签</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">逐条预览</label>
+        <div style="background:var(--gray-50);padding:10px;border-radius:var(--radius);font-size:13px;max-height:200px;overflow-y:auto;color:var(--gray-600);" id="newsBatchPreviewList"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsBatchImportModal')">取消</button>
+      <button class="btn btn-primary btn-lg" onclick="confirmNewsBatchImport()">确认批入库</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================================================
+  弹窗 5: 入库成功
+  ================================================================ -->
+<div class="modal-overlay" id="newsSuccessModal">
+  <div class="modal modal-sm">
+    <div class="modal-body" style="text-align:center;padding:32px 24px">
+      <div class="success-result-icon">✅</div>
+      <div class="success-result-title">入库成功！</div>
+      <div class="success-result-desc">
+        系统已自动为你生成复习卡片<br>
+        下次复习时间：<strong id="newsSuccessNextReview">2026-06-18</strong>
+      </div>
+      <div style="background:var(--gray-50);padding:12px;border-radius:var(--radius);margin-bottom:16px;text-align:left;font-size:13px">
+        <div style="color:var(--gray-500);margin-bottom:8px;">💡 你是否要：</div>
+        <label class="radio-option" style="margin-bottom:6px"><input type="checkbox" checked> 基于此知识撰写学习笔记</label>
+        <label class="radio-option"><input type="checkbox"> 关联到输出文档「微服务总结」</label>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <button class="btn btn-secondary" onclick="closeNewsModal('newsSuccessModal')">暂不</button>
+        <button class="btn btn-primary" onclick="closeNewsModal('newsSuccessModal');showNewsToast('已打开知识沉淀编辑器', 'info')">开始撰写</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-function filterNews(category) {
-  const tabs = document.querySelectorAll('.category-tab');
-  tabs.forEach(tab => tab.classList.toggle('active', tab.textContent === category));
+// ============================================
+// 资讯页面 — 接口调用注释
+// ============================================
+// 【AGG-014】资讯统计 — getNewsOverviewStats()
+// 【DB-R-027】推荐资讯 — getRecommendedNews()
+// 【DB-R-028】资讯历史 — getNewsHistory()
+// 【DB-R-029】资讯预览 — getNewsPreview(newsId)
+// 【AI-014】入库建议 — aiImportSuggestions(newsId)
+// 【DB-U-029】入库资讯 — importNewsToKnowledge(newsId)
+// 【DB-U-030】忽略资讯 — ignoreNews(newsId)
+// 【DB-W-010】手动录入 — addManualNews(data)
+// 【DB-U-031】批量入库 — batchImportNews(ids)
+// 【DB-U-032】批量忽略 — batchIgnoreNews(ids)
+// 【DB-U-033】批量暂缓 — batchDelayNews(ids)
+// 【DB-U-034】恢复资讯 — restoreNews(newsId)
+// 【DB-D-008】永久删除 — permanentDeleteNews(newsId)
+// 【AGG-017】趋势数据 — getNewsTrendData()
+// 【AGG-018】来源排行 — getNewsSourceRanking()
+// 【AGG-019】热门标签 — getNewsHotTags()
+
+/* ================================================================
+   状态管理
+   ================================================================ */
+
+const newsState = {
+  mainTab: 'recommend',       // 'recommend' | 'history' | 'stats'
+  recSubTab: 'all',           // 'all' | 'high' | 'mid' | 'low' | 'ignored'
+  historySubTab: 'imported',  // 'imported' | 'ignored' | 'trash'
+  batchMode: false,
+  selectedIds: new Set(),
+  currentPreviewId: null,
+  currentImportId: null,
+};
+
+/* ================================================================
+   主入口
+   ================================================================ */
+
+async function initNewsPage() {
+  try {
+    if (window.DB && window.DB.init) await window.DB.init();
+  } catch (e) { /* 降级 */ }
+  await loadNewsStats();
+  await renderRecommendCards();
+  bindNewsEvents();
+}
+
+function bindNewsEvents() {
+  // 弹窗遮罩点击关闭
+  document.getElementById('newsManualModal').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) closeNewsModal('newsManualModal');
+  });
+  document.getElementById('newsPreviewModal').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) closeNewsModal('newsPreviewModal');
+  });
+  document.getElementById('newsImportModal').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) closeNewsModal('newsImportModal');
+  });
+  document.getElementById('newsBatchImportModal').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) closeNewsModal('newsBatchImportModal');
+  });
+  document.getElementById('newsSuccessModal').addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) closeNewsModal('newsSuccessModal');
+  });
+}
+
+/* ================================================================
+   统计加载 — AGG-014
+   ================================================================ */
+
+async function loadNewsStats() {
+  try {
+    const res = window.DB ? await window.DB.getNewsOverviewStats() : null;
+    if (res && res.success && res.data) {
+      document.getElementById('newsStatToday').textContent = res.data.unread || 0;
+      document.getElementById('newsStatPending').textContent = res.data.unread || 0;
+      document.getElementById('newsStatImported').textContent = res.data.imported || 0;
+      document.getElementById('newsStatIgnored').textContent = (res.data.total || 0) - (res.data.unread || 0) - (res.data.imported || 0);
+      return;
+    }
+  } catch (e) { console.error('加载统计失败:', e); }
+  // 降级
+  const s = mockData.news.stats;
+  document.getElementById('newsStatToday').textContent = s.todayProcessed;
+  document.getElementById('newsStatPending').textContent = s.todayPending;
+  document.getElementById('newsStatImported').textContent = s.todayImported;
+  document.getElementById('newsStatIgnored').textContent = s.todayIgnored;
+}
+
+/* ================================================================
+   推荐列表渲染 — DB-R-027
+   ================================================================ */
+
+async function renderRecommendCards() {
+  const list = document.getElementById('newsCardList');
+  list.innerHTML = '<div class="spin-loading" style="text-align:center;padding:40px;"><div class="spin"></div><p>加载中...</p></div>';
+
+  let items = [];
+  try {
+    const res = window.DB ? await window.DB.getRecommendedNews() : null;
+    if (res && res.success && res.data) { items = res.data; }
+  } catch (e) { console.error('加载推荐列表失败:', e); }
   
-  const cards = document.querySelectorAll('.news-card');
-  cards.forEach(card => {
-    const cardCategory = card.querySelector('.news-category').textContent;
-    card.style.display = category === '全部' || cardCategory === category ? 'flex' : 'none';
-  });
-}
+  if (items.length === 0) { items = mockData.news.items; }
 
-function markAsRead(newsId) {
-  const card = document.querySelector(`.news-card`);
-  if (card) {
-    card.classList.add('read');
-    const unreadDot = card.querySelector('.unread-dot');
-    if (unreadDot) unreadDot.remove();
+  // 搜索过滤
+  var searchQuery = window._newsSearchQuery || '';
+  if (searchQuery) {
+    items = items.filter(function(i) {
+      return (i.title || '').toLowerCase().indexOf(searchQuery) > -1 ||
+             (i.summary || '').toLowerCase().indexOf(searchQuery) > -1 ||
+             (i.source || '').toLowerCase().indexOf(searchQuery) > -1;
+    });
   }
-  utils.toast('已标记为已读', 'success');
+
+  var filter = newsState.recSubTab;
+  if (filter !== 'all' && filter !== 'ignored') {
+    items = items.filter(i => i.level === filter);
+  }
+
+  // 更新子标签计数
+  const allItems = [...mockData.news.items];
+  document.getElementById('recCountAll').textContent = allItems.length;
+  document.getElementById('recCountHigh').textContent = allItems.filter(i => i.level === 'high').length;
+  document.getElementById('recCountMid').textContent = allItems.filter(i => i.level === 'mid').length;
+  document.getElementById('recCountLow').textContent = allItems.filter(i => i.level === 'low').length;
+  document.getElementById('recCountIgnored').textContent = mockData.news.ignored.length;
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无资讯</div></div>';
+    return;
+  }
+
+  list.innerHTML = items.map(item => {
+    if (filter === 'ignored' || item.ignored) {
+      return `<div class="news-info-card" style="opacity:0.6">
+        <div class="card-top">
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(item.title)}</div>
+            <div class="card-meta">来源：${escapeHtml(item.source)} · ${item.time || ''} · 忽略原因：${escapeHtml(item.reason || '用户忽略')}</div>
+            <div class="card-actions" style="opacity:1">
+              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();undoNewsIgnore(${item.id})">撤销忽略</button>
+              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();permanentDeleteNewsItem(${item.id})">永久删除</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const scoreClass = item.level === 'high' ? 'high' : item.level === 'mid' ? 'mid' : 'low';
+    const levelLabel = item.level === 'high' ? '🔥 强烈推荐' : item.level === 'mid' ? '💡 推荐' : '📋 可选';
+    const checked = newsState.selectedIds.has(item.id) ? 'selected' : '';
+    const checkHtml = newsState.batchMode ? `<input type="checkbox" class="checkbox" ${newsState.selectedIds.has(item.id) ? 'checked' : ''} onclick="toggleNewsSelect(${item.id}, event)">` : '';
+
+    return `<div class="news-info-card ${checked}" id="newsCard${item.id}" onclick="${newsState.batchMode ? `toggleNewsSelect(${item.id}, event)` : `openNewsPreview(${item.id})`}">
+      <div class="card-top">
+        ${checkHtml}
+        <span class="score-badge ${scoreClass}" onclick="event.stopPropagation();expandNewsScore(${item.id})">${levelLabel} ${item.score}分</span>
+        <div class="card-body">
+          <div class="card-title">${escapeHtml(item.title)}</div>
+          <div class="card-meta">来源：${escapeHtml(item.source)} · ${item.time} · ${escapeHtml(item.matchReason || '')}</div>
+          <div class="card-summary">${escapeHtml(item.summary)}</div>
+          <div class="card-tags">
+            ${(item.aiTags || item.tags || []).map(t => `<span class="news-tag ai">${escapeHtml(t)}</span>`).join('')}
+          </div>
+          <div class="score-detail" id="newsScoreDetail${item.id}">
+            ${item.scoreDetail ? Object.entries(item.scoreDetail).map(([k, v]) => `
+              <div class="score-row"><span class="dim">${k}</span><span class="val">${v[0]}分</span></div>
+              <div style="font-size:11px;color:var(--gray-400);padding-left:4px;margin-bottom:4px">${v[1]}</div>
+            `).join('') : ''}
+          </div>
+          <div class="card-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-primary" onclick="openNewsImportConfirm(${item.id})">确认入库</button>
+            <button class="btn btn-sm btn-secondary" onclick="ignoreNewsItem(${item.id})">忽略</button>
+            <button class="btn btn-sm btn-ghost" onclick="delayNewsItem(${item.id})">暂缓</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-document.getElementById('news-search').addEventListener('input', function(e) {
-  const query = e.target.value.toLowerCase();
-  const cards = document.querySelectorAll('.news-card');
-  cards.forEach(card => {
-    const title = card.querySelector('.news-title').textContent.toLowerCase();
-    const summary = card.querySelector('.news-summary').textContent.toLowerCase();
-    card.style.display = title.includes(query) || summary.includes(query) ? 'flex' : 'none';
-  });
+/* ================================================================
+   历史列表渲染 — DB-R-028
+   ================================================================ */
+
+function renderNewsHistory() {
+  const container = document.getElementById('newsHistoryContent');
+  const tab = newsState.historySubTab;
+  const data = mockData.news;
+
+  if (tab === 'imported') {
+    const items = data.imported;
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无已入库资讯</div></div>';
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="news-history-item">
+        <div class="hi-icon">📄</div>
+        <div class="hi-info">
+          <div class="hi-title">${escapeHtml(item.title)}</div>
+          <div class="hi-meta">入库时间：${item.importedAt} · ${escapeHtml(item.category)} · 标签：${(item.tags || []).join(', ')}</div>
+          <div class="hi-meta">
+            ${item.hasReview ? '✅ 已生成复习卡片' : '⏳ 待生成复习卡片'} ·
+            ${item.hasOutput ? '📝 已关联输出文档' : '💡 可撰写输出'}
+          </div>
+        </div>
+        <div class="hi-actions">
+          <button class="btn btn-sm btn-secondary">查看知识</button>
+          ${item.hasOutput ? '' : '<button class="btn btn-sm btn-primary">撰写笔记</button>'}
+          <button class="btn btn-sm btn-ghost">删除</button>
+        </div>
+      </div>
+    `).join('');
+  } else if (tab === 'ignoredList') {
+    const items = data.ignored;
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无已忽略资讯</div></div>';
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="news-history-item" style="opacity:0.6">
+        <div class="hi-icon">🗑</div>
+        <div class="hi-info">
+          <div class="hi-title">${escapeHtml(item.title)}</div>
+          <div class="hi-meta">来源：${escapeHtml(item.source)} · ${item.time} · 忽略时间：${item.ignoredAt}</div>
+          <div class="hi-meta">忽略原因：${escapeHtml(item.reason)}</div>
+        </div>
+        <div class="hi-actions">
+          <button class="btn btn-sm btn-secondary" onclick="undoNewsIgnore(${item.id})">撤销忽略</button>
+          <button class="btn btn-sm btn-danger">永久删除</button>
+        </div>
+      </div>
+    `).join('');
+  } else if (tab === 'trash') {
+    const items = data.trash;
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无回收内容</div></div>';
+      return;
+    }
+    container.innerHTML = items.map(item => `
+      <div class="news-history-item" style="opacity:0.5">
+        <div class="hi-icon">♻️</div>
+        <div class="hi-info">
+          <div class="hi-title">${escapeHtml(item.title)}</div>
+          <div class="hi-meta">删除时间：${item.deletedAt} · 将在 ${item.expireAt} 永久删除</div>
+        </div>
+        <div class="hi-actions">
+          <button class="btn btn-sm btn-secondary" onclick="restoreNewsItem(${item.id})">恢复</button>
+          <button class="btn btn-sm btn-danger">永久删除</button>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+/* ================================================================
+   标签切换
+   ================================================================ */
+
+function switchNewsMainTab(tab) {
+  newsState.mainTab = tab;
+  // 更新顶栏子标签
+  var tabMap = { recommend: 0, history: 1, stats: 2 };
+  var topbarSubTabs = document.querySelectorAll('#topbar-center .sub-tab');
+  topbarSubTabs.forEach(function(t) { t.classList.remove('active'); });
+  var idx = tabMap[tab];
+  if (idx !== undefined && topbarSubTabs[idx]) topbarSubTabs[idx].classList.add('active');
+
+  document.getElementById('newsSectionRecommend').classList.toggle('active', tab === 'recommend');
+  document.getElementById('newsSectionHistory').classList.toggle('active', tab === 'history');
+  document.getElementById('newsSectionStats').classList.toggle('active', tab === 'stats');
+
+  if (tab === 'recommend') renderRecommendCards();
+  else if (tab === 'history') renderNewsHistory();
+}
+
+function switchNewsRecTab(filter) {
+  document.querySelectorAll('#newsRecommendTabs .news-tab-item').forEach(function(t) { t.classList.remove('active'); });
+  var tabMap = { all: 0, high: 1, mid: 2, low: 3, ignored: 4 };
+  var tabs = document.querySelectorAll('#newsRecommendTabs .news-tab-item');
+  var idx = tabMap[filter];
+  if (idx !== undefined && tabs[idx]) tabs[idx].classList.add('active');
+  newsState.recSubTab = filter;
+  renderRecommendCards();
+}
+
+function switchNewsHistoryTab(tab, evt) {
+  document.querySelectorAll('#newsSectionHistory .news-tab-item').forEach(function(t) { t.classList.remove('active'); });
+  var tabMap = { imported: 0, ignoredList: 1, trash: 2 };
+  var tabs = document.querySelectorAll('#newsSectionHistory .news-tab-item');
+  var idx = tabMap[tab];
+  if (idx !== undefined && tabs[idx]) tabs[idx].classList.add('active');
+  newsState.historySubTab = tab;
+  renderNewsHistory();
+}
+
+/* ================================================================
+   搜索过滤
+   ================================================================ */
+
+function filterNewsCards() {
+  var query = (document.getElementById('newsSearchInput').value || '').toLowerCase().trim();
+  window._newsSearchQuery = query;
+  renderRecommendCards();
+}
+
+/* ================================================================
+   操作：预览 — DB-R-029
+   ================================================================ */
+
+function openNewsPreview(id) {
+  if (newsState.batchMode) return;
+  const item = mockData.news.items.find(i => i.id === id);
+  if (!item) return;
+  newsState.currentPreviewId = id;
+  document.getElementById('newsPreviewAiSummary').textContent = item.summary;
+  document.getElementById('newsPreviewContent').innerHTML = (item.content || '').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+  openNewsModal('newsPreviewModal');
+}
+
+function expandNewsScore(id) {
+  const el = document.getElementById('newsScoreDetail' + id);
+  if (el) el.classList.toggle('open');
+}
+
+/* ================================================================
+   操作：入库 — DB-U-029
+   ================================================================ */
+
+function openNewsImportConfirm(id) {
+  const item = mockData.news.items.find(i => i.id === id);
+  if (!item) return;
+  newsState.currentImportId = id != null ? id : newsState.currentPreviewId;
+  const target = mockData.news.items.find(i => i.id === newsState.currentImportId) || item;
+  document.getElementById('newsImportTitle').value = target.title;
+  document.getElementById('newsImportSummary').textContent = target.summary;
+  openNewsModal('newsImportModal');
+}
+
+async function confirmNewsImport() {
+  const newsId = newsState.currentImportId;
+  try {
+    if (window.DB) {
+      const res = await window.DB.importNewsToKnowledge(newsId);
+      if (!res.success) { showNewsToast('入库失败: ' + res.error, 'error'); return; }
+    }
+  } catch (e) { console.error('入库失败:', e); }
+  closeNewsModal('newsImportModal');
+  openNewsModal('newsSuccessModal');
+  const nextReview = new Date();
+  nextReview.setDate(nextReview.getDate() + 2);
+  const el = document.getElementById('newsSuccessNextReview');
+  if (el) el.textContent = nextReview.toISOString().split('T')[0];
+}
+
+/* ================================================================
+   操作：忽略 — DB-U-030
+   ================================================================ */
+
+async function ignoreNewsItem(id) {
+  try {
+    if (window.DB) await window.DB.ignoreNews(id);
+  } catch (e) { console.error('忽略失败:', e); }
+  showNewsToast('已忽略', 'success');
+  renderRecommendCards();
+  loadNewsStats();
+}
+
+async function undoNewsIgnore(id) {
+  try {
+    if (window.DB) await window.DB.restoreNews(id);
+  } catch (e) { console.error('撤销忽略失败:', e); }
+  showNewsToast('已撤销忽略', 'success');
+  renderRecommendCards();
+  loadNewsStats();
+}
+
+/* ================================================================
+   操作：暂缓 — DB-U-033
+   ================================================================ */
+
+async function delayNewsItem(id) {
+  try {
+    if (window.DB) await window.DB.batchDelayNews([id], 7);
+  } catch (e) { console.error('暂缓失败:', e); }
+  showNewsToast('已暂缓，7天后提醒', 'info');
+  renderRecommendCards();
+}
+
+/* ================================================================
+   操作：删除 — DB-D-008 / 恢复 — DB-U-034
+   ================================================================ */
+
+async function permanentDeleteNewsItem(id) {
+  if (!confirm('确定要永久删除这条资讯吗？此操作不可恢复！')) return;
+  try {
+    if (window.DB) await window.DB.permanentDeleteNews(id);
+  } catch (e) { console.error('删除失败:', e); }
+  showNewsToast('已永久删除', 'success');
+  renderRecommendCards();
+  loadNewsStats();
+}
+
+async function restoreNewsItem(id) {
+  try {
+    if (window.DB) await window.DB.restoreNews(id);
+  } catch (e) { console.error('恢复失败:', e); }
+  showNewsToast('已恢复', 'success');
+  renderNewsHistory();
+}
+
+/* ================================================================
+   批量模式
+   ================================================================ */
+
+function toggleNewsBatchMode() {
+  newsState.batchMode = !newsState.batchMode;
+  newsState.selectedIds.clear();
+  document.getElementById('newsSelectAllBar').style.display = newsState.batchMode ? 'flex' : 'none';
+  document.getElementById('newsBatchBar').classList.toggle('open', newsState.batchMode);
+  document.getElementById('newsBatchBtn').textContent = newsState.batchMode ? '✕ 退出批量' : '☑ 批量操作';
+  renderRecommendCards();
+}
+
+function toggleNewsSelect(id, event) {
+  event.stopPropagation();
+  if (newsState.selectedIds.has(id)) newsState.selectedIds.delete(id);
+  else newsState.selectedIds.add(id);
+  document.getElementById('newsSelectedCount').textContent = newsState.selectedIds.size;
+  document.getElementById('newsBatchCount').textContent = newsState.selectedIds.size;
+  renderRecommendCards();
+}
+
+function newsSelectAll(checked) {
+  if (checked) {
+    mockData.news.items.forEach(i => {if (i.status === 'pending') newsState.selectedIds.add(i.id);});
+  } else {
+    newsState.selectedIds.clear();
+  }
+  document.getElementById('newsSelectedCount').textContent = newsState.selectedIds.size;
+  document.getElementById('newsBatchCount').textContent = newsState.selectedIds.size;
+  renderRecommendCards();
+}
+
+/* ================================================================
+   批量入库 — DB-U-031
+   ================================================================ */
+
+function newsBatchImport() {
+  if (newsState.selectedIds.size === 0) { showNewsToast('请先选择资讯', 'info'); return; }
+  document.getElementById('newsBatchCountDisplay').textContent = newsState.selectedIds.size;
+  const selected = mockData.news.items.filter(i => newsState.selectedIds.has(i.id));
+  document.getElementById('newsBatchPreviewList').innerHTML = selected.map(i =>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--gray-100)">📄 ${escapeHtml(i.title)} <span style="color:var(--gray-400)">(${i.score}分)</span></div>`
+  ).join('');
+  openNewsModal('newsBatchImportModal');
+}
+
+async function confirmNewsBatchImport() {
+  const ids = [...newsState.selectedIds];
+  try {
+    if (window.DB) await window.DB.batchImportNews(ids);
+  } catch (e) { console.error('批量入库失败:', e); }
+  closeNewsModal('newsBatchImportModal');
+  newsState.selectedIds.clear();
+  toggleNewsBatchMode();
+  showNewsToast(`批量入库成功！已生成复习卡片`, 'success');
+  loadNewsStats();
+  renderRecommendCards();
+}
+
+/* ================================================================
+   批量忽略 — DB-U-032
+   ================================================================ */
+
+function newsBatchIgnore() {
+  if (newsState.selectedIds.size === 0) { showNewsToast('请先选择资讯', 'info'); return; }
+  const count = newsState.selectedIds.size;
+  if (confirm(`确认忽略 ${count} 条资讯？`)) {
+    try {
+      if (window.DB) window.DB.batchIgnoreNews([...newsState.selectedIds]);
+    } catch (e) { console.error('批量忽略失败:', e); }
+    newsState.selectedIds.clear();
+    showNewsToast(`已忽略 ${count} 条资讯`, 'success');
+    toggleNewsBatchMode();
+  }
+}
+
+/* ================================================================
+   批量暂缓 — DB-U-033
+   ================================================================ */
+
+function newsBatchDelay() {
+  if (newsState.selectedIds.size === 0) { showNewsToast('请先选择资讯', 'info'); return; }
+  const count = newsState.selectedIds.size;
+  try {
+    if (window.DB) window.DB.batchDelayNews([...newsState.selectedIds], 7);
+  } catch (e) { console.error('批量暂缓失败:', e); }
+  newsState.selectedIds.clear();
+  showNewsToast(`已暂缓 ${count} 条资讯，7天后提醒`, 'info');
+  toggleNewsBatchMode();
+}
+
+/* ================================================================
+   手动录入 — DB-W-010
+   ================================================================ */
+
+function toggleNewsEntryMode(mode) {
+  document.getElementById('newsEntryUrl').classList.toggle('active', mode === 'url');
+  document.getElementById('newsEntryText').classList.toggle('active', mode === 'text');
+  window._newsEntryMode = mode;
+}
+
+async function submitNewsManual() {
+  const isUrlMode = window._newsEntryMode !== 'text';
+  var data = {};
+  if (isUrlMode) {
+    data.sourceUrl = document.getElementById('newsUrlInput').value;
+    if (!data.sourceUrl.trim()) { showNewsToast('请输入URL', 'warning'); return; }
+  } else {
+    data.title = document.getElementById('newsTitleInput').value;
+    data.content = document.getElementById('newsContentInput').value;
+    if (!data.title.trim()) { showNewsToast('请输入标题', 'warning'); return; }
+  }
+  data.sourceName = document.getElementById('newsSourceInput').value;
+  
+  try {
+    if (window.DB) await window.DB.addManualNews(data);
+  } catch (e) { console.error('录入失败:', e); }
+  closeNewsModal('newsManualModal');
+  showNewsToast('已提交到 AI 处理队列，稍后可在推荐清单中查看', 'info');
+}
+
+/* ================================================================
+   弹窗控制
+   ================================================================ */
+
+function openNewsModal(id) { document.getElementById(id).classList.add('show'); }
+function closeNewsModal(id) { document.getElementById(id).classList.remove('show'); }
+
+/* ================================================================
+   Toast 提示
+   ================================================================ */
+
+function showNewsToast(msg, type) {
+  if (typeof window.toast === 'function') { window.toast(msg, type); return; }
+  if (window.utils && typeof window.utils.toast === 'function') { window.utils.toast(msg, type); return; }
+  // 降级：直接使用全局 toast
+  if (typeof toast === 'function') { toast(msg, type); return; }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ================================================================
+   兼容旧接口
+   ================================================================ */
+
+window.initNewsPage = initNewsPage;
+window.switchNewsMainTab = switchNewsMainTab;
+window.switchNewsRecTab = switchNewsRecTab;
+window.switchNewsHistoryTab = switchNewsHistoryTab;
+window.toggleNewsBatchMode = toggleNewsBatchMode;
+window.ignoreNewsItem = ignoreNewsItem;
+window.undoNewsIgnore = undoNewsIgnore;
+window.delayNewsItem = delayNewsItem;
+window.openNewsPreview = openNewsPreview;
+window.openNewsImportConfirm = openNewsImportConfirm;
+window.confirmNewsImport = confirmNewsImport;
+window.confirmNewsBatchImport = confirmNewsBatchImport;
+window.submitNewsManual = submitNewsManual;
+window.filterNewsCards = filterNewsCards;
+window.expandNewsScore = expandNewsScore;
+window.toggleNewsSelect = toggleNewsSelect;
+window.newsSelectAll = newsSelectAll;
+window.newsBatchImport = newsBatchImport;
+window.newsBatchIgnore = newsBatchIgnore;
+window.newsBatchDelay = newsBatchDelay;
+window.openNewsModal = openNewsModal;
+window.closeNewsModal = closeNewsModal;
+window.showNewsToast = showNewsToast;
+window.permanentDeleteNewsItem = permanentDeleteNewsItem;
+window.restoreNewsItem = restoreNewsItem;
+window.toggleNewsEntryMode = toggleNewsEntryMode;
+
+/* ================================================================
+   自动启动（SPA 模式由 framework.js 调用 window.initNewsPage）
+   ================================================================ */
+
+document.addEventListener('DOMContentLoaded', function () {
+  if (document.getElementById('newsCardList')) initNewsPage();
 });
 </script>

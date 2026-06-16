@@ -9,18 +9,46 @@ const routes = {
   output: { title: '📝 知识沉淀', file: 'pages/output.html' }
 };
 
-// 页面顶栏右侧配置
+// 页面顶栏右侧与中间配置
 const topbarConfigs = {
-  home: `<span class="topbar-greeting" id="topbarGreeting"></span>
-         <span class="topbar-date" id="topbarDate"></span>`,
-  plan: `<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>
-         <button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
-  news: `<span class="topbar-greeting"></span>`,
-  knowledge: `<span class="topbar-greeting"></span>`,
-  'ai-chat': `<span class="topbar-greeting"></span>`,
-  review: `<span class="topbar-greeting"></span>`,
-  output: `<span class="topbar-greeting"></span>`
+  home: {
+    right: `<span class="topbar-greeting" id="topbarGreeting"></span>
+            <span class="topbar-date" id="topbarDate"></span>`,
+    center: ''
+  },
+  plan: {
+    right: `<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>
+            <button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
+    center: ''
+  },
+  news: {
+    right: `<span class="topbar-greeting"></span>`,
+    center: `<div class="sub-tabs">
+              <div class="sub-tab active" onclick="switchNewsMainTab('recommend')">AI推荐清单</div>
+              <div class="sub-tab" onclick="switchNewsMainTab('history')">资讯历史</div>
+              <div class="sub-tab" onclick="switchNewsMainTab('stats')">统计概览</div>
+            </div>`
+  },
+  knowledge: {
+    right: `<span class="topbar-greeting"></span>`,
+    center: ''
+  },
+  'ai-chat': {
+    right: `<span class="topbar-greeting"></span>`,
+    center: ''
+  },
+  review: {
+    right: `<span class="topbar-greeting"></span>`,
+    center: ''
+  },
+  output: {
+    right: `<span class="topbar-greeting"></span>`,
+    center: ''
+  }
 };
+
+// 单列布局页面
+const singleColumnPages = ['plan', 'news', 'knowledge', 'ai-chat', 'review', 'output'];
 
 let currentPage = null;
 let isLoading = false;
@@ -49,8 +77,12 @@ function navigateTo(pageId) {
   // 更新标题
   document.getElementById('page-title').textContent = route.title;
   
-  // 更新顶栏右侧内容
+  // 更新顶栏右侧和中间
   updateTopbarRight(pageId);
+  updateTopbarCenter(pageId);
+  
+  // 更新内容区布局
+  updateContentLayout(pageId);
   
   // 加载页面内容
   loadPageContent(pageId, route.file);
@@ -155,15 +187,40 @@ function updateGreeting() {
 
 // 更新顶栏右侧
 function updateTopbarRight(pageId) {
-  const rightEl = document.querySelector('.topbar-right');
+  const rightEl = document.getElementById('topbar-right');
   if (!rightEl) return;
   const config = topbarConfigs[pageId];
   if (config) {
-    rightEl.innerHTML = config;
+    rightEl.innerHTML = config.right || '';
     if (pageId === 'home') {
       updateGreeting();
       updateDate();
     }
+  }
+}
+
+// 更新顶栏中间子标签
+function updateTopbarCenter(pageId) {
+  const centerEl = document.getElementById('topbar-center');
+  if (!centerEl) return;
+  const config = topbarConfigs[pageId];
+  if (config && config.center) {
+    centerEl.innerHTML = config.center;
+    centerEl.style.display = 'flex';
+  } else {
+    centerEl.innerHTML = '';
+    centerEl.style.display = 'none';
+  }
+}
+
+// 更新内容区布局（单列 vs 双列）
+function updateContentLayout(pageId) {
+  const content = document.getElementById('content-container');
+  if (!content) return;
+  if (singleColumnPages.includes(pageId)) {
+    content.classList.add('single-column');
+  } else {
+    content.classList.remove('single-column');
   }
 }
 
@@ -196,6 +253,7 @@ function initPlanPage() {
 
 function initNewsPage() {
   console.log('Initializing news page...');
+  // news.html 脚本注册 window.initNewsPage，由 loadPageContent 调用
 }
 
 function initKnowledgePage() {

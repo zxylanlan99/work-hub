@@ -102,6 +102,40 @@
   color: var(--gray-500);
 }
 
+.topbar-center {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
+.topbar-center .sub-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--gray-100);
+  padding: 4px;
+  border-radius: var(--radius);
+  margin-left: auto;
+}
+
+.topbar-center .sub-tab {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--gray-500);
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.topbar-center .sub-tab:hover { color: var(--gray-700); }
+.topbar-center .sub-tab.active {
+  background: var(--bg);
+  color: var(--gray-800);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
 .topbar-date {
   font-size: 13px;
   color: var(--gray-400);

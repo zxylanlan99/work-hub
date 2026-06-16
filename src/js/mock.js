@@ -119,98 +119,228 @@ const mockData = {
     ]
   },
 
-  // 资讯数据
+  // 资讯数据 — 对齐 prototype-news.html
   news: {
+    stats: {
+      todayProcessed: 12, todayPending: 5, todayImported: 7, todayIgnored: 3,
+      monthlyTotal: 86, conversionRate: 58, avgScore: 72, outputRate: 20
+    },
     items: [
-      {
-        id: 'news-1',
-        title: 'Go 1.23 发布，引入新的并发原语',
-        source: 'Go官方博客',
-        category: '技术动态',
-        hasRead: false,
-        isAIRecommended: true,
-        publishedAt: '2026-06-14',
-        summary: 'Go 1.23版本正式发布，带来了新的并发原语和性能改进。'
-      },
-      {
-        id: 'news-2',
-        title: '分布式系统设计模式总结',
-        source: '技术分享',
-        category: '系统设计',
-        hasRead: false,
-        isAIRecommended: true,
-        publishedAt: '2026-06-13',
-        summary: '总结了常用的分布式系统设计模式和最佳实践。'
-      },
-      {
-        id: 'news-3',
-        title: '学习方法：间隔重复的科学原理',
-        source: '学习科学',
-        category: '学习技巧',
-        hasRead: true,
-        isAIRecommended: false,
-        publishedAt: '2026-06-12',
-        summary: '介绍间隔重复学习法的科学原理和应用方法。'
-      },
-      {
-        id: 'news-4',
-        title: 'Rust vs Go：性能对比分析',
-        source: '性能测试',
-        category: '技术对比',
-        hasRead: false,
-        isAIRecommended: false,
-        publishedAt: '2026-06-11',
-        summary: '对Rust和Go进行了全面的性能对比测试。'
-      }
+      { id: 1, title: '微服务架构演进之路 2026', source: 'infoq.cn', time: '2天前', score: 92, level: 'high',
+        summary: '本文系统梳理了微服务架构从2014年至今的发展脉络，涵盖从单体拆分到服务网格的技术演进，重点分析了AI原生微服务的新趋势。',
+        tags: ['微服务', '架构', '演进'], aiTags: ['微服务', '架构', '演进'],
+        matchReason: '与当前主题高度关联，填补服务演进空白',
+        scoreDetail: { 信源: [95, 'infoq.cn 是权威技术媒体'], 价值: [88, '深度分析，含代码案例'], 关联度: [98, '与微服务主题高度匹配'], 新鲜度: [90, '2天前发布'], 可转化性: [89, '可生成复习卡片和输出素材'] },
+        status: 'pending', content: '# 微服务架构演进之路 2026\n\n## 一、从单体到微服务\n\n2014年，Martin Fowler和James Lewis正式提出了微服务架构的概念...' },
+      { id: 2, title: '服务网格与Istio入门实战指南', source: 'juejin.cn', time: '5天前', score: 78, level: 'mid',
+        summary: '从零开始讲解服务网格的核心概念，并通过Istio的实际部署案例，手把手教你搭建生产级服务网格。',
+        tags: ['服务网格', 'Istio', '教程'], aiTags: ['服务网格', 'Istio', '微服务'],
+        matchReason: '与当前学习计划「微服务通信」关联',
+        scoreDetail: { 信源: [72, '掘金专栏作者'], 价值: [85, '实操教程含完整代码'], 关联度: [82, '与微服务通信相关'], 新鲜度: [80, '5天前'], 可转化性: [75, '可作为实践素材'] },
+        status: 'pending', content: '# 服务网格与Istio入门\n\n## 什么是服务网格\n\n服务网格是微服务架构中的基础设施层...' },
+      { id: 3, title: '云原生时代的可观测性实践', source: 'csdn.net', time: '1天前', score: 85, level: 'high',
+        summary: '深入探讨云原生环境下可观测性的三大支柱：Metrics、Traces和Logs，以及如何利用OpenTelemetry构建统一可观测平台。',
+        tags: ['可观测性', '云原生', 'OpenTelemetry'], aiTags: ['可观测性', '云原生', '监控'],
+        matchReason: '与微服务运维知识体系密切相关',
+        scoreDetail: { 信源: [65, 'CSDN平台'], 价值: [92, '深度技术分析'], 关联度: [88, '与微服务运维相关'], 新鲜度: [95, '昨天发布'], 可转化性: [82, '可生成运维知识卡片'] },
+        status: 'pending', content: '# 云原生可观测性实践\n\n## 可观测性三支柱\n...' },
+      { id: 4, title: '10个改善微服务性能的实用技巧', source: 'zhihu.com', time: '3天前', score: 52, level: 'low',
+        summary: '分享10个简单实用的微服务性能优化技巧，包括连接池配置、缓存策略、数据库优化等常用方法。',
+        tags: ['性能优化', '微服务', '技巧'], aiTags: ['性能优化', '微服务'],
+        matchReason: '与微服务主题相关但深度一般',
+        scoreDetail: { 信源: [45, '知乎个人文章'], 价值: [55, '实用但不够深入'], 关联度: [60, '与微服务相关'], 新鲜度: [75, '3天前'], 可转化性: [40, '转化价值有限'] },
+        status: 'pending', content: '# 10个微服务性能优化技巧\n...' },
+      { id: 5, title: '2026年AI编程工具全面评测', source: 'geekbang.org', time: '6天前', score: 68, level: 'mid',
+        summary: '横向对比Cursor、Copilot、Cody等AI编程工具，从代码补全、重构建议、多文件理解等维度进行全面评测。',
+        tags: ['AI', '编程工具', '评测'], aiTags: ['AI', '开发工具', '效率'],
+        matchReason: '与当前学习无直接关联',
+        scoreDetail: { 信源: [85, '极客邦权威来源'], 价值: [70, '有参考价值'], 关联度: [35, '与当前主题关联弱'], 新鲜度: [85, '6天前'], 可转化性: [50, '可作为参考'] },
+        status: 'pending', content: '# 2026年AI编程工具评测\n...' },
+      { id: 6, title: '分布式事务的最终一致性方案对比', source: 'infoq.cn', time: '4天前', score: 73, level: 'mid',
+        summary: '详细对比Saga、TCC、可靠消息最终一致性等分布式事务方案，含实际场景选型建议。',
+        tags: ['分布式事务', '微服务', 'Saga'], aiTags: ['分布式事务', '微服务', '架构'],
+        matchReason: '与微服务数据管理相关',
+        scoreDetail: { 信源: [95, 'infoq.cn'], 价值: [80, '技术深度好'], 关联度: [72, '与微服务数据管理相关'], 新鲜度: [80, '4天前'], 可转化性: [65, '可作为学习素材'] },
+        status: 'pending', content: '# 分布式事务方案对比\n...' },
+      { id: 7, title: 'React 20 全新特性速览', source: 'juejin.cn', time: '1周前', score: 40, level: 'low',
+        summary: '快速了解React 20的新特性，包括新的并发模式和Server Components的改进。',
+        tags: ['React', '前端', '框架'], aiTags: ['React', '前端'],
+        matchReason: '与当前微服务主题无关',
+        scoreDetail: { 信源: [70, '掘金'], 价值: [45, '浅层介绍'], 关联度: [10, '与当前主题无关'], 新鲜度: [60, '1周前'], 可转化性: [25, '转化价值低'] },
+        status: 'pending', content: '# React 20 新特性\n...' },
+      { id: 8, title: 'AI Agent在微服务架构中的落地实践', source: 'infoq.cn', time: '2天前', score: 90, level: 'high',
+        summary: '探讨AI Agent如何与现有微服务体系结合，包括服务编排、智能路由、自动扩缩容等场景的落地案例。',
+        tags: ['AI Agent', '微服务', '落地实践'], aiTags: ['AI Agent', '微服务', '智能'],
+        matchReason: '与当前学习主题高度关联，前沿技术',
+        scoreDetail: { 信源: [95, 'infoq.cn'], 价值: [93, '前沿+落地案例'], 关联度: [95, '与微服务主题完美匹配'], 新鲜度: [95, '2天前'], 可转化性: [90, '高水平输出素材'] },
+        status: 'pending', content: '# AI Agent在微服务架构中的落地实践\n...' }
     ],
-    categories: ['全部', '技术动态', '系统设计', '学习技巧', '技术对比']
+    ignored: [
+      { id: 101, title: '如何成为一个更好的程序员', source: 'medium.com', time: '3天前', reason: '与学习主题无关', ignoredAt: '2026-06-08' },
+      { id: 102, title: 'Python数据科学入门教程', source: 'csdn.net', time: '5天前', reason: '与当前学习方向无关', ignoredAt: '2026-06-07' },
+      { id: 103, title: '2026年最好的笔记本电脑推荐', source: 'zhihu.com', time: '1周前', reason: '非技术内容', ignoredAt: '2026-06-05' }
+    ],
+    imported: [
+      { id: 201, title: 'Kubernetes Operator开发实战', importedAt: '2026-06-09', category: '学习 > 云原生 > K8s Operator', tags: ['Kubernetes', 'Operator'], hasReview: true, hasOutput: false },
+      { id: 202, title: 'Go语言并发模式详解', importedAt: '2026-06-08', category: '学习 > Go语言 > 并发编程', tags: ['Go', '并发'], hasReview: true, hasOutput: true },
+      { id: 203, title: '微服务架构设计模式', importedAt: '2026-06-07', category: '学习 > 微服务架构 > 设计模式', tags: ['微服务', '设计模式'], hasReview: true, hasOutput: false }
+    ],
+    trash: [
+      { id: 301, title: '过时的Docker Swarm教程', deletedAt: '2026-06-05', expireAt: '2026-07-05' },
+      { id: 302, title: '重复内容：微服务入门', deletedAt: '2026-06-03', expireAt: '2026-07-03' }
+    ],
+    categories: ['全部', '微服务架构', '云原生', 'AI与机器学习', '前端开发']
   },
 
-  // 知识库数据
+  // 知识库数据 — 对齐 prototype-knowledge.html
   knowledge: {
     items: [
       {
         id: 'k1',
-        title: '服务发现与Consul',
-        category: '分布式系统',
-        tags: ['服务发现', 'Consul', '微服务'],
-        createdAt: '2026-06-10',
-        updateAt: '2026-06-14',
-        viewCount: 45,
-        likeCount: 12
+        title: 'Go 语言并发模型深度解析',
+        category: '技术/后端/Go',
+        tags: ['Golang', '并发', '后端'],
+        status: 'public',
+        updateAt: '3个月前',
+        sourceUrl: 'github.com',
+        excerpt: 'Go 语言的并发模型基于 CSP（Communicating Sequential Processes）理论，通过 goroutine 和 channel 实现轻量级并发。本文深入解析 goroutine 调度器 GMP 模型...',
+        isAI: false,
+        isExpired: false
       },
       {
         id: 'k2',
-        title: 'Go并发模型-GMP',
-        category: 'Go语言',
-        tags: ['Go', '并发', 'GMP'],
-        createdAt: '2026-06-08',
-        updateAt: '2026-06-12',
-        viewCount: 89,
-        likeCount: 23
+        title: '微服务架构设计模式',
+        category: '技术/后端',
+        tags: ['微服务', '架构', '分布式'],
+        status: 'public',
+        updateAt: '5个月前',
+        sourceUrl: 'martinfowler.com',
+        excerpt: '微服务架构的核心设计模式包括：API Gateway、服务发现、断路器、配置中心、分布式追踪等...',
+        isAI: false,
+        isExpired: false
       },
       {
         id: 'k3',
-        title: 'SM-2记忆算法详解',
-        category: '学习方法',
-        tags: ['记忆', '算法', '学习'],
-        createdAt: '2026-06-05',
-        updateAt: '2026-06-05',
-        viewCount: 156,
-        likeCount: 45
+        title: 'React Server Components 完全指南',
+        category: '技术/前端/React',
+        tags: ['React', 'RSC', '前端'],
+        status: 'public',
+        updateAt: '14个月前',
+        sourceUrl: 'react.dev',
+        excerpt: 'React Server Components (RSC) 是 React 18 引入的革命性特性，允许组件在服务器端渲染...',
+        isAI: false,
+        isExpired: true
       },
       {
         id: 'k4',
-        title: 'Redis缓存策略',
-        category: '数据库',
-        tags: ['Redis', '缓存', '性能'],
-        createdAt: '2026-06-03',
-        updateAt: '2026-06-04',
-        viewCount: 67,
-        likeCount: 18
+        title: '产品需求文档 (PRD) 写作规范',
+        category: '产品/产品管理',
+        tags: ['PRD', '产品管理', '文档规范'],
+        status: 'sensitive',
+        updateAt: '1个月前',
+        excerpt: '一份好的 PRD 应该包含：产品背景、目标用户、功能描述、用户故事、验收标准...',
+        isAI: false,
+        isExpired: false
+      },
+      {
+        id: 'k5',
+        title: '向量数据库选型对比：Milvus vs Pinecone',
+        category: '技术/AI/ML',
+        tags: ['向量数据库', 'AI', '选型'],
+        status: 'public',
+        updateAt: '2个月前',
+        sourceUrl: 'pinecone.io',
+        excerpt: '向量数据库是 AI 应用的基础设施。本文从性能、易用性、生态、成本四个维度对比主流向量数据库...',
+        isAI: false,
+        isExpired: false
+      },
+      {
+        id: 'k6',
+        title: '技术写作方法论',
+        category: '写作',
+        tags: ['技术写作', '文档', '方法论'],
+        status: 'secret',
+        updateAt: '2周前',
+        excerpt: '技术写作的核心原则：读者导向、渐进披露、精确表达、结构清晰...',
+        isAI: true,
+        isExpired: false
       }
     ],
-    categories: ['全部', '分布式系统', 'Go语言', '学习方法', '数据库']
+    aiItems: [
+      {
+        id: 'ai1',
+        title: 'LLM 推理优化技术综述',
+        score: 85,
+        source: 'arxiv.org',
+        updateAt: '2天前',
+        excerpt: '大语言模型推理阶段的优化技术：KV Cache、Continuous Batching、Speculative Decoding、量化推理等前沿方法的原理与实现...',
+        scoreDetail: [
+          { name: '信源可信度', value: 90 },
+          { name: '内容价值', value: 88 },
+          { name: '主题关联度', value: 82 },
+          { name: '信息新鲜度', value: 78 },
+          { name: '可转化性', value: 80 }
+        ]
+      },
+      {
+        id: 'ai2',
+        title: 'PostgreSQL 17 新特性详解',
+        score: 72,
+        source: 'postgresql.org',
+        updateAt: '1周前',
+        excerpt: 'PostgreSQL 17 正式发布，带来了增量备份、改进的查询优化器、JSON 性能提升等多项新特性...',
+        scoreDetail: [
+          { name: '信源可信度', value: 85 },
+          { name: '内容价值', value: 70 },
+          { name: '主题关联度', value: 68 },
+          { name: '信息新鲜度', value: 75 },
+          { name: '可转化性', value: 65 }
+        ]
+      },
+      {
+        id: 'ai3',
+        title: 'Rust 异步编程实战',
+        score: 68,
+        source: 'rust-lang.org',
+        updateAt: '3天前',
+        excerpt: '深入探讨 Rust 异步编程模型，从 async/await 语法到 Tokio 运行时，附实战代码示例...',
+        scoreDetail: [
+          { name: '信源可信度', value: 95 },
+          { name: '内容价值', value: 72 },
+          { name: '主题关联度', value: 55 },
+          { name: '信息新鲜度', value: 88 },
+          { name: '可转化性', value: 60 }
+        ]
+      }
+    ],
+    trashItems: [
+      { id: 't1', title: '旧版 API 设计规范', category: '技术/后端', deletedAt: '3天前', remainingDays: 27 },
+      { id: 't2', title: '2024年技术趋势预测', category: '技术', deletedAt: '10天前', remainingDays: 20 },
+      { id: 't3', title: '过时的 Docker Swarm 教程', category: 'DevOps', deletedAt: '15天前', remainingDays: 15 }
+    ],
+    healthReport: {
+      healthScore: 78,
+      trend: '+3%',
+      duplicates: 2,
+      orphans: 5,
+      weakTopics: ['分布式系统', 'Kubernetes', 'React Hooks'],
+      expired: 4
+    },
+    categories: [
+      { _id: 'tech', name: '技术', icon: '💻', count: 12, parentId: null },
+      { _id: 'backend', name: '后端', icon: '🔧', count: 5, parentId: 'tech' },
+      { _id: 'golang', name: 'Go 语言', icon: '🐹', count: 2, parentId: 'backend' },
+      { _id: 'database', name: '数据库', icon: '🗄️', count: 3, parentId: 'backend' },
+      { _id: 'frontend', name: '前端', icon: '🎨', count: 4, parentId: 'tech' },
+      { _id: 'react', name: 'React', icon: '⚛️', count: 2, parentId: 'frontend' },
+      { _id: 'css', name: 'CSS/Tailwind', icon: '🎨', count: 2, parentId: 'frontend' },
+      { _id: 'aiml', name: 'AI/ML', icon: '🤖', count: 3, parentId: 'tech' },
+      { _id: 'product', name: '产品', icon: '📦', count: 8, parentId: null },
+      { _id: 'prod-mgmt', name: '产品管理', icon: '📋', count: 5, parentId: 'product' },
+      { _id: 'ux', name: '交互设计', icon: '✏️', count: 3, parentId: 'product' },
+      { _id: 'writing', name: '写作', icon: '✍️', count: 3, parentId: null },
+      { _id: 'uncategorized', name: '未分类', icon: '📄', count: 2, parentId: null }
+    ]
   },
 
   // AI对话数据

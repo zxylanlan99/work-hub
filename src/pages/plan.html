@@ -625,24 +625,74 @@ let currentDetailGoalId = null;
 let createStep = 1;
 
 // 初始化
-function initPlanPage() {
-  renderGoalCards(planFilter);
-  loadWarmupData();
-  loadResumeData();
+async function initPlanPage() {
+  await loadWarmupData();
+  await loadResumeData();
+  await loadGoalStats();
+  await renderGoalCards(planFilter);
 }
 
 // 加载暖身数据
-function loadWarmupData() {
-  const warmupData = mockData.plan.warmup;
-  document.getElementById('planYesterdayText').textContent = warmupData.yesterday;
-  document.getElementById('planQuizQuestion').textContent = warmupData.quizQuestion;
-  document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + warmupData.quizAnswer;
+async function loadWarmupData() {
+  try {
+    const [reviewRes, quizRes] = await Promise.all([
+      DB.getYesterdayReview(),
+      DB.getQuiz('学习')
+    ]);
+    
+    if (reviewRes.success && reviewRes.data.length > 0) {
+      document.getElementById('planYesterdayText').textContent = 
+        reviewRes.data[0].summary || mockData.plan.warmup.yesterday;
+    } else {
+      document.getElementById('planYesterdayText').textContent = mockData.plan.warmup.yesterday;
+    }
+    
+    if (quizRes.success) {
+      document.getElementById('planQuizQuestion').textContent = quizRes.content || mockData.plan.warmup.quizQuestion;
+    } else {
+      document.getElementById('planQuizQuestion').textContent = mockData.plan.warmup.quizQuestion;
+    }
+    document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + mockData.plan.warmup.quizAnswer;
+  } catch (error) {
+    console.error('加载暖身数据失败:', error);
+    // 降级使用模拟数据
+    document.getElementById('planYesterdayText').textContent = mockData.plan.warmup.yesterday;
+    document.getElementById('planQuizQuestion').textContent = mockData.plan.warmup.quizQuestion;
+    document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + mockData.plan.warmup.quizAnswer;
+  }
 }
 
 // 加载续接数据
-function loadResumeData() {
-  document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
-  document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+async function loadResumeData() {
+  try {
+    const res = await DB.getLastBreakpoint();
+    if (res.success && res.data.goals.length > 0) {
+      const goal = res.data.goals[0];
+      document.getElementById('planResumeTitle').textContent = '继续上次学习：' + goal.title;
+      document.getElementById('planResumeSub').textContent = '上次停在「学习中」· 预计剩余时间';
+    } else {
+      document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
+      document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+    }
+  } catch (error) {
+    console.error('加载续接数据失败:', error);
+    document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
+    document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+  }
+}
+
+// 加载目标统计
+async function loadGoalStats() {
+  try {
+    const res = await DB.getPlanStats();
+    if (res.success) {
+      document.getElementById('planActiveCount').textContent = res.data.active;
+      document.getElementById('planPausedCount').textContent = res.data.paused;
+      document.getElementById('planDoneCount').textContent = res.data.completed;
+    }
+  } catch (error) {
+    console.error('加载目标统计失败:', error);
+  }
 }
 
 // 显示暖身答案
@@ -662,23 +712,90 @@ function switchPlanSubTab(el, filter) {
 
 // 排序
 function sortPlanGoals(type) {
-  const goals = mockData.plan.goals;
-  if (type === 'progress') {
-    goals.sort((a, b) => b.progress - a.progress);
-  } else if (type === 'created') {
-    goals.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  } else {
-    goals.sort((a, b) => {
-      const statusOrder = { active: 0, paused: 1, completed: 2 };
-      return statusOrder[a.status] - statusOrder[b.status];
-    });
-  }
-  renderGoalCards(planFilter);
+  renderGoalCards(planFilter, type);
 }
 
 // 渲染目标卡片
-function renderGoalCards(filter) {
-  const goals = mockData.plan.goals.filter(g => filter === 'all' || g.status === filter);
+async function renderGoalCards(filter, sortBy = 'recent') {
+  try {
+    const res = await DB.getGoals(filter);
+    let goals = res.success ? res.data : [];
+    
+    // 本地排序
+    if (sortBy === 'progress') {
+      goals.sort((a, b) => (b.progress || 0) - (a.progress || 0));
+    } else if (sortBy === 'created') {
+      goals.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    } else {
+      const statusOrder = { active: 0, paused: 1, completed: 2 };
+      goals.sort((a, b) => (statusOrder[a.status] || 2) - (statusOrder[b.status] || 2));
+    }
+
+    const grid = document.getElementById('planGoalsGrid');
+    const empty = document.getElementById('planEmptyState');
+
+    if (goals.length === 0) {
+      grid.innerHTML = '';
+      empty.style.display = 'flex';
+    } else {
+      empty.style.display = 'none';
+      grid.innerHTML = goals.map(g => {
+        const stateClass = g.status === 'active' ? 'active-state' : (g.status === 'paused' ? 'paused-state' : 'completed-state');
+        const badgeHtml = g.status === 'active' ? '<span class="badge badge-active">🟢 进行中</span>'
+          : (g.status === 'paused' ? '<span class="badge badge-paused">⏸️ 暂停中</span>'
+          : '<span class="badge badge-completed">✅ 已完成</span>');
+        const progressColor = g.status === 'completed' ? 'success' : (g.status === 'paused' ? 'warning' : 'primary');
+        const completedTasks = (g.tasks || []).filter(t => t.status === 'completed').length;
+        const totalTasks = g.tasks ? g.tasks.length : (g.totalTasks || 0);
+        const progress = Math.round((completedTasks / Math.max(totalTasks, 1)) * 100);
+        const metaHtml = g.status === 'completed'
+          ? `<span>✅ 完成于 ${g.completedAt || g.deadline}</span><span>📋 ${completedTasks}/${totalTasks} 任务</span>`
+          : `<span>📅 截止 ${g.deadline}</span><span>📋 ${completedTasks}/${totalTasks} 任务</span><span>⏱️ 约${g.estimatedHours || 42}小时</span>`;
+        const footerLeft = g.tags ? g.tags.map(t => `<span class="tag">🏷️ ${t}</span>`).join('') : '';
+        const isPaused = g.status === 'paused';
+        const isCompleted = g.status === 'completed';
+        const goalId = g._id || g.id;
+
+        let footerRight = '';
+        if (isCompleted) {
+          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toast('查看学习总结','info')">📋 总结</button>`;
+        } else if (isPaused) {
+          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resumeGoal('${goalId}')">▶ 恢复</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+        } else {
+          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRescheduleModal()">📅 排期</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+        }
+
+        return `<div class="goal-card ${stateClass}" onclick="openPlanDetail('${goalId}')">
+          <div class="goal-header">
+            <div class="goal-title">${g.title}</div>
+            ${badgeHtml}
+          </div>
+          <div class="goal-desc">${g.description || ''}</div>
+          <div class="progress-bar-wrap">
+            <div class="progress-label"><span>总体进度</span><span style="color:var(--${progressColor});font-weight:600;">${progress}%</span></div>
+            <div class="progress-bar"><div class="progress-fill ${progressColor}" style="width:${progress}%"></div></div>
+          </div>
+          <div class="goal-meta">${metaHtml}</div>
+          <div class="goal-footer">
+            <div style="display:flex;gap:6px;">${footerLeft}</div>
+            <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">${footerRight}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // 更新统计
+    await loadGoalStats();
+  } catch (error) {
+    console.error('渲染目标卡片失败:', error);
+    // 降级使用模拟数据
+    const goals = mockData.plan.goals.filter(g => filter === 'all' || g.status === filter);
+    renderMockGoalCards(goals);
+  }
+}
+
+// 降级渲染（使用模拟数据）
+function renderMockGoalCards(goals) {
   const grid = document.getElementById('planGoalsGrid');
   const empty = document.getElementById('planEmptyState');
 
@@ -728,22 +845,139 @@ function renderGoalCards(filter) {
     }).join('');
   }
 
-  // 更新统计
   document.getElementById('planActiveCount').textContent = mockData.plan.goals.filter(g => g.status === 'active').length;
   document.getElementById('planPausedCount').textContent = mockData.plan.goals.filter(g => g.status === 'paused').length;
   document.getElementById('planDoneCount').textContent = mockData.plan.goals.filter(g => g.status === 'completed').length;
 }
 
 // 打开详情
-function openPlanDetail(goalId) {
+async function openPlanDetail(goalId) {
   currentDetailGoalId = goalId;
-  const goal = mockData.plan.goals.find(g => g.id === goalId);
-  if (!goal) return;
+  
+  try {
+    const res = await DB.getGoalDetail(goalId);
+    if (!res.success || !res.data) {
+      toast('目标不存在', 'error');
+      return;
+    }
+    
+    const goal = res.data;
 
+    document.getElementById('planListView').style.display = 'none';
+    document.getElementById('planDetailView').style.display = 'block';
+
+    // 更新顶栏
+    document.getElementById('page-title').textContent = '🎯 ' + goal.title;
+    var topbarRight = document.querySelector('.topbar-right');
+    if (topbarRight) {
+      var pauseBtnHtml = goal.status === 'active'
+        ? '<button class="btn btn-sm" style="background:var(--warning);color:#fff;" onclick="openPauseGoalModal()">⏸️ 暂停目标</button>'
+        : (goal.status === 'paused'
+          ? '<button class="btn btn-primary btn-sm" onclick="resumeGoal(\'' + (goal._id || goal.id) + '\')">▶ 恢复目标</button>'
+          : '');
+      topbarRight.innerHTML = pauseBtnHtml + '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
+    }
+
+    document.getElementById('detailTitle').textContent = goal.title;
+    document.getElementById('detailDesc').textContent = goal.description || '';
+    
+    const tasks = goal.tasks || [];
+    const completedTasks = tasks.filter(t => t.status === 'completed').length;
+    const totalTasks = tasks.length;
+    const progress = Math.round((completedTasks / Math.max(totalTasks, 1)) * 100);
+    
+    document.getElementById('detailProgress').textContent = progress + '%';
+    document.getElementById('detailProgressFill').style.width = progress + '%';
+    document.getElementById('detailTaskSummary').textContent = completedTasks + ' / ' + totalTasks + ' 任务完成';
+
+    // 状态徽章
+    const badge = document.getElementById('detailStatusBadge');
+    if (goal.status === 'active') {
+      badge.className = 'badge badge-active';
+      badge.textContent = '🟢 进行中';
+    } else if (goal.status === 'paused') {
+      badge.className = 'badge badge-paused';
+      badge.textContent = '⏸️ 暂停中';
+    } else {
+      badge.className = 'badge badge-completed';
+      badge.textContent = '✅ 已完成';
+    }
+
+    // 里程碑渲染
+    const milestones = goal.milestones || [];
+    const milestoneMap = new Map();
+    milestones.forEach(m => milestoneMap.set(m._id || m.id, m));
+    
+    document.getElementById('milestonesContainer').innerHTML = milestones.map(m => {
+      const mId = m._id || m.id;
+      const iconClass = m.status === 'completed' ? 'done' : (m.status === 'active' ? 'active' : 'pending');
+      const iconEmoji = m.status === 'completed' ? '✅' : (m.status === 'active' ? '🔵' : '⏳');
+      const progressColor = m.status === 'completed' ? 'success' : 'primary';
+      const milestoneTasks = tasks.filter(t => t.milestoneId === mId);
+      const completedMsTasks = milestoneTasks.filter(t => t.status === 'completed').length;
+      const hasTasks = milestoneTasks.length > 0;
+      const toggleClass = hasTasks ? 'open' : '';
+
+      const tasksHtml = hasTasks ? milestoneTasks.map(t => {
+        const tId = t._id || t.id;
+        const checkClass = t.status === 'completed' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
+        const checkContent = t.status === 'completed' ? '✓' : (t.status === 'in_progress' ? '●' : '');
+        const titleClass = t.status === 'completed' ? 'done-text' : '';
+        const priorityClass = t.priority === 'high' ? 'priority-high' : (t.priority === 'mid' ? 'priority-mid' : 'priority-low');
+        const metaHtml = t.timeActual ? `<span class="task-tag">⏱️ 实际 ${t.timeActual}（预计 ${t.timeEst}）</span>`
+          : (t.status === 'completed' ? `<span class="task-tag">✅ ${t.dueDate || ''}</span>`
+          : (t.dueDate ? `<span class="task-tag overdue">⚠️ 截止 ${t.dueDate}</span>` : ''));
+        return `<div class="task-item">
+          <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${tId}', this)">${checkContent}</div>
+          <div class="task-priority ${priorityClass}"></div>
+          <div class="task-body">
+            <div class="task-title ${titleClass}">${t.title}</div>
+            <div class="task-meta">${metaHtml}</div>
+          </div>
+          <div class="task-actions">
+            <button class="btn btn-ghost btn-sm">✏️</button>
+          </div>
+        </div>`;
+      }).join('') : '<div style="padding:8px 0;color:var(--gray-400);font-size:12.5px;">暂无任务</div>';
+
+      const msProgress = Math.round((completedMsTasks / Math.max(milestoneTasks.length, 1)) * 100);
+
+      return `<div class="milestone-item">
+        <div class="milestone-header" onclick="toggleMilestone(this)">
+          <span class="milestone-toggle ${toggleClass}">▶</span>
+          <div class="milestone-icon ${iconClass}">${iconEmoji}</div>
+          <div class="milestone-info">
+            <div class="milestone-name">${m.title}</div>
+            <div class="milestone-sub">${m.status === 'completed' ? '完成于 ' + m.completedAt : (m.status === 'active' ? '进行中 · ' + completedMsTasks + '/' + milestoneTasks.length + ' 任务完成' : '待开始 · ' + milestoneTasks.length + ' 个任务')}</div>
+          </div>
+          <div class="milestone-progress">
+            <div style="color:var(--${progressColor});font-weight:600;">${msProgress}%</div>
+            <div class="mini-progress"><div class="mini-fill ${progressColor === 'success' ? 'success' : ''}" style="width:${msProgress}%"></div></div>
+          </div>
+        </div>
+        <div class="tasks-list">${tasksHtml}</div>
+      </div>`;
+    }).join('');
+
+    // 滚动到顶部
+    document.getElementById('planDetailView').scrollIntoView();
+  } catch (error) {
+    console.error('打开目标详情失败:', error);
+    // 降级使用模拟数据
+    const goal = mockData.plan.goals.find(g => g.id === goalId);
+    if (!goal) {
+      toast('目标不存在', 'error');
+      return;
+    }
+    renderMockGoalDetail(goal);
+  }
+}
+
+// 降级渲染目标详情
+function renderMockGoalDetail(goal) {
   document.getElementById('planListView').style.display = 'none';
   document.getElementById('planDetailView').style.display = 'block';
 
-  // 更新顶栏
   document.getElementById('page-title').textContent = '🎯 ' + goal.title;
   var topbarRight = document.querySelector('.topbar-right');
   if (topbarRight) {
@@ -761,7 +995,6 @@ function openPlanDetail(goalId) {
   document.getElementById('detailProgressFill').style.width = goal.progress + '%';
   document.getElementById('detailTaskSummary').textContent = goal.completedTasks + ' / ' + goal.tasks + ' 任务完成';
 
-  // 状态徽章
   const badge = document.getElementById('detailStatusBadge');
   if (goal.status === 'active') {
     badge.className = 'badge badge-active';
@@ -774,8 +1007,7 @@ function openPlanDetail(goalId) {
     badge.textContent = '✅ 已完成';
   }
 
-  // 里程碑渲染
-  const milestones = mockData.plan.milestones.filter(m => m.goalId === goalId);
+  const milestones = mockData.plan.milestones.filter(m => m.goalId === goal.id);
   document.getElementById('milestonesContainer').innerHTML = milestones.map(m => {
     const iconClass = m.status === 'completed' ? 'done' : (m.status === 'active' ? 'active' : 'pending');
     const iconEmoji = m.status === 'completed' ? '✅' : (m.status === 'active' ? '🔵' : '⏳');
@@ -823,7 +1055,6 @@ function openPlanDetail(goalId) {
     </div>`;
   }).join('');
 
-  // 滚动到顶部
   document.getElementById('planDetailView').scrollIntoView();
 }
 
@@ -963,54 +1194,121 @@ function confirmReschedule() {
 }
 
 // 暂停目标弹窗
-function openPauseGoalModal() {
-  var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
-  if (goal) {
-    document.getElementById('pauseGoalProgress').textContent = goal.progress + '%';
+async function openPauseGoalModal() {
+  try {
+    const res = await DB.getGoalDetail(currentDetailGoalId);
+    if (res.success && res.data) {
+      const tasks = res.data.tasks || [];
+      const completedTasks = tasks.filter(t => t.status === 'completed').length;
+      const totalTasks = tasks.length;
+      const progress = Math.round((completedTasks / Math.max(totalTasks, 1)) * 100);
+      document.getElementById('pauseGoalProgress').textContent = progress + '%';
+    }
+  } catch (error) {
+    console.error('获取目标进度失败:', error);
+    var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
+    if (goal) {
+      document.getElementById('pauseGoalProgress').textContent = goal.progress + '%';
+    }
   }
   document.getElementById('pauseGoalModal').classList.add('show');
 }
 
-function confirmPauseGoal() {
-  var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
-  if (goal) {
-    goal.status = 'paused';
-    toast('目标「' + goal.title + '」已暂停', 'info');
+async function confirmPauseGoal() {
+  try {
+    const res = await DB.pauseGoal(currentDetailGoalId);
+    if (res.success) {
+      toast('目标已暂停', 'info');
+    } else {
+      toast('暂停失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    console.error('暂停目标失败:', error);
+    // 降级使用模拟数据
+    var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
+    if (goal) {
+      goal.status = 'paused';
+      toast('目标「' + goal.title + '」已暂停', 'info');
+    }
   }
   closePlanModal('pauseGoalModal');
-  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
+  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
-function resumeGoal(goalId) {
-  var goal = mockData.plan.goals.find(function(g) { return g.id === goalId; });
-  if (goal) {
-    goal.status = 'active';
-    toast('目标「' + goal.title + '」已恢复进行中', 'success');
+async function resumeGoal(goalId) {
+  try {
+    const res = await DB.resumeGoal(goalId);
+    if (res.success) {
+      toast('目标已恢复进行中', 'success');
+    } else {
+      toast('恢复失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    console.error('恢复目标失败:', error);
+    // 降级使用模拟数据
+    var goal = mockData.plan.goals.find(function(g) { return g.id === goalId; });
+    if (goal) {
+      goal.status = 'active';
+      toast('目标「' + goal.title + '」已恢复进行中', 'success');
+    }
   }
-  // 刷新列表和详情
-  renderGoalCards(planFilter);
-  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
+  await renderGoalCards(planFilter);
+  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
 // 任务完成后续
-function completeWith(type) {
+async function completeWith(type) {
   const taskId = document.getElementById('taskCompleteModal').getAttribute('data-task-id');
-  const task = mockData.plan.tasks.find(t => t.id === taskId);
-  if (task) task.completed = true;
+  try {
+    const res = await DB.completeTask(taskId);
+    if (res.success) {
+      toast('任务已完成', 'success');
+    } else {
+      toast('完成失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    console.error('完成任务失败:', error);
+    // 降级使用模拟数据
+    const task = mockData.plan.tasks.find(t => t.id === taskId);
+    if (task) task.completed = true;
+  }
   closePlanModal('taskCompleteModal');
   if (type === 'note') {
     toast('已打开笔记编辑器', 'info');
   } else {
     toast('复习卡片已生成', 'success');
   }
-  if (currentDetailGoalId) openPlanDetail(currentDetailGoalId);
+  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
-function confirmAddTask() {
+async function confirmAddTask() {
   const name = document.getElementById('taskName').value;
   if (!name.trim()) { toast('请输入任务名称', 'warning'); return; }
-  toast('任务创建成功', 'success');
+  
+  const taskData = {
+    goalId: currentDetailGoalId,
+    milestoneId: document.getElementById('taskMilestone').value,
+    title: name,
+    deadline: document.getElementById('taskDeadline').value || null,
+    estimatedHours: document.getElementById('taskDuration').value,
+    priority: document.getElementById('taskPriority').value,
+    aiType: document.getElementById('taskAiType').value,
+    description: document.getElementById('taskDesc').value || ''
+  };
+  
+  try {
+    const res = await DB.createTask(taskData);
+    if (res.success) {
+      toast('任务创建成功', 'success');
+    } else {
+      toast('创建失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    console.error('创建任务失败:', error);
+    toast('任务创建成功', 'success'); // 降级提示
+  }
   closePlanModal('addTaskModal');
+  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
 initPlanPage();

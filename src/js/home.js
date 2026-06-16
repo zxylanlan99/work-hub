@@ -20,6 +20,8 @@ async function initHomePage() {
   loadStatistics();
   loadHeatmap();
   loadWarmup();
+  loadResume();
+  loadWeeklyTrend();
 
   const answerBtn = document.getElementById('quiz-answer-btn');
   const skipBtn = document.getElementById('skip-warmup');
@@ -61,6 +63,25 @@ async function loadStatistics() {
     }
     if (statOutput) {
       statOutput.textContent = outputStats.success ? (outputStats.data.drafts || 0) : 0;
+    }
+
+    /* B3: 更新四宫格副文本 */
+    const quickCards = document.querySelectorAll('.quick-card');
+    if (quickCards[0]) {
+      const active = planStats.success ? (planStats.data.active || 0) : 0;
+      quickCards[0].querySelector('.quick-card-sub').textContent = `${active}个学习目标进行中`;
+    }
+    if (quickCards[1]) {
+      const due = reviewStats.success ? (reviewStats.data.dueToday || 0) : 0;
+      quickCards[1].querySelector('.quick-card-sub').textContent = `${due}张卡片待复习`;
+    }
+    if (quickCards[2]) {
+      const unread = newsStats.success ? (newsStats.data.unread || 0) : 0;
+      quickCards[2].querySelector('.quick-card-sub').textContent = `${unread}条AI推荐资讯待处理`;
+    }
+    if (quickCards[3]) {
+      const drafts = outputStats.success ? (outputStats.data.drafts || 0) : 0;
+      quickCards[3].querySelector('.quick-card-sub').textContent = `${drafts}篇草稿待完成`;
     }
   } catch (error) {
     console.error('加载统计数据失败:', error);
@@ -106,7 +127,7 @@ async function loadHeatmap() {
       const level = count >= 5 ? 4 : count >= 3 ? 3 : count >= 2 ? 2 : count >= 1 ? 1 : 0;
 
       const cell = document.createElement('div');
-      cell.className = `heatmap-cell heatmap-level-${level}`;
+      cell.className = `heatmap-cell h${level}`;
       cell.title = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()} — ${count} 次学习`;
       heatmap.appendChild(cell);
     }
@@ -121,7 +142,7 @@ async function loadHeatmap() {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
       const cell = document.createElement('div');
-      cell.className = 'heatmap-cell heatmap-level-0';
+      cell.className = 'heatmap-cell h0';
       cell.title = `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
       heatmap.appendChild(cell);
     }
@@ -288,4 +309,141 @@ function skipWarmup() {
   if (warmupCard) {
     warmupCard.style.display = 'none';
   }
+}
+
+/* ================================================================
+   智能续接 — AGG-001: 上次学习断点
+   ================================================================ */
+
+async function loadResume() {
+  try {
+    const result = await DB.getLastBreakpoint();
+    if (!result.success || !result.data) return;
+
+    const { goals, reviewCards, chats } = result.data;
+    const topicEl = document.querySelector('.resume-topic');
+    const metaEl = document.querySelector('.resume-meta');
+
+    if (topicEl && goals && goals.length > 0) {
+      const lastGoal = goals[0];
+      topicEl.innerHTML = `<strong>上次学习：</strong>${escapeHtml(lastGoal.title || '未知主题')}`;
+    }
+
+    if (metaEl) {
+      const parts = [];
+      if (goals && goals.length > 0) {
+        const lastGoal = goals[0];
+        if (lastGoal.updatedAt) {
+          parts.push(`⏱ ${formatDate(lastGoal.updatedAt)}`);
+        }
+        if (lastGoal.estimatedHours) {
+          parts.push(`📖 预计剩余约 ${Math.round(lastGoal.estimatedHours * 0.4)} 分钟`);
+        }
+      }
+      if (chats && chats.length > 0 && chats[0].updatedAt) {
+        parts.push(`💬 最近对话 ${formatDate(chats[0].updatedAt)}`);
+      }
+      if (parts.length > 0) {
+        metaEl.innerHTML = parts.map(p => `<span>${p}</span>`).join('');
+      }
+    }
+  } catch (error) {
+    console.error('加载智能续接失败:', error);
+  }
+}
+
+/* ================================================================
+   本周趋势 — AGG-006: 本周学习统计
+   ================================================================ */
+
+async function loadWeeklyTrend() {
+  try {
+    const result = await DB.getWeeklyStudyStats();
+    if (!result.success || !result.data) return;
+
+    const { history, cards } = result.data;
+    const historyList = history || [];
+    const cardList = cards || [];
+
+    // 计算本周完成率：本周有复习记录的天数 / 有到期卡片的天数
+    const monday = new Date();
+    monday.setDate(monday.getDate() - monday.getDay() + 1);
+    monday.setHours(0, 0, 0, 0);
+
+    const reviewedDays = new Set();
+    historyList.forEach(h => {
+      const d = new Date(h.reviewedAt);
+      if (d >= monday) reviewedDays.add(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`);
+    });
+
+    const dueCardsThisWeek = cardList.filter(c => {
+      const d = new Date(c.nextReview);
+      return d >= monday;
+    }).length;
+
+    const completionRate = dueCardsThisWeek > 0
+      ? Math.round((reviewedDays.size / 7) * 100)
+      : (reviewedDays.size > 0 ? Math.round((reviewedDays.size / 7) * 100) : 0);
+
+    // 计算连续学习天数（从今天往回数）
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const studyDays = new Set();
+    historyList.forEach(h => {
+      const d = new Date(h.reviewedAt);
+      studyDays.add(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`);
+    });
+
+    let streak = 0;
+    const checkDate = new Date(today);
+    while (true) {
+      const key = `${checkDate.getFullYear()}-${checkDate.getMonth() + 1}-${checkDate.getDate()}`;
+      if (studyDays.has(key)) {
+        streak++;
+        checkDate.setDate(checkDate.getDate() - 1);
+      } else {
+        // 如果今天还没学习，不计入连续
+        if (streak === 0) {
+          checkDate.setDate(checkDate.getDate() - 1);
+          continue;
+        }
+        break;
+      }
+    }
+
+    // 更新趋势面板
+    const panels = document.querySelectorAll('.trend-panel');
+    if (panels.length >= 2) {
+      // 第一个面板：复习完成率
+      const valEl = panels[0].querySelector('.trend-value');
+      const barEl = panels[0].querySelector('.trend-bar-fill');
+      if (valEl) valEl.textContent = `${completionRate}%`;
+      if (barEl) barEl.style.width = `${completionRate}%`;
+
+      // 第二个面板：连续天数
+      const valEl2 = panels[1].querySelector('.trend-value');
+      if (valEl2) valEl2.textContent = `${streak} 天`;
+    }
+  } catch (error) {
+    console.error('加载本周趋势失败:', error);
+  }
+}
+
+/* ================================================================
+   辅助函数
+   ================================================================ */
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatDate(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

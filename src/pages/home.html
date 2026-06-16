@@ -163,30 +163,4 @@ function revealAnswer(el) {
   el.classList.add('revealed');
   toast('回答正确！', 'success');
 }
-
-// 【DB-R-002】渲染热力图
-(function () {
-  var g = document.getElementById('heatmap');
-  if (!g) return;
-  var levels = ['h0', 'h1', 'h2', 'h3', 'h4'];
-  var days = [];
-  for (var i = 0; i < 14; i++) {
-    var d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    days.push({ day: d.getDay() || 7, val: Math.floor(Math.random() * 5) });
-  }
-  // 填充前导空白（对齐周几）
-  var firstDay = days[0].day;
-  for (var i = 1; i < firstDay; i++) {
-    var cell = document.createElement('div');
-    cell.className = 'heatmap-cell h0';
-    g.appendChild(cell);
-  }
-  for (var i = 0; i < days.length; i++) {
-    var cell = document.createElement('div');
-    cell.className = 'heatmap-cell ' + levels[days[i].val];
-    cell.title = days[i].val * 5 + ' 分钟学习';
-    g.appendChild(cell);
-  }
-})();
 </script>

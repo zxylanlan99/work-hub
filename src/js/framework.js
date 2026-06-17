@@ -6,7 +6,8 @@ const routes = {
   knowledge: { title: '📚 知识库', file: 'pages/knowledge.html' },
   'ai-chat': { title: '🤖 AI对话', file: 'pages/ai-chat.html' },
   review: { title: '🔄 复习计划', file: 'pages/review.html' },
-  output: { title: '📝 知识沉淀', file: 'pages/output.html' }
+  output: { title: '📝 知识沉淀', file: 'pages/output.html' },
+  settings: { title: '⚙️ 系统设置', file: 'pages/settings.html' }
 };
 
 // 页面顶栏右侧与中间配置
@@ -48,11 +49,15 @@ const topbarConfigs = {
     right: `<button class="btn btn-secondary btn-sm" onclick="showQuickScrap()">💡 快速灵感</button>
             <button class="btn btn-primary" onclick="openModal('modal-new-output')"><span>+</span> 新建输出</button>`,
     center: ''
+  },
+  settings: {
+    right: `<span style="font-size:12px;color:var(--gray-400)">设置即时生效 · 自动保存</span>`,
+    center: ''
   }
 };
 
 // 单列布局页面
-const singleColumnPages = ['plan', 'news', 'knowledge', 'ai-chat', 'review', 'output'];
+const singleColumnPages = ['plan', 'news', 'knowledge', 'ai-chat', 'review', 'output', 'settings'];
 
 let currentPage = null;
 let isLoading = false;

@@ -681,7 +681,41 @@ const mockData = {
         relevance: 78
       }
     ]
-  }
+  },
+  
+  // 系统设置模块数据
+  settings: {
+    theme: 'light',
+    defaultModel: 'DeepSeek',
+    monthlyBudget: 20,
+    budgetUsed: 8,
+    budgetAlert: true,
+    budgetStop: true,
+    notificationReview: true,
+    notificationDeadline: true,
+    notificationSystem: true,
+    notificationTime: '09:00',
+    doNotDisturbStart: '22:00',
+    doNotDisturbEnd: '08:00',
+    backupFrequency: 'daily',
+    backupTarget: 'weiyun'
+  },
+  apiKeys: [
+    {
+      _id: 'key-1',
+      provider: 'DeepSeek',
+      key: 'sk-7a8b9c••••••••d4e5f6',
+      enabled: true,
+      statusText: '● 已启用'
+    },
+    {
+      _id: 'key-2',
+      provider: 'Kimi',
+      key: 'sk-kimi••••••••••••xYz',
+      enabled: true,
+      statusText: '● 已启用'
+    }
+  ]
 };
 
 // 生成热力图数据

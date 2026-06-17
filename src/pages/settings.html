@@ -1,201 +1,439 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>系统设置 - StudyMind</title>
-  <link rel="stylesheet" href="../css/global.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-</head>
-<body>
-  <div id="app">
-    <aside class="sidebar">
-      <div class="logo">
-        <i class="fas fa-brain"></i>
-        <span>StudyMind</span>
-      </div>
-      <ul class="menu">
-        <li class="menu-item">
-          <a href="../../index.html">
-            <i class="fas fa-chart-pie"></i>
-            <span>首页</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="learning.html">
-            <i class="fas fa-bullseye"></i>
-            <span>学习计划</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="review.html">
-            <i class="fas fa-redo"></i>
-            <span>复习计划</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="knowledge.html">
-            <i class="fas fa-book-open"></i>
-            <span>知识库</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="ai-chat.html">
-            <i class="fas fa-comments"></i>
-            <span>AI对话</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="news.html">
-            <i class="fas fa-rss"></i>
-            <span>资讯</span>
-          </a>
-        </li>
-        <li class="menu-item">
-          <a href="output.html">
-            <i class="fas fa-file-alt"></i>
-            <span>知识沉淀</span>
-          </a>
-        </li>
-        <li class="menu-item active">
-          <a href="settings.html">
-            <i class="fas fa-cog"></i>
-            <span>系统设置</span>
-          </a>
-        </li>
-      </ul>
-    </aside>
-
-    <main class="main-content">
-      <header class="header">
-        <div class="header-title">系统设置</div>
-      </header>
-
-      <div class="content">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">AI配置</div>
+<div id="settings-page">
+  <!-- 1. 主题设置 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🎨 主题</div>
+    </div>
+    <div class="section-body">
+      <div class="form-row" style="display:block">
+        <div class="form-row-label">界面主题</div>
+        <div class="form-row-desc" style="margin-bottom:10px">选择你喜欢的显示模式</div>
+        <div class="theme-options">
+          <div class="theme-option active" onclick="switchTheme(this)">
+            <div class="theme-option-icon">☀️</div><div class="theme-option-name">亮色</div>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div class="form-group">
-              <label class="form-label">默认模型</label>
-              <select class="form-select" id="default-model">
-                <option value="mimo">MiMo</option>
-                <option value="silicon">硅基流动</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">温度参数</label>
-              <input type="range" class="form-input" id="temperature" min="0" max="2" step="0.1" value="0.7" style="width: 100%;">
-              <span style="font-size: 14px; color: #6b7280;">0.7</span>
-            </div>
+          <div class="theme-option" onclick="switchTheme(this)">
+            <div class="theme-option-icon">🌙</div><div class="theme-option-name">暗色</div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">通知设置</div>
-          </div>
-          <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-weight: 500;">复习提醒</div>
-                <div style="font-size: 14px; color: #6b7280;">每天定时提醒复习</div>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="reminder-enabled" checked>
-                <span class="slider"></span>
-              </label>
-            </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div>
-                <div style="font-weight: 500;">每日报告</div>
-                <div style="font-size: 14px; color: #6b7280;">每天发送学习报告</div>
-              </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="report-enabled">
-                <span class="slider"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">数据管理</div>
-          </div>
-          <div style="display: flex; gap: 16px;">
-            <button class="btn btn-secondary" id="export-btn">
-              <i class="fas fa-download"></i> 导出数据
-            </button>
-            <button class="btn btn-secondary" id="import-btn">
-              <i class="fas fa-upload"></i> 导入数据
-            </button>
-            <button class="btn btn-danger" id="backup-btn">
-              <i class="fas fa-backup"></i> 立即备份
-            </button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">关于</div>
-          </div>
-          <div style="font-size: 14px; color: #6b7280;">
-            <p>版本：v1.0.0</p>
-            <p>StudyMind - 智能学习助手</p>
-            <p>帮助您更高效地学习和复习</p>
+          <div class="theme-option" onclick="switchTheme(this)">
+            <div class="theme-option-icon">🔄</div><div class="theme-option-name">跟随系统</div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   </div>
 
-  <style>
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 48px;
-      height: 24px;
-    }
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      transition: .4s;
-      border-radius: 24px;
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-    input:checked + .slider {
-      background-color: #6366f1;
-    }
-    input:checked + .slider:before {
-      transform: translateX(24px);
-    }
-  </style>
+  <!-- 2. AI配置 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🤖 AI 配置</div>
+      <button class="btn btn-primary btn-sm" onclick="addApiKey()">+ 添加 Key</button>
+    </div>
+    <div class="section-body">
+      <div class="api-key-list" id="apiKeyList">
+        <!-- API Key列表将通过JS渲染 -->
+      </div>
 
-  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/1.7.0/cloudbase.full.js"></script>
-  <script src="../js/config.js"></script>
-  <script src="../js/cloudbase.js"></script>
-  <script src="../js/settings.js"></script>
-</body>
-</html>
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">默认模型</div>
+          <div class="form-row-desc">新对话的默认 AI 模型</div>
+        </div>
+        <select class="form-select" id="defaultModel" onchange="saveSetting('defaultModel', this.value)">
+          <option>DeepSeek</option>
+          <option>Kimi</option>
+          <option>豆包</option>
+          <option>Claude</option>
+          <option>DeepSeek-R1</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">月度预算</div>
+          <div class="form-row-desc">超出预算后将自动停止 AI 调用</div>
+        </div>
+        <div class="budget-amount">¥<span id="budgetAmount">20</span></div>
+      </div>
+
+      <div class="form-row budget-row">
+        <div class="form-row-left" style="margin-right:0">
+          <div class="form-row-label">预算使用</div>
+          <div class="form-row-desc" id="budgetDesc">本月已使用 ¥8 / ¥20 (40%)</div>
+        </div>
+        <div class="budget-bar-wrap">
+          <div class="budget-bar-fill" id="budgetBar" style="width:40%"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">预算提醒</div>
+          <div class="form-row-desc">当月费用的80%时发送提醒</div>
+        </div>
+        <div class="toggle active" id="toggleBudgetAlert" onclick="toggleSetting('budgetAlert', this)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">超预算停止</div>
+          <div class="form-row-desc">达到100%后停止所有AI调用</div>
+        </div>
+        <div class="toggle active" id="toggleBudgetStop" onclick="toggleSetting('budgetStop', this)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 通知设置 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">🔔 通知</div>
+    </div>
+    <div class="section-body">
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">复习提醒</div>
+          <div class="form-row-desc">每日待复习卡片到达时推送</div>
+        </div>
+        <div class="toggle active" id="toggleReview" onclick="toggleSetting('notificationReview', this)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">截止提醒</div>
+          <div class="form-row-desc">学习任务临近截止日期时提醒</div>
+        </div>
+        <div class="toggle active" id="toggleDeadline" onclick="toggleSetting('notificationDeadline', this)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">系统通知</div>
+          <div class="form-row-desc">产品更新、知识体检等系统消息</div>
+        </div>
+        <div class="toggle active" id="toggleSystem" onclick="toggleSetting('notificationSystem', this)">
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">提醒时间</div>
+          <div class="form-row-desc">每日推送通知的时间</div>
+        </div>
+        <div class="time-input">
+          <input type="time" class="form-input" id="notificationTime" value="09:00" style="width:110px" 
+                 onchange="saveSetting('notificationTime', this.value)">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">免打扰时段</div>
+          <div class="form-row-desc">该时段内暂停所有通知推送</div>
+        </div>
+        <div class="time-input" style="gap:4px;">
+          <input type="time" class="form-input" id="doNotDisturbStart" value="22:00" style="width:110px"
+                 onchange="saveSetting('doNotDisturbStart', this.value)">
+          <span style="color:var(--gray-400)">—</span>
+          <input type="time" class="form-input" id="doNotDisturbEnd" value="08:00" style="width:110px"
+                 onchange="saveSetting('doNotDisturbEnd', this.value)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. 数据管理 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">💾 数据管理</div>
+    </div>
+    <div class="section-body">
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">导出数据</div>
+          <div class="form-row-desc">导出所有数据为 JSON 文件</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="exportData()">导出 JSON</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">导入数据</div>
+          <div class="form-row-desc">从 JSON 文件还原数据（导入前可预览）</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="importData()">导入 JSON</button>
+      </div>
+
+      <div class="danger-zone">
+        <div class="danger-zone-title">⚠️ 危险操作</div>
+        <div class="danger-zone-desc">清空所有数据后不可恢复，建议先导出备份</div>
+        <button class="btn btn-danger btn-sm" onclick="clearData()">清空所有数据</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. 自动备份 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">☁️ 自动备份</div>
+    </div>
+    <div class="section-body">
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">备份频率</div>
+          <div class="form-row-desc">自动备份数据的间隔</div>
+        </div>
+        <select class="form-select" id="backupFrequency" style="width:140px"
+                onchange="saveSetting('backupFrequency', this.value)">
+          <option>每天</option>
+          <option>每周</option>
+          <option>关闭</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">云存储目标</div>
+          <div class="form-row-desc">备份文件存储位置</div>
+        </div>
+        <select class="form-select" id="backupTarget" style="width:140px"
+                onchange="saveSetting('backupTarget', this.value)">
+          <option>微云</option>
+          <option>腾讯云 COS</option>
+          <option>本地</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">手动备份</div>
+          <div class="form-row-desc">立即执行一次数据备份</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="executeBackup()">立即备份</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;padding:20px;color:var(--gray-400);font-size:12px">
+    StudyMind v1.0 · 所有设置自动保存
+  </div>
+</div>
+
+<!-- 添加API Key弹窗 -->
+<div class="modal-overlay" id="modal-add-key" onclick="if(event.target===this)closeModal('modal-add-key')">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title">➕ 添加 API Key</div>
+      <button class="modal-close" onclick="closeModal('modal-add-key')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">服务商</label>
+        <select class="form-select" id="keyProvider">
+          <option>DeepSeek</option>
+          <option>Kimi</option>
+          <option>豆包</option>
+          <option>Claude</option>
+          <option>其他</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input type="text" class="form-input" id="keyValue" placeholder="输入API Key">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-key')">取消</button>
+      <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// 当前设置数据
+let currentSettings = {};
+
+// 初始化页面
+function initSettingsPage() {
+  loadSettings();
+  loadApiKeys();
+}
+
+// 加载设置
+function loadSettings() {
+  currentSettings = window.mockData.settings || {
+    theme: 'light',
+    defaultModel: 'DeepSeek',
+    monthlyBudget: 20,
+    budgetUsed: 8,
+    budgetAlert: true,
+    budgetStop: true,
+    notificationReview: true,
+    notificationDeadline: true,
+    notificationSystem: true,
+    notificationTime: '09:00',
+    doNotDisturbStart: '22:00',
+    doNotDisturbEnd: '08:00',
+    backupFrequency: 'daily',
+    backupTarget: 'weiyun'
+  };
+
+  // 设置表单值
+  document.getElementById('defaultModel').value = currentSettings.defaultModel;
+  document.getElementById('budgetAmount').textContent = currentSettings.monthlyBudget;
+  document.getElementById('budgetDesc').textContent = `本月已使用 ¥${currentSettings.budgetUsed} / ¥${currentSettings.monthlyBudget} (${Math.round(currentSettings.budgetUsed / currentSettings.monthlyBudget * 100)}%)`;
+  
+  const budgetPercent = (currentSettings.budgetUsed / currentSettings.monthlyBudget * 100);
+  const budgetBar = document.getElementById('budgetBar');
+  budgetBar.style.width = `${budgetPercent}%`;
+  
+  // 设置预算条颜色
+  const budgetWrap = document.querySelector('.budget-row');
+  if (budgetPercent >= 100) {
+    budgetWrap.classList.add('budget-exceed');
+  } else if (budgetPercent >= 80) {
+    budgetWrap.classList.add('budget-warn');
+  }
+
+  document.getElementById('notificationTime').value = currentSettings.notificationTime;
+  document.getElementById('doNotDisturbStart').value = currentSettings.doNotDisturbStart;
+  document.getElementById('doNotDisturbEnd').value = currentSettings.doNotDisturbEnd;
+  
+  document.getElementById('backupFrequency').value = currentSettings.backupFrequency === 'daily' ? '每天' : 
+                                                    currentSettings.backupFrequency === 'weekly' ? '每周' : '关闭';
+  document.getElementById('backupTarget').value = currentSettings.backupTarget === 'weiyun' ? '微云' : 
+                                                 currentSettings.backupTarget === 'cos' ? '腾讯云 COS' : '本地';
+}
+
+// 加载API Key列表
+function loadApiKeys() {
+  const apiKeys = window.mockData.apiKeys || [
+    { _id: 'key-1', provider: 'DeepSeek', key: 'sk-7a8b9c••••••••d4e5f6', enabled: true, statusText: '● 已启用' },
+    { _id: 'key-2', provider: 'Kimi', key: 'sk-kimi••••••••••••xYz', enabled: true, statusText: '● 已启用' }
+  ];
+
+  const list = document.getElementById('apiKeyList');
+  list.innerHTML = '';
+  
+  apiKeys.forEach(key => {
+    const item = document.createElement('div');
+    item.className = 'api-key-item';
+    item.innerHTML = `
+      <span class="api-key-provider">${key.provider}</span>
+      <span class="api-key-value">${key.key}</span>
+      <span class="api-key-status ${key.enabled ? 'status-active' : 'status-inactive'}">${key.statusText}</span>
+      <button class="btn btn-ghost btn-xs" onclick="editApiKey('${key._id}')">编辑</button>
+      <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="deleteApiKey('${key._id}')">删除</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// 保存设置
+function saveSetting(key, value) {
+  currentSettings[key] = value;
+  window.toast('设置已保存', 'success');
+}
+
+// 切换主题
+function switchTheme(el) {
+  document.querySelectorAll('.theme-option').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  
+  const theme = el.querySelector('.theme-option-name').textContent;
+  saveSetting('theme', theme === '亮色' ? 'light' : theme === '暗色' ? 'dark' : 'system');
+  window.toast('主题已切换: ' + theme, 'success');
+}
+
+// 切换Toggle设置
+function toggleSetting(key, el) {
+  el.classList.toggle('active');
+  currentSettings[key] = el.classList.contains('active');
+  window.toast('设置已保存', 'success');
+}
+
+// 添加API Key
+function addApiKey() {
+  document.getElementById('keyProvider').value = 'DeepSeek';
+  document.getElementById('keyValue').value = '';
+  openModal('modal-add-key');
+}
+
+// 保存API Key
+function saveApiKey() {
+  const provider = document.getElementById('keyProvider').value;
+  const key = document.getElementById('keyValue').value;
+  
+  if (!key.trim()) {
+    window.toast('请输入API Key', 'warning');
+    return;
+  }
+  
+  closeModal('modal-add-key');
+  window.toast('API Key 已添加', 'success');
+  loadApiKeys();
+}
+
+// 编辑API Key
+function editApiKey(keyId) {
+  window.toast('功能开发中', 'info');
+}
+
+// 删除API Key
+function deleteApiKey(keyId) {
+  if (confirm('确定删除此API Key？')) {
+    window.toast('API Key 已删除', 'warning');
+    loadApiKeys();
+  }
+}
+
+// 导出数据
+function exportData() {
+  window.toast('数据已导出', 'success');
+}
+
+// 导入数据
+function importData() {
+  window.toast('请选择导入文件', 'info');
+}
+
+// 清空数据
+function clearData() {
+  if (confirm('确定清空所有数据？此操作不可恢复！')) {
+    if (confirm('再次确认：确定要清空所有数据吗？')) {
+      window.toast('数据已清空', 'danger');
+    }
+  }
+}
+
+// 执行备份
+function executeBackup() {
+  window.toast('备份完成', 'success');
+}
+
+// 弹窗操作
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', initSettingsPage);
+</script>

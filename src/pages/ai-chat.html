@@ -1,63 +1,48 @@
 <div class="ai-chat-page">
   <div class="chat-container">
-    <!-- 左侧对话列表 -->
+    <!-- 左侧边栏 -->
     <div class="chat-sidebar">
       <div class="sidebar-header">
         <h3>对话列表</h3>
         <button class="btn btn-primary btn-sm" onclick="createNewChat()">+ 新对话</button>
       </div>
-      <div class="conversation-list">
-        {{mockData.aiChat.conversations.map(conv => `
-          <div class="conversation-item active">
-            <div class="conv-icon">🤖</div>
-            <div class="conv-info">
-              <div class="conv-title">${conv.title}</div>
-              <div class="conv-preview">${conv.lastMessage}</div>
-            </div>
-            <div class="conv-time">${conv.createdAt.split(' ')[1]}</div>
-          </div>
-        `).join('')}}
+      
+      <div class="conversation-list" id="conversation-list">
       </div>
+      
       <div class="model-selector">
         <label>选择模型</label>
-        <div class="model-options">
-          {{mockData.aiChat.models.map(model => `
-            <button class="model-option ${model.selected ? 'selected' : ''}" onclick="selectModel('${model.id}')">
-              ${model.name}
-            </button>
-          `).join('')}}
+        <div class="model-options" id="model-options">
         </div>
+      </div>
+      
+      <div class="usage-info">
+        <div class="usage-label">本月已使用</div>
+        <div class="usage-amount" id="usage-amount">¥0.00</div>
+        <div class="usage-bar">
+          <div class="usage-fill" id="usage-fill"></div>
+        </div>
+        <div class="usage-budget">预算：¥5.00</div>
       </div>
     </div>
 
-    <!-- 右侧对话区域 -->
+    <!-- 右侧主区域 -->
     <div class="chat-main">
       <div class="chat-header">
-        <h3>AI助手</h3>
+        <h3 id="chat-title">AI助手</h3>
         <div class="header-actions">
-          <button class="action-btn">📤 导出</button>
-          <button class="action-btn">🗑️ 删除</button>
+          <button class="action-btn" onclick="exportChat()">📤 导出</button>
+          <button class="action-btn" onclick="deleteChat()">🗑️ 删除</button>
         </div>
       </div>
 
-      <!-- 消息列表 -->
       <div class="messages-container" id="messages-container">
-        {{mockData.aiChat.messages.map(msg => `
-          <div class="message ${msg.role}">
-            <div class="message-avatar">${msg.role === 'user' ? '👤' : '🤖'}</div>
-            <div class="message-content">
-              <pre>${msg.content}</pre>
-            </div>
-            <div class="message-time">${msg.timestamp}</div>
-          </div>
-        `).join('')}}
       </div>
 
-      <!-- 输入区域 -->
       <div class="chat-input-area">
         <textarea id="chat-input" placeholder="输入你的问题..." rows="3"></textarea>
         <div class="input-actions">
-          <button class="btn btn-outline">📎 上传文件</button>
+          <button class="btn btn-outline">� 上传文件</button>
           <button class="btn btn-primary" onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -66,61 +51,225 @@
 </div>
 
 <script>
+const chatState = {
+  currentChatId: null,
+  currentModel: 'mimo',
+  inflightCount: 0
+}
+
+function initChatPage() {
+  renderConversationList()
+  renderModelSelector()
+  renderUsageInfo()
+  if (mockData.aiChat.conversations.length > 0) {
+    selectChat(mockData.aiChat.conversations[0]._id)
+  }
+}
+
+function renderConversationList() {
+  const container = document.getElementById('conversation-list')
+  container.innerHTML = mockData.aiChat.conversations.map(conv => `
+    <div class="conversation-item ${conv._id === chatState.currentChatId ? 'active' : ''}" 
+         onclick="selectChat('${conv._id}')">
+      <div class="conv-icon">🤖</div>
+      <div class="conv-info">
+        <div class="conv-title">${conv.title}</div>
+        <div class="conv-preview">${conv.lastMessage}</div>
+      </div>
+      <div class="conv-time">${conv.createdAt.split(' ')[1]}</div>
+    </div>
+  `).join('')
+}
+
+function renderModelSelector() {
+  const container = document.getElementById('model-options')
+  container.innerHTML = mockData.aiChat.models.map(model => `
+    <button class="model-option ${model.selected ? 'selected' : ''}" 
+            onclick="selectModel('${model.id}')">
+      ${model.name}
+    </button>
+  `).join('')
+}
+
+function renderUsageInfo() {
+  const usage = mockData.aiChat.usage
+  document.getElementById('usage-amount').textContent = '¥' + usage.monthlyCost.toFixed(2)
+  const percentage = (usage.monthlyCost / usage.monthlyBudget) * 100
+  document.getElementById('usage-fill').style.width = percentage + '%'
+}
+
+function selectChat(chatId) {
+  chatState.currentChatId = chatId
+  renderConversationList()
+  loadMessages(chatId)
+  updateChatTitle()
+}
+
+function updateChatTitle() {
+  const chat = mockData.aiChat.conversations.find(c => c._id === chatState.currentChatId)
+  document.getElementById('chat-title').textContent = chat?.title || 'AI助手'
+}
+
+function loadMessages(chatId) {
+  const container = document.getElementById('messages-container')
+  const messages = mockData.aiChat.messages.filter(m => m.chatId === chatId)
+  
+  if (messages.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;color:var(--gray-400)">暂无消息，开始对话吧</div>'
+    return
+  }
+  
+  container.innerHTML = messages.map(msg => renderMessage(msg)).join('')
+  container.scrollTop = container.scrollHeight
+}
+
+function renderMessage(msg) {
+  return `
+    <div class="message ${msg.role}">
+      <div class="message-avatar">${msg.role === 'user' ? '👤' : '🤖'}</div>
+      <div class="message-content">
+        <pre>${msg.content}</pre>
+      </div>
+      <div class="message-time">${msg.createdAt.split(' ')[1]}</div>
+    </div>
+  `
+}
+
 function createNewChat() {
-  utils.toast('创建新对话', 'info');
+  const newChat = {
+    _id: 'chat' + Date.now(),
+    title: '新对话',
+    lastMessage: '',
+    model: chatState.currentModel,
+    createdAt: new Date().toLocaleString('zh-CN'),
+    messageCount: 0
+  }
+  mockData.aiChat.conversations.unshift(newChat)
+  selectChat(newChat._id)
+  utils.toast('已创建新对话', 'success')
 }
 
 function selectModel(modelId) {
-  const options = document.querySelectorAll('.model-option');
-  options.forEach(opt => opt.classList.remove('selected'));
-  event.target.classList.add('selected');
-  utils.toast(`已选择模型`, 'success');
+  chatState.currentModel = modelId
+  mockData.aiChat.models.forEach(m => m.selected = (m.id === modelId))
+  renderModelSelector()
+  utils.toast(`已选择 ${modelId} 模型`, 'success')
 }
 
-function sendMessage() {
-  const input = document.getElementById('chat-input');
-  const message = input.value.trim();
+async function sendMessage() {
+  const input = document.getElementById('chat-input')
+  const message = input.value.trim()
   
   if (!message) {
-    utils.toast('请输入消息', 'warning');
-    return;
+    utils.toast('请输入消息', 'warning')
+    return
   }
   
-  const container = document.getElementById('messages-container');
+  if (chatState.inflightCount >= 2) {
+    utils.toast('正在处理上一条消息，请稍候', 'warning')
+    return
+  }
   
-  const userMsg = `
-    <div class="message user">
-      <div class="message-avatar">👤</div>
-      <div class="message-content">
-        <pre>${message}</pre>
-      </div>
-      <div class="message-time">刚刚</div>
-    </div>
-  `;
-  container.innerHTML += userMsg;
+  const container = document.getElementById('messages-container')
+  const userMsg = {
+    _id: 'msg' + Date.now(),
+    chatId: chatState.currentChatId,
+    role: 'user',
+    content: message,
+    createdAt: new Date().toLocaleString('zh-CN')
+  }
   
-  input.value = '';
-  container.scrollTop = container.scrollHeight;
+  container.innerHTML += renderMessage(userMsg)
+  input.value = ''
+  container.scrollTop = container.scrollHeight
   
-  setTimeout(() => {
-    const aiMsg = `
-      <div class="message assistant">
-        <div class="message-avatar">🤖</div>
-        <div class="message-content">
-          <pre>这是AI的模拟回复。您的问题是：${message}</pre>
-        </div>
-        <div class="message-time">刚刚</div>
-      </div>
-    `;
-    container.innerHTML += aiMsg;
-    container.scrollTop = container.scrollHeight;
-  }, 1000);
+  chatState.inflightCount++
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    const aiMsg = {
+      _id: 'msg' + Date.now(),
+      chatId: chatState.currentChatId,
+      role: 'assistant',
+      content: `这是 ${chatState.currentModel} 模型的回复。\n\n您的问题是：${message}\n\n这是详细回答内容，包含对问题的分析和建议。AI 可以帮助您解决各种技术问题、提供学习建议等。`,
+      model: chatState.currentModel + '-v2.5-pro',
+      tokens: Math.floor(Math.random() * 100) + 50,
+      cost: (Math.random() * 0.001).toFixed(4),
+      createdAt: new Date().toLocaleString('zh-CN')
+    }
+    
+    container.innerHTML += renderMessage(aiMsg)
+    container.scrollTop = container.scrollHeight
+    
+    const convIndex = mockData.aiChat.conversations.findIndex(c => c._id === chatState.currentChatId)
+    if (convIndex !== -1) {
+      mockData.aiChat.conversations[convIndex].lastMessage = message.substring(0, 30) + (message.length > 30 ? '...' : '')
+      mockData.aiChat.conversations[convIndex].messageCount++
+      mockData.aiChat.conversations[convIndex].createdAt = new Date().toLocaleString('zh-CN')
+      renderConversationList()
+      updateChatTitle()
+    }
+  } catch (error) {
+    utils.toast('AI 服务暂时不可用，请稍后重试', 'error')
+  } finally {
+    chatState.inflightCount--
+  }
 }
 
-document.getElementById('chat-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
+function exportChat() {
+  if (!chatState.currentChatId) {
+    utils.toast('请先选择一个对话', 'warning')
+    return
   }
-});
+  
+  const messages = mockData.aiChat.messages.filter(m => m.chatId === chatState.currentChatId)
+  const content = messages.map(m => `${m.role === 'user' ? '我' : 'AI'}: ${m.content}`).join('\n\n---\n\n')
+  
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `对话_${new Date().toISOString().split('T')[0]}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  
+  utils.toast('对话已导出', 'success')
+}
+
+function deleteChat() {
+  if (!chatState.currentChatId) {
+    utils.toast('请先选择一个对话', 'warning')
+    return
+  }
+  
+  if (confirm('确定要删除这个对话吗？')) {
+    mockData.aiChat.conversations = mockData.aiChat.conversations.filter(c => c._id !== chatState.currentChatId)
+    mockData.aiChat.messages = mockData.aiChat.messages.filter(m => m.chatId !== chatState.currentChatId)
+    
+    if (mockData.aiChat.conversations.length > 0) {
+      selectChat(mockData.aiChat.conversations[0]._id)
+    } else {
+      document.getElementById('messages-container').innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;color:var(--gray-400)">暂无对话，请创建新对话开始聊天</div>'
+      document.getElementById('chat-title').textContent = 'AI助手'
+      chatState.currentChatId = null
+    }
+    
+    renderConversationList()
+    utils.toast('对话已删除', 'success')
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initChatPage()
+  
+  const input = document.getElementById('chat-input')
+  input?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  })
+})
 </script>

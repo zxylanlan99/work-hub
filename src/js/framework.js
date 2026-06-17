@@ -41,11 +41,12 @@ const topbarConfigs = {
     center: ''
   },
   review: {
-    right: `<span class="topbar-greeting"></span>`,
+    right: `<button class="btn btn-warning btn-sm" onclick="openModal('modal-risk')">⚠️ 遗忘预警</button>`,
     center: ''
   },
   output: {
-    right: `<span class="topbar-greeting"></span>`,
+    right: `<button class="btn btn-secondary btn-sm" onclick="showQuickScrap()">💡 快速灵感</button>
+            <button class="btn btn-primary" onclick="openModal('modal-new-output')"><span>+</span> 新建输出</button>`,
     center: ''
   }
 };

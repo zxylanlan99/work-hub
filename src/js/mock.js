@@ -381,6 +381,111 @@ const mockData = {
 
   // 复习计划数据
   review: {
+    overview: {
+      total: 15,
+      completed: 6,
+      remaining: 9,
+      streak: 7,
+      overdueCount: 3
+    },
+    currentQueue: [
+      {
+        _id: 'card1',
+        knowledgeId: 'k1',
+        knowledgeTitle: 'Go 并发模型深度解析',
+        category: '技术/后端/Go',
+        question: 'Go 语言的并发模型基于什么理论？',
+        type: '选择题',
+        options: [
+          { key: 'A', text: 'Actor Model' },
+          { key: 'B', text: 'CSP（通信顺序进程）' },
+          { key: 'C', text: 'Pipeline Pattern' },
+          { key: 'D', text: 'Event Loop' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Go 语言的并发模型基于 CSP（Communicating Sequential Processes）理论。CSP 是一种描述并发系统中进程间通信的形式化方法，Go 通过 goroutine（轻量级线程）和 channel（通信管道）来实现这一理论。',
+        mastery: 1.5,
+        interval: 6,
+        nextReview: '2026-06-15',
+        status: 'overdue',
+        created: '3个月前'
+      },
+      {
+        _id: 'card2',
+        knowledgeId: 'k2',
+        knowledgeTitle: 'Go Channel 详解',
+        category: '技术/后端/Go',
+        question: 'Go 中 channel 的三种类型是什么？',
+        type: '选择题',
+        options: [
+          { key: 'A', text: '整型、字符串、布尔' },
+          { key: 'B', text: '无缓冲、带缓冲、单向' },
+          { key: 'C', text: '同步、异步、阻塞' },
+          { key: 'D', text: '只读、只写、双向' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Go 中的 channel 分为三种：无缓冲 channel（make(chan T)）、带缓冲 channel（make(chan T, n)）和单向 channel（chan<- T 或 <-chan T）。单向 channel 通常用于函数参数传递，限制 channel 的使用方式。',
+        mastery: 2.5,
+        interval: 12,
+        nextReview: '2026-06-16',
+        status: 'normal',
+        created: '2个月前'
+      },
+      {
+        _id: 'card3',
+        knowledgeId: 'k3',
+        knowledgeTitle: 'Go 内存模型',
+        category: '技术/后端/Go',
+        question: 'Go 的内存模型保证了什么？',
+        type: '选择题',
+        options: [
+          { key: 'A', text: '所有变量的原子性' },
+          { key: 'B', text: 'goroutine 间的可见性规则' },
+          { key: 'C', text: '垃圾回收的实时性' },
+          { key: 'D', text: '栈空间的无限增长' }
+        ],
+        correctAnswer: 'B',
+        explanation: 'Go 的内存模型描述了 Go 程序中 goroutine 之间共享变量的可见性规则。它定义了在什么条件下一个 goroutine 对变量的写入对另一个 goroutine 是可见的。',
+        mastery: 1.8,
+        interval: 4,
+        nextReview: '2026-06-14',
+        status: 'overdue',
+        created: '1个月前'
+      }
+    ],
+    currentIndex: 0,
+    masteryTrend: [1.5, 2.0, 2.5, 3.0],
+    relatedCards: [
+      { id: 'r1', title: 'Channel 原理', mastery: 2.5, status: 'overdue', risk: 'high' },
+      { id: 'r2', title: 'GMP 调度模型', mastery: 3.0, status: 'normal', risk: 'low' },
+      { id: 'r3', title: 'sync 包详解', mastery: 2.0, status: 'normal', risk: 'medium' }
+    ],
+    history: [
+      { date: '2026-06-11', count: 6, accuracy: 83 },
+      { date: '2026-06-10', count: 12, accuracy: 75 },
+      { date: '2026-06-09', count: 10, accuracy: 70 },
+      { date: '2026-06-08', count: 14, accuracy: 86 },
+      { date: '2026-06-07', count: 8, accuracy: 63 }
+    ],
+    stats: {
+      totalReviews: 342,
+      avgAccuracy: 72,
+      longestStreak: 14,
+      totalCards: 48,
+      masteryDist: { low: 8, medium: 12, high: 18 },
+      weakTopics: [
+        { name: '分布式系统', mastery: 2.1 },
+        { name: 'K8s 运维', mastery: 2.3 },
+        { name: 'React Hooks', mastery: 2.4 }
+      ],
+      forgettingCurve: [95, 85, 75, 60, 45]
+    },
+    riskCards: [
+      { id: 'risk1', title: 'Channel 原理', lastReview: '12天前', mastery: 1.5, riskRatio: 0.80, status: 'critical' },
+      { id: 'risk2', title: 'Go 内存模型', lastReview: '10天前', mastery: 2.0, riskRatio: 0.83, status: 'critical' },
+      { id: 'risk3', title: '微服务设计模式', lastReview: '6天前', mastery: 2.5, riskRatio: 0.75, status: 'warning' }
+    ],
+    heatmapData: Array(77).fill(0).map(() => Math.floor(Math.random() * 5)),
     cards: [
       { id: 'card-1', question: '什么是CSP模型？', answer: 'CSP是通信顺序进程，Go并发的理论基础', dueTime: '10分钟前', interval: 1, easeFactor: 2.5, repetitions: 3 },
       { id: 'card-2', question: 'Go中channel的三种类型是什么？', answer: '无缓冲、带缓冲、单向channel', dueTime: '30分钟前', interval: 2, easeFactor: 2.3, repetitions: 5 },
@@ -403,26 +508,179 @@ const mockData = {
     }
   },
 
-  // 知识沉淀数据
+  // 输出模块数据
   output: {
     docs: [
-      { id: 'doc-1', title: 'Go并发编程总结', status: 'draft', wordCount: 2580, updatedAt: '今天 14:30', category: '技术总结' },
-      { id: 'doc-2', title: '分布式系统笔记', status: 'draft', wordCount: 1890, updatedAt: '昨天 22:15', category: '学习笔记' },
-      { id: 'doc-3', title: 'SM-2算法实现', status: 'published', wordCount: 1200, updatedAt: '3天前', category: '技术实现' },
-      { id: 'doc-4', title: '系统设计面试准备', status: 'draft', wordCount: 3450, updatedAt: '1周前', category: '面试准备' },
-      { id: 'doc-5', title: 'Consul使用指南', status: 'published', wordCount: 1680, updatedAt: '2周前', category: '技术文档' }
+      {
+        _id: 'doc-1',
+        title: '微服务架构实战总结',
+        type: 'article',
+        typeLabel: '技术文章',
+        excerpt: '过去半年，团队从单体架构迁移到微服务架构，经历了服务拆分、通信选型、部署运维等关键阶段。本文是对整个迁移过程的全面复盘…',
+        wordCount: 3200,
+        materialCount: 3,
+        status: 'published',
+        updatedAt: '3天前',
+        content: '# 微服务架构实战总结\n\n## 背景\n\n过去半年，我们团队从单体架构逐步迁移到微服务架构。技术栈：Go + Kubernetes + Istio。\n\n## 核心实践\n\n### 1. 服务拆分策略\n我们参考了 DDD 的限界上下文理论，将单体应用拆分为 15 个独立服务。\n\n### 2. 通信选型\n内部服务间采用 gRPC 通信，外部 API 通过 Kong Gateway 统一入口。\n\n## 总结\n\n微服务不是银弹。15个服务的规模下，团队需要额外投入约 30% 的运维精力。'
+      },
+      {
+        _id: 'doc-2',
+        title: 'Go并发模型技术分享',
+        type: 'speech',
+        typeLabel: '技术演讲',
+        excerpt: '准备在团队内做一次关于Go并发模型的技术分享，大纲已梳理：goroutine原理→GMP调度→channel实战→性能优化…',
+        wordCount: 5800,
+        materialCount: 5,
+        status: 'draft',
+        progress: 80,
+        updatedAt: '编辑中'
+      },
+      {
+        _id: 'doc-3',
+        title: '分布式系统学习笔记',
+        type: 'note',
+        typeLabel: '学习笔记',
+        excerpt: 'CAP 理论、一致性协议（Paxos/Raft）、分布式事务（2PC/TCC/Saga）的核心要点梳理。附思维导图和对比表格…',
+        wordCount: 1500,
+        materialCount: 2,
+        status: 'published',
+        updatedAt: '1周前'
+      },
+      {
+        _id: 'doc-4',
+        title: 'CI/CD 流水线搭建记录',
+        type: 'practice',
+        typeLabel: '项目实践记录',
+        excerpt: '使用 GitHub Actions 搭建前后端 CI/CD 流水线完整记录：Lint → Test → Build → Deploy，含踩坑和解决方案…',
+        wordCount: 800,
+        materialCount: 1,
+        status: 'published',
+        updatedAt: '2周前'
+      },
+      {
+        _id: 'doc-5',
+        title: 'React Hooks 完全指南',
+        type: 'tutorial',
+        typeLabel: '进阶教程',
+        excerpt: '从 useState 到 useMemo，涵盖所有内置 Hooks 的使用场景、常见陷阱和最佳实践，配合 CodeSandbox 在线示例…',
+        wordCount: 6200,
+        materialCount: 4,
+        status: 'draft',
+        progress: 45,
+        updatedAt: '编辑中'
+      },
+      {
+        _id: 'doc-6',
+        title: 'TypeScript 类型体操',
+        type: 'article',
+        typeLabel: '技术文章',
+        excerpt: '深入探讨 TypeScript 高级类型系统，包括条件类型、映射类型、模板字面量类型等进阶用法…',
+        wordCount: 2800,
+        materialCount: 2,
+        status: 'draft',
+        progress: 60,
+        updatedAt: '编辑中'
+      },
+      {
+        _id: 'doc-7',
+        title: 'Redis 性能优化实践',
+        type: 'practice',
+        typeLabel: '项目实践记录',
+        excerpt: '生产环境 Redis 性能调优经验总结，包括内存优化、集群配置、热点Key处理等…',
+        wordCount: 1200,
+        materialCount: 3,
+        status: 'published',
+        updatedAt: '3周前'
+      },
+      {
+        _id: 'doc-8',
+        title: 'Docker 容器化最佳实践',
+        type: 'tutorial',
+        typeLabel: '进阶教程',
+        excerpt: '从 Dockerfile 编写到镜像优化，再到容器网络配置的完整指南…',
+        wordCount: 4500,
+        materialCount: 4,
+        status: 'published',
+        updatedAt: '1个月前'
+      }
     ],
     scraps: [
-      { id: 's1', content: 'Go 1.23新特性：sync.Pool优化', createdAt: '2026-06-14' },
-      { id: 's2', content: '分布式ID生成方案对比', createdAt: '2026-06-13' },
-      { id: 's3', content: 'gRPC流式调用示例', createdAt: '2026-06-12' }
+      {
+        _id: 'scrap-1',
+        content: '"Service Mesh 选型可以用对比表格总结，一目了然"',
+        suggestedType: '技术文章',
+        status: 'raw',
+        createdAt: '今天'
+      },
+      {
+        _id: 'scrap-2',
+        content: '"PRD 里提到的评审方法可以整理成模板给团队用"',
+        suggestedType: '工作文档',
+        status: 'raw',
+        createdAt: '昨天'
+      },
+      {
+        _id: 'scrap-3',
+        content: '"Goroutine 泄漏排查方法可以写一篇 Debug 经验分享"',
+        suggestedType: '技术文章',
+        status: 'raw',
+        createdAt: '3天前'
+      },
+      {
+        _id: 'scrap-4',
+        content: '"分布式锁的几种实现方案对比分析"',
+        suggestedType: '技术文章',
+        status: 'raw',
+        createdAt: '1周前'
+      },
+      {
+        _id: 'scrap-5',
+        content: '"ELK 日志系统搭建完整指南"',
+        suggestedType: '技术教程',
+        status: 'raw',
+        createdAt: '1周前'
+      },
+      {
+        _id: 'scrap-6',
+        content: '"K8s Pod 调度策略深入理解"',
+        suggestedType: '技术文章',
+        status: 'raw',
+        createdAt: '2周前'
+      },
+      {
+        _id: 'scrap-7',
+        content: '"单元测试覆盖率提升技巧"',
+        suggestedType: '技术文章',
+        status: 'raw',
+        createdAt: '2周前'
+      }
     ],
     stats: {
-      totalDocs: 5,
       draftCount: 3,
-      publishedCount: 2,
-      totalWords: 10800
-    }
+      publishedCount: 5,
+      totalWords: 28500,
+      materialUtilization: 62
+    },
+    materials: [
+      {
+        id: 'mat-1',
+        title: '《微服务设计模式》',
+        tags: ['服务发现', '熔断器', 'API Gateway'],
+        relevance: 92
+      },
+      {
+        id: 'mat-2',
+        title: '《API Gateway vs Service Mesh》',
+        tags: ['网关对比', '选型建议'],
+        relevance: 85
+      },
+      {
+        id: 'mat-3',
+        title: '《分布式追踪实践》',
+        tags: ['Jaeger', 'OpenTelemetry'],
+        relevance: 78
+      }
+    ]
   }
 };
 

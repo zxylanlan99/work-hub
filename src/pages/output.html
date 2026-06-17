@@ -1,168 +1,720 @@
-<div class="output-page">
-  <div class="page-header">
-    <div class="header-title">
-      <h2>知识沉淀</h2>
-      <p>记录和整理你的学习成果</p>
+<div id="output-page">
+  <!-- 输出列表页 -->
+  <div id="page-list">
+    <!-- 概览统计 -->
+    <div class="overview-grid">
+      <div class="overview-card">
+        <div class="overview-num warning" id="stat-drafts">3</div>
+        <div class="overview-label">📝 草稿</div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-num success" id="stat-published">5</div>
+        <div class="overview-label">✅ 已发布</div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-num primary" id="stat-words">28,500</div>
+        <div class="overview-label">📊 总字数</div>
+      </div>
+      <div class="overview-card">
+        <div class="overview-num purple" id="stat-utilization">62%</div>
+        <div class="overview-label">♻️ 素材利用率</div>
+      </div>
     </div>
-    <button class="btn btn-primary" onclick="showCreateDocModal()">+ 新建文档</button>
-  </div>
 
-  <!-- 统计信息 -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon">📝</div>
-      <div class="stat-info">
-        <div class="stat-value">{{mockData.output.stats.totalDocs}}</div>
-        <div class="stat-label">总文档</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📗</div>
-      <div class="stat-info">
-        <div class="stat-value">{{mockData.output.stats.draftCount}}</div>
-        <div class="stat-label">草稿</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📘</div>
-      <div class="stat-info">
-        <div class="stat-value">{{mockData.output.stats.publishedCount}}</div>
-        <div class="stat-label">已发布</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon">📊</div>
-      <div class="stat-info">
-        <div class="stat-value">{{mockData.output.stats.totalWords.toLocaleString()}}</div>
-        <div class="stat-label">总字数</div>
-      </div>
-    </div>
-  </div>
+    <div class="output-layout">
+      <!-- 左侧：文档列表 -->
+      <div class="output-main">
+        <div class="sub-tabs">
+          <div class="sub-tab active" onclick="filterDocs(this, 'all')">全部<span class="count-pill" id="filter-all">8</span></div>
+          <div class="sub-tab" onclick="filterDocs(this, 'draft')">📝 草稿<span class="count-pill" id="filter-draft">3</span></div>
+          <div class="sub-tab" onclick="filterDocs(this, 'published')">✅ 已发布<span class="count-pill" id="filter-published">5</span></div>
+        </div>
 
-  <div class="output-content">
-    <!-- 文档列表 -->
-    <div class="section">
-      <div class="section-header">
-        <h3>📚 我的文档</h3>
-        <div class="view-tabs">
-          <button class="view-tab active" onclick="switchDocView('list')">列表</button>
-          <button class="view-tab" onclick="switchDocView('grid')">网格</button>
+        <div class="doc-grid" id="docGrid">
+          <!-- 文档卡片将通过JS渲染 -->
         </div>
       </div>
-      <div class="docs-list">
-        {{mockData.output.docs.map(doc => `
-          <div class="doc-card" onclick="openDoc('${doc.id}')">
-            <div class="doc-icon">${doc.status === 'published' ? '📄' : '📝'}</div>
-            <div class="doc-info">
-              <h4 class="doc-title">${doc.title}</h4>
-              <div class="doc-meta">
-                <span class="doc-status ${doc.status}">${doc.status === 'published' ? '已发布' : '草稿'}</span>
-                <span class="doc-category">${doc.category}</span>
-                <span class="doc-words">${doc.wordCount.toLocaleString()} 字</span>
-              </div>
-            </div>
-            <div class="doc-time">${doc.updatedAt}</div>
+
+      <!-- 右侧：灵感碎片 -->
+      <div class="scrap-panel">
+        <div class="scrap-header">
+          <div class="scrap-title">💡 灵感碎片</div>
+          <span style="font-size:12px;color:var(--gray-400)" id="scrap-count">7条</span>
+        </div>
+        <div class="scrap-list" id="scrapList">
+          <!-- 碎片列表将通过JS渲染 -->
+        </div>
+        <div class="scrap-add" onclick="showQuickScrap()">💡 快速记录灵感…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑器页 -->
+  <div id="page-editor" class="editor-view">
+    <div class="editor-topbar">
+      <div class="editor-back" onclick="closeEditor()"><span>←</span> 返回列表</div>
+      <div class="editor-doc-title" id="editor-title">新建文档</div>
+      <button class="btn btn-secondary btn-sm" onclick="saveDoc()">💾 保存草稿</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('modal-review')">🚀 发布</button>
+    </div>
+    <div class="editor-layout">
+      <div class="editor-main">
+        <div class="editor-toolbar">
+          <button class="editor-tool-btn" title="加粗" onclick="insertMarkdown('**', '**')"><b>B</b></button>
+          <button class="editor-tool-btn" title="斜体" onclick="insertMarkdown('*', '*')"><i>I</i></button>
+          <button class="editor-tool-btn" title="标题1" onclick="insertMarkdown('# ', '')">H1</button>
+          <button class="editor-tool-btn" title="标题2" onclick="insertMarkdown('## ', '')">H2</button>
+          <button class="editor-tool-btn" title="代码" onclick="insertMarkdown('`', '`')">```</button>
+          <button class="editor-tool-btn" title="引用" onclick="insertMarkdown('> ', '')">"</button>
+          <span style="flex:1"></span>
+          <span style="font-size:12px;color:var(--gray-400)">Markdown</span>
+        </div>
+        <div class="editor-area">
+          <div class="editor-input-pane">
+            <textarea id="editorText" oninput="updatePreview();scheduleSave()" placeholder="开始写作..."></textarea>
           </div>
-        `).join('')}}
+          <div class="editor-preview-pane" id="editorPreview"></div>
+        </div>
+        <div class="editor-footer">
+          <span id="editor-stats">📊 0字 · ⏱️ 阅读约0分钟</span>
+          <span class="ai-suggestion" onclick="aiAction('suggest')">💡 AI建议 →</span>
+        </div>
       </div>
-    </div>
 
-    <!-- 灵感碎片 -->
-    <div class="section">
-      <div class="section-header">
-        <h3>💡 灵感碎片</h3>
-        <button class="btn btn-outline btn-sm" onclick="addScrap()">+ 添加</button>
-      </div>
-      <div class="scraps-list">
-        {{mockData.output.scraps.map(scrap => `
-          <div class="scrap-card">
-            <p>${scrap.content}</p>
-            <div class="scrap-meta">
-              <span>${scrap.createdAt}</span>
-              <button class="scrap-action">🗑️</button>
-            </div>
+      <!-- AI辅助面板 -->
+      <div class="ai-panel">
+        <div class="panel-section">
+          <div class="panel-section-title">📚 素材推荐（来自知识库）</div>
+          <div id="materialList">
+            <!-- 素材列表将通过JS渲染 -->
           </div>
-        `).join('')}}
-      </div>
-    </div>
-  </div>
+        </div>
 
-  <!-- 创建文档弹窗 -->
-  <div class="modal" id="create-doc-modal" style="display: none;">
-    <div class="modal-overlay" onclick="closeModal('create-doc-modal')"></div>
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>新建文档</h3>
-        <button class="modal-close" onclick="closeModal('create-doc-modal')">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>文档标题</label>
-          <input type="text" id="doc-title" placeholder="输入文档标题">
+        <div class="panel-section">
+          <div class="panel-section-title">🤖 AI 操作</div>
+          <button class="ai-op-btn" onclick="aiAction('polish')">✨ 润色选中段落</button>
+          <button class="ai-op-btn" onclick="aiAction('continue')">➕ 续写下一段</button>
+          <button class="ai-op-btn" onclick="aiAction('expand')">📖 扩写为详细版</button>
+          <button class="ai-op-btn" onclick="aiAction('summarize')">📋 缩写为要点版</button>
+          <button class="ai-op-btn" onclick="aiAction('summary')">📝 AI 总结全文</button>
+          <button class="ai-op-btn ai-op-primary" onclick="openModal('modal-review')">🔍 AI 质量评审 →</button>
+          <div class="ai-result-preview" id="aiResult"></div>
         </div>
-        <div class="form-group">
-          <label>分类</label>
-          <select id="doc-category">
-            <option value="技术总结">技术总结</option>
-            <option value="学习笔记">学习笔记</option>
-            <option value="技术实现">技术实现</option>
-            <option value="面试准备">面试准备</option>
-            <option value="技术文档">技术文档</option>
-          </select>
+
+        <div class="panel-section">
+          <div class="panel-section-title">📋 文档信息</div>
+          <div class="doc-meta-row"><span class="doc-meta-label">类型</span><span class="doc-meta-value" id="doc-type">📄 技术文章</span></div>
+          <div class="doc-meta-row"><span class="doc-meta-label">关联知识</span><span class="doc-meta-value" id="doc-related">2个条目</span></div>
+          <div class="doc-meta-row"><span class="doc-meta-label">状态</span><span class="doc-meta-value" id="doc-status">📝 草稿</span></div>
+          <div class="doc-meta-row"><span class="doc-meta-label">创建</span><span class="doc-meta-value" id="doc-created">刚刚</span></div>
         </div>
-        <div class="form-group">
-          <label>内容</label>
-          <textarea id="doc-content" rows="8" placeholder="开始写作..."></textarea>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('create-doc-modal')">取消</button>
-        <button class="btn btn-secondary" onclick="saveDraft()">保存草稿</button>
-        <button class="btn btn-primary" onclick="publishDoc()">发布</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- 弹窗A：新建输出 -->
+<div class="modal-overlay" id="modal-new-output" onclick="if(event.target===this)closeModal('modal-new-output')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">✍️ 新建输出</div>
+      <button class="modal-close" onclick="closeModal('modal-new-output')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px">
+        <div class="form-label">选择输出类型</div>
+        <div class="type-grid">
+          <div class="type-card selected" data-type="article" onclick="selectOutputType(this)">
+            <div class="type-card-icon">📄</div>
+            <div class="type-card-name">文章</div>
+            <div class="type-card-desc">技术博客/工作总结</div>
+          </div>
+          <div class="type-card" data-type="speech" onclick="selectOutputType(this)">
+            <div class="type-card-icon">🎤</div>
+            <div class="type-card-name">演讲</div>
+            <div class="type-card-desc">技术分享/PPT稿</div>
+          </div>
+          <div class="type-card" data-type="note" onclick="selectOutputType(this)">
+            <div class="type-card-icon">📝</div>
+            <div class="type-card-name">笔记</div>
+            <div class="type-card-desc">学习笔记/摘要</div>
+          </div>
+          <div class="type-card" data-type="practice" onclick="selectOutputType(this)">
+            <div class="type-card-icon">🔧</div>
+            <div class="type-card-name">实践</div>
+            <div class="type-card-desc">项目记录/复盘</div>
+          </div>
+          <div class="type-card" data-type="tutorial" onclick="selectOutputType(this)">
+            <div class="type-card-icon">📘</div>
+            <div class="type-card-name">教程</div>
+            <div class="type-card-desc">入门/进阶教程</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">标题 <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-input" id="new-doc-title" placeholder="输入输出标题">
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联知识（可选）</label>
+        <select class="form-select" id="new-doc-knowledge" multiple style="min-height:80px">
+          <option>微服务设计模式</option>
+          <option>API Gateway 对比</option>
+          <option>Go 并发模型</option>
+          <option>分布式系统原理</option>
+        </select>
+        <div class="form-hint" style="font-size:11.5px;color:var(--gray-400);margin-top:4px">AI 推荐: 微服务设计模式、API Gateway 对比（基于标题语义）</div>
+      </div>
+      <div style="background:var(--primary-light);padding:14px;border-radius:var(--radius);margin-top:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px">🤖 AI 组装素材生成初稿</div>
+        <div style="font-size:12.5px;color:var(--gray-600);margin-bottom:10px">AI 将从关联知识库中提取素材，按「文章」模板自动生成初稿</div>
+        <button class="btn btn-primary btn-sm" onclick="generateDraft()">生成初稿 →</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-new-output')">取消</button>
+      <button class="btn btn-primary" onclick="createNewDoc()">手动创建</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗B：AI质量评审 -->
+<div class="modal-overlay" id="modal-review" onclick="if(event.target===this)closeModal('modal-review')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">🤖 AI 质量评审</div>
+      <button class="modal-close" onclick="closeModal('modal-review')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="review-score">
+        <div class="review-stars" id="review-stars">⭐⭐⭐⭐</div>
+        <div class="review-score-num" id="review-score">8.2</div>
+        <div class="review-score-label">综合评分 / 10</div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="review-dim-row"><span class="review-dim-name">结构清晰度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-structure" style="width:85%;background:var(--success)"></div></div><span class="review-dim-val">8.5</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">内容深度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-depth" style="width:78%;background:var(--info)"></div></div><span class="review-dim-val">7.8</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">可读性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-readability" style="width:82%;background:var(--success)"></div></div><span class="review-dim-val">8.2</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">引用准确性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-accuracy" style="width:80%;background:var(--success)"></div></div><span class="review-dim-val">8.0</span></div>
+      </div>
+      <div class="review-suggestions" style="margin-top:14px">
+        <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">💡 改进建议</div>
+        <div id="review-suggestions">
+          <div class="review-sug"><span class="review-sug-num">1.</span> 第3段可补充具体的 QPS 对比数据来支撑"性能提升"的观点</div>
+          <div class="review-sug"><span class="review-sug-num">2.</span> 建议在"踩坑记录"后增加一个"经验教训"总结段落</div>
+          <div class="review-sug"><span class="review-sug-num">3.</span> 引用外部来源时建议标注版本号（如 Istio v1.18）</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-review')">关闭</button>
+      <button class="btn btn-primary" onclick="optimizeDoc()">✨ 一键优化</button>
+      <button class="btn btn-success btn-sm" onclick="publishDoc()">🚀 发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗C：快速灵感录入 -->
+<div class="modal-overlay" id="modal-scrap" onclick="if(event.target===this)closeModal('modal-scrap')">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">💡 快速记录灵感</div>
+      <button class="modal-close" onclick="closeModal('modal-scrap')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">一句话想法</label>
+        <textarea class="form-textarea" id="scrap-input" placeholder="随时记录一闪而过的写作灵感…"></textarea>
+      </div>
+      <div style="background:var(--gray-50);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--gray-600)">
+        <div style="margin-bottom:6px">🤖 AI 自动归类</div>
+        <div id="scrap-preview" style="color:var(--gray-400)">输入内容后将自动识别分类并推荐关联知识…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-scrap')">取消</button>
+      <button class="btn btn-primary" onclick="saveScrap()">保存碎片</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗D：实践连接器 -->
+<div class="modal-overlay" id="modal-practice" onclick="if(event.target===this)closeModal('modal-practice')">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">🔗 实践连接器</div>
+      <button class="modal-close" onclick="closeModal('modal-practice')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">将「微服务架构」知识匹配到实践场景：</div>
+      <div style="margin-bottom:16px">
+        <div class="form-label">📁 关联项目</div>
+        <select class="form-select" id="practice-project">
+          <option>StudyMind 个人学习助手</option>
+          <option>团队微服务迁移项目</option>
+          <option>个人博客网站</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <div class="form-label">💡 可应用场景</div>
+        <div class="checklist-item"><div class="checklist-cb done" onclick="toggleCheck(this)">✓</div><span class="checklist-text">后端服务拆分方案设计（参考 DDD 限界上下文）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">API Gateway 选型（Kong vs APISIX）</span></div>
+        <div class="checklist-item"><div class="checklist-cb done" onclick="toggleCheck(this)">✓</div><span class="checklist-text">分布式追踪基础设施搭建（OpenTelemetry）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">服务间通信协议选型（gRPC vs HTTP）</span></div>
+        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">配置服务发现（Consul / Nacos）</span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-practice')">关闭</button>
+      <button class="btn btn-primary" onclick="generatePracticePlan()">生成实践计划</button>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗E：素材匹配详情 -->
+<div class="modal-overlay" id="modal-material" onclick="if(event.target===this)closeModal('modal-material')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📚 素材匹配详情</div>
+      <button class="modal-close" onclick="closeModal('modal-material')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="material-item material-detail" id="material-detail">
+        <div class="material-info">
+          <div class="material-title" style="font-size:14px">《微服务设计模式》</div>
+          <div class="material-tags">服务发现 · 熔断器 · API Gateway · 分布式追踪</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">12,500字 · 📁 技术/后端 · 相关度 92%</div>
+          <div style="background:var(--gray-100);padding:8px;border-radius:4px;margin-top:6px;font-size:12px;color:var(--gray-600)">
+            > 微服务架构的核心设计模式包括：API Gateway、服务发现、断路器…<br>
+            > 本文结合 Spring Cloud 和 Kubernetes 生态…
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="btn btn-primary btn-sm" onclick="insertQuote()">📎 引用选段</button>
+        <button class="btn btn-secondary btn-sm" onclick="insertSummary()">📋 引用全文摘要</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-material')">关闭</button>
+    </div>
+  </div>
+</div>
+
 <script>
-function showCreateDocModal() {
-  document.getElementById('create-doc-modal').style.display = 'block';
+// 当前编辑的文档ID
+let currentDocId = null;
+let saveTimer = null;
+let selectedOutputType = 'article';
+
+// 初始化页面
+function initOutputPage() {
+  loadDocList('all');
+  loadScrapList();
+  loadStats();
 }
 
-function closeModal(modalId) {
-  document.getElementById(modalId).style.display = 'none';
+// 加载文档列表
+function loadDocList(status) {
+  const mockData = window.mockData.output.docs;
+  let filtered = mockData;
+  if (status !== 'all') {
+    filtered = mockData.filter(doc => doc.status === status);
+  }
+  renderDocGrid(filtered);
 }
 
-function switchDocView(view) {
-  const tabs = document.querySelectorAll('.view-tab');
-  tabs.forEach(tab => tab.classList.toggle('active', tab.textContent === view));
+// 渲染文档网格
+function renderDocGrid(docs) {
+  const grid = document.getElementById('docGrid');
+  grid.innerHTML = '';
+  
+  docs.forEach(doc => {
+    const card = document.createElement('div');
+    card.className = 'doc-card';
+    card.dataset.type = doc.status;
+    card.onclick = () => openEditor(doc._id);
+    
+    const typeIconClass = `type-${doc.type}`;
+    const typeLabel = getTypeLabel(doc.type);
+    
+    card.innerHTML = `
+      <div class="doc-card-header">
+        <div class="doc-type-icon ${typeIconClass}">${getTypeIcon(doc.type)}</div>
+        <div class="doc-card-info">
+          <div class="doc-card-title">${doc.title}</div>
+          <div class="doc-card-type">${typeLabel}</div>
+        </div>
+      </div>
+      <div class="doc-card-excerpt">${doc.excerpt}</div>
+      <div class="doc-card-meta">
+        <span class="doc-meta-item">📊 ${doc.wordCount}字</span>
+        <span class="doc-meta-item">♻️ 引用${doc.materialCount}个素材</span>
+        <span class="doc-meta-item">📅 ${doc.updatedAt}</span>
+      </div>
+      <div class="doc-card-footer">
+        <span class="status-tag status-${doc.status}">${doc.status === 'published' ? '✅ 已发布' : '📝 草稿'}</span>
+        ${doc.status === 'published' ? 
+          `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>` : 
+          `<div class="progress-mini" style="width:80px;height:6px;background:var(--gray-100);border-radius:4px"><div style="width:${doc.progress || 0}%;height:100%;background:var(--warning);border-radius:4px"></div></div>`
+        }
+      </div>
+    `;
+    grid.appendChild(card);
+  });
 }
 
-function openDoc(docId) {
-  utils.toast(`打开文档: ${docId}`, 'info');
+// 获取类型标签
+function getTypeLabel(type) {
+  const labels = {
+    article: '技术文章',
+    speech: '技术演讲',
+    note: '学习笔记',
+    practice: '项目实践记录',
+    tutorial: '进阶教程'
+  };
+  return labels[type] || type;
 }
 
-function addScrap() {
-  utils.toast('添加灵感碎片', 'info');
+// 获取类型图标
+function getTypeIcon(type) {
+  const icons = {
+    article: '📄',
+    speech: '🎤',
+    note: '📝',
+    practice: '🔧',
+    tutorial: '📘'
+  };
+  return icons[type] || '📄';
 }
 
-function saveDraft() {
-  const title = document.getElementById('doc-title').value;
+// 加载碎片列表
+function loadScrapList() {
+  const scraps = window.mockData.output.scraps;
+  const list = document.getElementById('scrapList');
+  list.innerHTML = '';
+  
+  scraps.forEach(scrap => {
+    const item = document.createElement('div');
+    item.className = 'scrap-item';
+    item.innerHTML = `
+      <div class="scrap-text">${scrap.content}</div>
+      <div class="scrap-meta">
+        <span class="scrap-suggest">💡 可用于: ${scrap.suggestedType}</span>
+        <span>📅 ${scrap.createdAt}</span>
+      </div>
+      <div class="scrap-actions">
+        <button class="btn btn-primary btn-xs" onclick="expandScrap('${scrap._id}')">展开写作</button>
+        <button class="btn btn-ghost btn-xs" onclick="ignoreScrap('${scrap._id}')">忽略</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+  
+  document.getElementById('scrap-count').textContent = `${scraps.length}条`;
+}
+
+// 加载统计数据
+function loadStats() {
+  const stats = window.mockData.output.stats;
+  document.getElementById('stat-drafts').textContent = stats.draftCount;
+  document.getElementById('stat-published').textContent = stats.publishedCount;
+  document.getElementById('stat-words').textContent = stats.totalWords.toLocaleString();
+  document.getElementById('stat-utilization').textContent = `${stats.materialUtilization}%`;
+  
+  document.getElementById('filter-all').textContent = stats.draftCount + stats.publishedCount;
+  document.getElementById('filter-draft').textContent = stats.draftCount;
+  document.getElementById('filter-published').textContent = stats.publishedCount;
+}
+
+// 加载素材推荐
+function loadMaterials() {
+  const materials = window.mockData.output.materials;
+  const list = document.getElementById('materialList');
+  list.innerHTML = '';
+  
+  materials.forEach(m => {
+    const item = document.createElement('div');
+    item.className = 'material-item';
+    item.innerHTML = `
+      <div class="material-info">
+        <div class="material-title">${m.title}</div>
+        <div class="material-tags">${m.tags.join(' · ')}</div>
+        <div class="material-score">相关度 ${m.relevance}%</div>
+      </div>
+      <div class="material-actions">
+        <button class="btn btn-xs material-ref-btn" style="background:var(--primary-light);color:var(--primary)" onclick="openMaterialDetail('${m.id}')">引用</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+}
+
+// 筛选文档
+function filterDocs(el, status) {
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadDocList(status);
+}
+
+// 打开编辑器
+function openEditor(docId = null) {
+  currentDocId = docId;
+  
+  if (docId) {
+    const doc = window.mockData.output.docs.find(d => d._id === docId);
+    if (doc) {
+      document.getElementById('editor-title').textContent = doc.title;
+      document.getElementById('editorText').value = doc.content || '';
+      document.getElementById('doc-type').textContent = getTypeIcon(doc.type) + ' ' + getTypeLabel(doc.type);
+      document.getElementById('doc-status').textContent = doc.status === 'published' ? '✅ 已发布' : '📝 草稿';
+    }
+  } else {
+    document.getElementById('editor-title').textContent = '新建文档';
+    document.getElementById('editorText').value = '';
+    document.getElementById('doc-type').textContent = '📄 技术文章';
+    document.getElementById('doc-status').textContent = '📝 草稿';
+  }
+  
+  loadMaterials();
+  updatePreview();
+  
+  document.getElementById('page-list').classList.add('page-hidden');
+  document.getElementById('page-editor').style.display = 'flex';
+}
+
+// 关闭编辑器
+function closeEditor() {
+  document.getElementById('page-editor').style.display = 'none';
+  document.getElementById('page-list').classList.remove('page-hidden');
+  currentDocId = null;
+}
+
+// 更新预览
+function updatePreview() {
+  const text = document.getElementById('editorText').value;
+  const preview = document.getElementById('editorPreview');
+  preview.innerHTML = markdownToHtml(text);
+  
+  // 更新统计
+  const wordCount = text.length;
+  const minutes = Math.ceil(wordCount / 267); // 约267字/分钟
+  document.getElementById('editor-stats').textContent = `📊 ${wordCount}字 · ⏱️ 阅读约${minutes}分钟`;
+}
+
+// Markdown转HTML
+function markdownToHtml(text) {
+  if (!text) return '<div style="color:var(--gray-400);text-align:center;padding:40px">预览区域</div>';
+  
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^```(\w+)?\n([\s\S]*?)```$/gm, '<pre><code>$2</code></pre>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/\n/g, '<br>');
+}
+
+// 插入Markdown
+function insertMarkdown(before, after) {
+  const textarea = document.getElementById('editorText');
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selected = textarea.value.substring(start, end);
+  const newValue = textarea.value.substring(0, start) + before + selected + after + textarea.value.substring(end);
+  textarea.value = newValue;
+  
+  // 设置光标位置
+  if (selected) {
+    textarea.setSelectionRange(start + before.length, end + before.length);
+  } else {
+    textarea.setSelectionRange(start + before.length, start + before.length);
+  }
+  
+  textarea.focus();
+  updatePreview();
+}
+
+// 保存文档（防抖）
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveDoc();
+  }, 2000);
+}
+
+// 保存文档
+function saveDoc() {
+  const content = document.getElementById('editorText').value;
+  window.toast('草稿已保存', 'success');
+}
+
+// 选择输出类型
+function selectOutputType(el) {
+  document.querySelectorAll('.type-card').forEach(t => t.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedOutputType = el.dataset.type;
+}
+
+// 创建新文档
+function createNewDoc() {
+  const title = document.getElementById('new-doc-title').value;
   if (!title.trim()) {
-    utils.toast('请输入文档标题', 'warning');
+    window.toast('请输入标题', 'warning');
     return;
   }
-  utils.toast('草稿已保存', 'success');
-  closeModal('create-doc-modal');
+  closeModal('modal-new-output');
+  document.getElementById('editor-title').textContent = title;
+  document.getElementById('doc-type').textContent = getTypeIcon(selectedOutputType) + ' ' + getTypeLabel(selectedOutputType);
+  openEditor();
+  window.toast('文档已创建', 'success');
 }
 
+// 生成初稿
+function generateDraft() {
+  const title = document.getElementById('new-doc-title').value;
+  if (!title.trim()) {
+    window.toast('请先输入标题', 'warning');
+    return;
+  }
+  closeModal('modal-new-output');
+  document.getElementById('editor-title').textContent = title;
+  document.getElementById('editorText').value = `# ${title}\n\n## 概述\n\n这是一篇关于${title}的技术文章。\n\n## 核心内容\n\n### 1. 背景介绍\n\n### 2. 核心概念\n\n### 3. 实践案例\n\n## 总结\n\n`;
+  openEditor();
+  updatePreview();
+  window.toast('AI 初稿已生成', 'success');
+}
+
+// 展开写作
+function expandScrap(scrapId) {
+  const scrap = window.mockData.output.scraps.find(s => s._id === scrapId);
+  if (scrap) {
+    closeModal('modal-scrap');
+    document.getElementById('editor-title').textContent = scrap.content.replace(/[""]/g, '');
+    document.getElementById('editorText').value = `# ${scrap.content}\n\n## 详细展开\n\n`;
+    openEditor();
+    window.toast('已基于灵感创建文档', 'success');
+  }
+}
+
+// 忽略碎片
+function ignoreScrap(scrapId) {
+  window.toast('已忽略此灵感', 'info');
+  loadScrapList();
+}
+
+// 显示快速灵感弹窗
+function showQuickScrap() {
+  document.getElementById('scrap-input').value = '';
+  document.getElementById('scrap-preview').textContent = '输入内容后将自动识别分类并推荐关联知识…';
+  openModal('modal-scrap');
+}
+
+// 保存碎片
+function saveScrap() {
+  const content = document.getElementById('scrap-input').value;
+  if (!content.trim()) {
+    window.toast('请输入内容', 'warning');
+    return;
+  }
+  closeModal('modal-scrap');
+  window.toast('灵感已保存', 'success');
+  loadScrapList();
+}
+
+// AI操作
+function aiAction(action) {
+  const content = document.getElementById('editorText').value;
+  if (!content.trim() && action !== 'suggest') {
+    window.toast('请先输入内容', 'warning');
+    return;
+  }
+  
+  const resultDiv = document.getElementById('aiResult');
+  resultDiv.classList.add('show');
+  
+  const messages = {
+    polish: '✨ 润色完成！已优化选中段落的表达，使其更加流畅自然。',
+    continue: '➕ 续写完成！已为您续写了下一段内容。',
+    expand: '📖 扩写完成！已将内容扩展为详细版本。',
+    summarize: '📋 缩写完成！已将内容提炼为要点版本。',
+    summary: '📝 总结完成！\n\n**核心要点：**\n1. 本文介绍了微服务架构的核心概念\n2. 讨论了服务拆分策略和通信选型\n3. 分享了实践中的踩坑经验',
+    suggest: '💡 AI建议：第3段可补充具体的性能数据来增强说服力'
+  };
+  
+  setTimeout(() => {
+    resultDiv.innerHTML = messages[action] || '操作完成';
+    window.toast('AI操作完成', 'success');
+  }, 500);
+}
+
+// 一键优化
+function optimizeDoc() {
+  closeModal('modal-review');
+  window.toast('已一键优化文档', 'success');
+}
+
+// 发布文档
 function publishDoc() {
-  const title = document.getElementById('doc-title').value;
-  if (!title.trim()) {
-    utils.toast('请输入文档标题', 'warning');
-    return;
-  }
-  utils.toast('文档已发布', 'success');
-  closeModal('create-doc-modal');
+  closeModal('modal-review');
+  document.getElementById('doc-status').textContent = '✅ 已发布';
+  window.toast('已发布并生成复习卡片', 'success');
 }
+
+// 打开素材详情
+function openMaterialDetail(materialId) {
+  openModal('modal-material');
+}
+
+// 引用选段
+function insertQuote() {
+  const textarea = document.getElementById('editorText');
+  textarea.value += '\n\n> 引用自《微服务设计模式》：微服务架构的核心设计模式包括服务发现、断路器等。\n\n';
+  textarea.focus();
+  textarea.scrollTop = textarea.scrollHeight;
+  updatePreview();
+  closeModal('modal-material');
+  window.toast('已引用选段', 'success');
+}
+
+// 引用摘要
+function insertSummary() {
+  const textarea = document.getElementById('editorText');
+  textarea.value += '\n\n**参考资料：** 《微服务设计模式》\n\n本文介绍了微服务架构的核心设计模式，包括API Gateway、服务发现、断路器等关键组件，结合Spring Cloud和Kubernetes生态进行了详细阐述。\n\n';
+  textarea.focus();
+  textarea.scrollTop = textarea.scrollHeight;
+  updatePreview();
+  closeModal('modal-material');
+  window.toast('已引用摘要', 'success');
+}
+
+// 切换复选框
+function toggleCheck(el) {
+  el.classList.toggle('done');
+  el.textContent = el.classList.contains('done') ? '✓' : '';
+}
+
+// 生成实践计划
+function generatePracticePlan() {
+  closeModal('modal-practice');
+  window.toast('实践计划已关联到学习计划', 'success');
+}
+
+// 弹窗操作
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// 页面加载时初始化
+document.addEventListener('DOMContentLoaded', initOutputPage);
 </script>

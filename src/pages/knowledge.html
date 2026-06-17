@@ -96,6 +96,12 @@
     <div id="kb-content-area" class="knowledge-grid">
       <!-- 动态渲染 -->
     </div>
+
+    <!-- 回收站操作栏 -->
+    <div id="trash-actions-container" class="trash-actions">
+      <button class="btn btn-secondary btn-sm" onclick="restoreAllTrash()">全部恢复</button>
+      <button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="emptyTrash()">清空回收站</button>
+    </div>
   </div>
 
   <!-- 悬浮搜索按钮 -->
@@ -683,6 +689,12 @@ function switchKbTab(tab) {
   
   clearBatchSelection();
   renderKnowledgeItems();
+  
+  // 显示/隐藏回收站操作栏
+  const trashActions = document.getElementById('trash-actions-container');
+  if (trashActions) {
+    trashActions.classList.toggle('show', tab === 'trash');
+  }
 }
 
 /* ================================================================
@@ -838,10 +850,6 @@ function renderKnowledgeItems() {
               <button class="btn btn-sm" style="background:var(--danger);color:#fff;margin-left:6px" onclick="permanentDelete('${item.id}')">删除</button>
             </div>
           </div>`).join('')}
-      </div>
-      <div class="trash-actions">
-        <button class="btn btn-secondary btn-sm" onclick="restoreAllTrash()">全部恢复</button>
-        <button class="btn btn-sm" style="background:var(--danger);color:#fff" onclick="emptyTrash()">清空回收站</button>
       </div>`;
   } else {
     container.innerHTML = items.map(item => `

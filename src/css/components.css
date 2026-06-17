@@ -2750,6 +2750,11 @@
   align-content: start;
 }
 
+.knowledge-grid .trash-table {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 /* 知识卡片 */
 .knowledge-card {
   background: #fff;
@@ -3442,14 +3447,19 @@
 
 /* 回收站操作栏 */
 .trash-actions {
-  display: flex;
-  flex-direction: column;
+  display: none;
+  flex-direction: row;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
   padding: 12px 16px;
   background: var(--bg);
   border-top: 1px solid var(--gray-200);
   box-shadow: 0 -2px 8px rgba(0,0,0,.06);
+}
+
+.trash-actions.show {
+  display: flex;
 }
 
 /* 快速搜索弹窗 */

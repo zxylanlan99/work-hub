@@ -133,11 +133,16 @@ async function loadPageContent(pageId, filePath) {
   }
 }
 
-// 执行脚本
+// 执行脚本：先清理上一页动态注入的脚本，再插入 head 执行，
+// 这样页面内的 function 声明会挂到 window，同时避免 const/let 重复声明
 function executeScripts(container) {
+  // 清理之前页面动态添加的脚本
+  document.querySelectorAll('script[data-page-script="true"]').forEach(s => s.remove());
+
   const scripts = container.querySelectorAll('script');
   scripts.forEach(oldScript => {
     const newScript = document.createElement('script');
+    newScript.setAttribute('data-page-script', 'true');
     newScript.textContent = oldScript.textContent;
     document.head.appendChild(newScript);
     oldScript.remove();

@@ -3,24 +3,33 @@ let db = null;
 
 async function initCloudbase() {
   if (app) return app;
-  
+
   try {
-    await new Promise(resolve => window.addEventListener('DOMContentLoaded', resolve));
-    
+    // 如果 DOM 已加载完成，直接初始化，避免无限等待
+    if (document.readyState === 'loading') {
+      await new Promise(resolve => {
+        const handler = () => {
+          document.removeEventListener('DOMContentLoaded', handler);
+          resolve();
+        };
+        document.addEventListener('DOMContentLoaded', handler);
+      });
+    }
+
     if (!window.cloudbase) {
       console.error('CloudBase SDK not loaded');
       return null;
     }
-    
+
     app = window.cloudbase.init({
       env: CONFIG.cloudbase.env,
       region: CONFIG.cloudbase.region
     });
-    
+
     db = app.database();
-    
+
     await app.auth().anonymousAuthProvider().signIn();
-    
+
     console.log('CloudBase initialized successfully');
     return app;
   } catch (error) {

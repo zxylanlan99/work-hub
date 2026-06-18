@@ -150,6 +150,8 @@
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   align-content: start;
+  width: 100%;
+  min-width: 0;
 }
 
 /* 首页4层布局比例: 30% 25% 30% 15%（基于vh最小高度保障） */

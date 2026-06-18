@@ -2507,7 +2507,7 @@
 .radio-option input { accent-color: var(--primary); }
 
 /* 资讯页面内页切换 */
-.news-page-section { display: none; }
+.news-page-section { display: none; width: 100%; min-width: 0; }
 .news-page-section.active { display: block; }
 
 /* 录入方式切换区 */
@@ -2523,6 +2523,8 @@
   display: flex;
   gap: 20px;
   height: calc(100vh - 130px);
+  width: 100%;
+  min-width: 0;
 }
 
 /* 分类面板 */
@@ -3836,6 +3838,8 @@
 .ai-chat-page {
   height: calc(100vh - 130px);
   padding: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .chat-container {
@@ -4967,6 +4971,12 @@
 .overview-num.success { color: var(--success); }
 .overview-num.warning { color: var(--warning); }
 .overview-num.purple { color: var(--purple); }
+
+/* 输出/知识沉淀页面外层 */
+#output-page {
+  width: 100%;
+  min-width: 0;
+}
 
 /* 主内容布局 */
 .output-layout {

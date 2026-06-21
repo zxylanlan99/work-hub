@@ -577,7 +577,7 @@ function createNewDoc() {
 }
 
 // 生成初稿
-function generateDraft() {
+async function generateDraft() {
   const title = document.getElementById('new-doc-title').value;
   if (!title.trim()) {
     window.toast('请先输入标题', 'warning');
@@ -585,10 +585,36 @@ function generateDraft() {
   }
   closeModal('modal-new-output');
   document.getElementById('editor-title').textContent = title;
-  document.getElementById('editorText').value = `# ${title}\n\n## 概述\n\n这是一篇关于${title}的技术文章。\n\n## 核心内容\n\n### 1. 背景介绍\n\n### 2. 核心概念\n\n### 3. 实践案例\n\n## 总结\n\n`;
+  document.getElementById('editorText').value = '# ' + title + '\n\n正在生成 AI 初稿...';
   openEditor();
   updatePreview();
-  window.toast('AI 初稿已生成', 'success');
+  window.toast('AI 正在生成初稿...', 'info');
+
+  try {
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      var result = await window.AIService.callAI({
+        action: 'outline',
+        messages: [{ role: 'user', content: '请为以下主题生成一篇技术文章的详细大纲和初稿：\n\n' + title }]
+      });
+      if (result.success && result.content) {
+        document.getElementById('editorText').value = '# ' + title + '\n\n' + result.content;
+        updatePreview();
+        window.toast('AI 初稿已生成', 'success');
+      } else {
+        document.getElementById('editorText').value = '# ' + title + '\n\n## 概述\n\n这是一篇关于' + title + '的技术文章。\n\n## 核心内容\n\n### 1. 背景介绍\n\n### 2. 核心概念\n\n### 3. 实践案例\n\n## 总结\n\n';
+        updatePreview();
+        window.toast('AI 暂不可用，已生成模板', 'info');
+      }
+    } else {
+      document.getElementById('editorText').value = '# ' + title + '\n\n## 概述\n\n这是一篇关于' + title + '的技术文章。\n\n## 核心内容\n\n### 1. 背景介绍\n\n### 2. 核心概念\n\n### 3. 实践案例\n\n## 总结\n\n';
+      updatePreview();
+      window.toast('AI 服务不可用，已生成模板', 'info');
+    }
+  } catch (e) {
+    document.getElementById('editorText').value = '# ' + title + '\n\n## 概述\n\n这是一篇关于' + title + '的技术文章。\n\n## 核心内容\n\n### 1. 背景介绍\n\n### 2. 核心概念\n\n### 3. 实践案例\n\n## 总结\n\n';
+    updatePreview();
+    window.toast('生成失败: ' + e.message, 'error');
+  }
 }
 
 // 展开写作
@@ -629,7 +655,7 @@ function saveScrap() {
 }
 
 // AI操作
-function aiAction(action) {
+async function aiAction(action) {
   const content = document.getElementById('editorText').value;
   if (!content.trim() && action !== 'suggest') {
     window.toast('请先输入内容', 'warning');
@@ -638,20 +664,61 @@ function aiAction(action) {
   
   const resultDiv = document.getElementById('aiResult');
   resultDiv.classList.add('show');
-  
-  const messages = {
-    polish: '✨ 润色完成！已优化选中段落的表达，使其更加流畅自然。',
-    continue: '➕ 续写完成！已为您续写了下一段内容。',
-    expand: '📖 扩写完成！已将内容扩展为详细版本。',
-    summarize: '📋 缩写完成！已将内容提炼为要点版本。',
-    summary: '📝 总结完成！\n\n**核心要点：**\n1. 本文介绍了微服务架构的核心概念\n2. 讨论了服务拆分策略和通信选型\n3. 分享了实践中的踩坑经验',
-    suggest: '💡 AI建议：第3段可补充具体的性能数据来增强说服力'
+  resultDiv.innerHTML = '<div style="color:var(--gray-400);font-size:13px;">AI 正在处理...</div>';
+
+  // 映射 action 到 AIService action
+  var aiActionMap = {
+    polish: 'refine',
+    expand: 'expand',
+    summary: 'review',
+    suggest: 'recommend-materials',
+    continue: 'expand',
+    summarize: 'refine'
   };
-  
-  setTimeout(() => {
-    resultDiv.innerHTML = messages[action] || '操作完成';
-    window.toast('AI操作完成', 'success');
-  }, 500);
+
+  var aiActionName = aiActionMap[action] || 'chat';
+  var userContent = content;
+
+  try {
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      var result = await window.AIService.callAI({
+        action: aiActionName,
+        messages: [{ role: 'user', content: getActionPrompt(action, userContent) }]
+      });
+      if (result.success && result.content) {
+        resultDiv.innerHTML = result.content.replace(/\n/g, '<br>');
+        window.toast('AI操作完成', 'success');
+      } else {
+        resultDiv.innerHTML = '❌ AI 操作失败: ' + (result.error || '未知错误');
+        window.toast('AI操作失败', 'error');
+      }
+    } else {
+      resultDiv.innerHTML = '❌ AI 服务不可用，请先在设置页面配置模型';
+      window.toast('AI服务不可用', 'error');
+    }
+  } catch (e) {
+    resultDiv.innerHTML = '❌ 操作失败: ' + e.message;
+    window.toast('操作失败', 'error');
+  }
+}
+
+function getActionPrompt(action, content) {
+  switch (action) {
+    case 'polish':
+      return '请对以下内容进行润色优化，提升表达清晰度和可读性：\n\n' + content;
+    case 'expand':
+      return '请将以下内容扩写为详细的学习笔记：\n\n' + content;
+    case 'summary':
+      return '请对以下文档进行质量评审，给出改进建议：\n\n' + content;
+    case 'suggest':
+      return '请为以下内容推荐相关的学习素材和参考资源：\n\n' + content;
+    case 'continue':
+      return '请续写以下内容的下一段：\n\n' + content;
+    case 'summarize':
+      return '请将以下内容缩写为要点版本：\n\n' + content;
+    default:
+      return content;
+  }
 }
 
 // 一键优化

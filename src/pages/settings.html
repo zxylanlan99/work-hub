@@ -1,50 +1,54 @@
 <div id="settings-page">
-  <!-- 1. 主题设置 -->
+  <!-- 1. AI模型配置 -->
   <div class="section">
     <div class="section-header">
-      <div class="section-title">🎨 主题</div>
+      <div class="section-title">🤖 AI 模型配置</div>
+      <button class="btn btn-primary btn-sm" onclick="openModelModal()">+ 添加模型</button>
     </div>
     <div class="section-body">
-      <div class="form-row" style="display:block">
-        <div class="form-row-label">界面主题</div>
-        <div class="form-row-desc" style="margin-bottom:10px">选择你喜欢的显示模式</div>
-        <div class="theme-options">
-          <div class="theme-option active" onclick="switchTheme(this)">
-            <div class="theme-option-icon">☀️</div><div class="theme-option-name">亮色</div>
-          </div>
-          <div class="theme-option" onclick="switchTheme(this)">
-            <div class="theme-option-icon">🌙</div><div class="theme-option-name">暗色</div>
-          </div>
-          <div class="theme-option" onclick="switchTheme(this)">
-            <div class="theme-option-icon">🔄</div><div class="theme-option-name">跟随系统</div>
-          </div>
-        </div>
+      <div class="form-row" style="display:block;margin-bottom:16px">
+        <div class="form-row-label" style="margin-bottom:6px">默认模型</div>
+        <div class="form-row-desc" style="margin-bottom:10px">AI 对话和智能功能默认使用的模型</div>
+        <select class="form-select" id="defaultModelSelect" style="width:100%;max-width:360px" onchange="saveDefaultModel(this.value)">
+          <option value="">-- 请先添加模型 --</option>
+        </select>
+      </div>
+
+      <div class="model-list" id="modelList">
+        <!-- 模型列表将通过JS渲染 -->
       </div>
     </div>
   </div>
 
-  <!-- 2. AI配置 -->
+  <!-- 2. AI参数设置 -->
   <div class="section">
     <div class="section-header">
-      <div class="section-title">🤖 AI 配置</div>
-      <button class="btn btn-primary btn-sm" onclick="addApiKey()">+ 添加 Key</button>
+      <div class="section-title">⚙️ AI 参数</div>
     </div>
     <div class="section-body">
-      <div class="api-key-list" id="apiKeyList">
-        <!-- API Key列表将通过JS渲染 -->
+      <div class="form-row">
+        <div class="form-row-left">
+          <div class="form-row-label">Temperature</div>
+          <div class="form-row-desc">值越高回复越有创造性，越低越严谨（0-2）</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="range" id="temperatureSlider" min="0" max="2" step="0.1" value="0.7"
+                 style="width:140px" oninput="updateTemperatureDisplay(this.value)">
+          <span id="temperatureValue" style="font-size:14px;font-weight:600;min-width:30px;text-align:center">0.7</span>
+        </div>
       </div>
 
       <div class="form-row">
         <div class="form-row-left">
-          <div class="form-row-label">默认模型</div>
-          <div class="form-row-desc">新对话的默认 AI 模型</div>
+          <div class="form-row-label">Max Tokens</div>
+          <div class="form-row-desc">单次回复最大 Token 数</div>
         </div>
-        <select class="form-select" id="defaultModel" onchange="saveSetting('defaultModel', this.value)">
-          <option>DeepSeek</option>
-          <option>Kimi</option>
-          <option>豆包</option>
-          <option>Claude</option>
-          <option>DeepSeek-R1</option>
+        <select class="form-select" id="maxTokensSelect" style="width:120px" onchange="saveAIParam('maxTokens', this.value)">
+          <option value="2048">2048</option>
+          <option value="4096" selected>4096</option>
+          <option value="8192">8192</option>
+          <option value="16384">16384</option>
+          <option value="32768">32768</option>
         </select>
       </div>
 
@@ -53,23 +57,27 @@
           <div class="form-row-label">月度预算</div>
           <div class="form-row-desc">超出预算后将自动停止 AI 调用</div>
         </div>
-        <div class="budget-amount">¥<span id="budgetAmount">20</span></div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span>¥</span>
+          <input type="number" class="form-input" id="budgetInput" value="20" style="width:80px"
+                 onchange="saveAIParam('monthlyBudget', parseFloat(this.value) || 0)">
+        </div>
       </div>
 
       <div class="form-row budget-row">
         <div class="form-row-left" style="margin-right:0">
           <div class="form-row-label">预算使用</div>
-          <div class="form-row-desc" id="budgetDesc">本月已使用 ¥8 / ¥20 (40%)</div>
+          <div class="form-row-desc" id="budgetDesc">本月已使用 ¥0 / ¥20 (0%)</div>
         </div>
         <div class="budget-bar-wrap">
-          <div class="budget-bar-fill" id="budgetBar" style="width:40%"></div>
+          <div class="budget-bar-fill" id="budgetBar" style="width:0%"></div>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-row-left">
           <div class="form-row-label">预算提醒</div>
-          <div class="form-row-desc">当月费用的80%时发送提醒</div>
+          <div class="form-row-desc">当月费用的 80% 时发送提醒</div>
         </div>
         <div class="toggle active" id="toggleBudgetAlert" onclick="toggleSetting('budgetAlert', this)">
           <div class="toggle-track"></div>
@@ -80,7 +88,7 @@
       <div class="form-row">
         <div class="form-row-left">
           <div class="form-row-label">超预算停止</div>
-          <div class="form-row-desc">达到100%后停止所有AI调用</div>
+          <div class="form-row-desc">达到 100% 后停止所有 AI 调用</div>
         </div>
         <div class="toggle active" id="toggleBudgetStop" onclick="toggleSetting('budgetStop', this)">
           <div class="toggle-track"></div>
@@ -135,7 +143,7 @@
           <div class="form-row-desc">每日推送通知的时间</div>
         </div>
         <div class="time-input">
-          <input type="time" class="form-input" id="notificationTime" value="09:00" style="width:110px" 
+          <input type="time" class="form-input" id="notificationTime" value="09:00" style="width:110px"
                  onchange="saveSetting('notificationTime', this.value)">
         </div>
       </div>
@@ -199,9 +207,9 @@
         </div>
         <select class="form-select" id="backupFrequency" style="width:140px"
                 onchange="saveSetting('backupFrequency', this.value)">
-          <option>每天</option>
-          <option>每周</option>
-          <option>关闭</option>
+          <option value="daily">每天</option>
+          <option value="weekly">每周</option>
+          <option value="off">关闭</option>
         </select>
       </div>
 
@@ -212,9 +220,9 @@
         </div>
         <select class="form-select" id="backupTarget" style="width:140px"
                 onchange="saveSetting('backupTarget', this.value)">
-          <option>微云</option>
-          <option>腾讯云 COS</option>
-          <option>本地</option>
+          <option value="weiyun">微云</option>
+          <option value="cos">腾讯云 COS</option>
+          <option value="local">本地</option>
         </select>
       </div>
 
@@ -233,53 +241,240 @@
   </div>
 </div>
 
-<!-- 添加API Key弹窗 -->
-<div class="modal-overlay" id="modal-add-key" onclick="if(event.target===this)closeModal('modal-add-key')">
+<!-- 添加/编辑模型弹窗 -->
+<div class="modal-overlay" id="modal-add-model" onclick="if(event.target===this)closeModelModal()">
   <div class="modal modal-md">
     <div class="modal-header">
-      <div class="modal-title">➕ 添加 API Key</div>
-      <button class="modal-close" onclick="closeModal('modal-add-key')">×</button>
+      <div class="modal-title" id="modelModalTitle">➕ 添加 AI 模型</div>
+      <button class="modal-close" onclick="closeModelModal()">×</button>
     </div>
     <div class="modal-body">
+      <!-- 服务商选择 -->
       <div class="form-group">
-        <label class="form-label">服务商</label>
-        <select class="form-select" id="keyProvider">
-          <option>DeepSeek</option>
-          <option>Kimi</option>
-          <option>豆包</option>
-          <option>Claude</option>
-          <option>其他</option>
+        <label class="form-label">服务商 <span style="color:var(--danger)">*</span></label>
+        <select class="form-select" id="modelProvider" onchange="onProviderChange()">
+          <option value="">-- 选择服务商 --</option>
+          <option value="deepseek">DeepSeek（深度求索）</option>
+          <option value="qwen">通义千问（阿里 Qwen）</option>
+          <option value="zhipu">智谱 GLM</option>
+          <option value="kimi">Kimi（月之暗面）</option>
+          <option value="doubao">豆包（字节跳动）</option>
+          <option value="mimo">小米 MiMo</option>
+          <option value="hunyuan">腾讯混元</option>
+          <option value="pangu">华为盘古</option>
+          <option value="ollama">Ollama（本地模型）</option>
+          <option value="custom">自定义</option>
         </select>
       </div>
+
+      <!-- 套餐类型 -->
+      <div class="form-group" id="planTypeGroup" style="display:none">
+        <label class="form-label">套餐类型</label>
+        <select class="form-select" id="modelPlanType" onchange="onPlanTypeChange()">
+          <option value="standard">标准 API</option>
+          <option value="coding">Coding Plan（编程套餐）</option>
+          <option value="token">Token Plan（Token 套餐）</option>
+        </select>
+        <div class="form-row-desc" id="planTypeHint" style="margin-top:4px"></div>
+      </div>
+
+      <!-- 模型名称 -->
       <div class="form-group">
-        <label class="form-label">API Key</label>
-        <input type="text" class="form-input" id="keyValue" placeholder="输入API Key">
+        <label class="form-label">模型名称 <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-input" id="modelName" placeholder="如 deepseek-v4-flash">
+        <div class="form-row-desc" id="modelNameHint" style="margin-top:4px"></div>
+      </div>
+
+      <!-- 显示名称 -->
+      <div class="form-group">
+        <label class="form-label">显示名称</label>
+        <input type="text" class="form-input" id="modelDisplayName" placeholder="如 DeepSeek V4 Flash（可选，自动生成）">
+        <div class="form-row-desc" style="margin-top:4px">在模型列表中显示的友好名称</div>
+      </div>
+
+      <!-- API Base URL -->
+      <div class="form-group">
+        <label class="form-label">API Base URL <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-input" id="modelBaseUrl" placeholder="如 https://api.deepseek.com">
+        <div class="form-row-desc" id="baseUrlHint" style="margin-top:4px"></div>
+      </div>
+
+      <!-- API Key -->
+      <div class="form-group" id="apiKeyGroup">
+        <label class="form-label">API Key <span style="color:var(--danger)" id="apiKeyRequired">*</span></label>
+        <div style="position:relative">
+          <input type="password" class="form-input" id="modelApiKey" placeholder="输入 API Key" style="padding-right:36px">
+          <button type="button" onclick="togglePasswordVisibility('modelApiKey', this)"
+                  style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-400);font-size:16px">👁</button>
+        </div>
+        <div class="form-row-desc" id="apiKeyHint" style="margin-top:4px"></div>
+      </div>
+
+      <!-- Ollama 专用：模型列表 -->
+      <div class="form-group" id="ollamaModelGroup" style="display:none">
+        <label class="form-label">已安装的本地模型</label>
+        <button class="btn btn-secondary btn-sm" onclick="fetchOllamaModels()" type="button">🔍 获取本地模型列表</button>
+        <div id="ollamaModelList" style="margin-top:8px"></div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-add-key')">取消</button>
-      <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+      <button class="btn btn-secondary" onclick="closeModelModal()">取消</button>
+      <button class="btn btn-success" onclick="testModelConnection()" id="testConnBtn" type="button">🔌 测试连接</button>
+      <button class="btn btn-primary" onclick="saveModelConfig()">保存</button>
     </div>
   </div>
 </div>
 
 <script>
-// 当前设置数据
-let currentSettings = {};
+// ================================================================
+// 预设服务商配置
+// ================================================================
+const PROVIDER_PRESETS = {
+  deepseek: {
+    name: 'DeepSeek',
+    baseUrl: 'https://api.deepseek.com',
+    defaultModel: 'deepseek-v4-flash',
+    models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat', 'deepseek-reasoner'],
+    apiKeyUrl: 'https://platform.deepseek.com/api_keys',
+    apiKeyHint: '在 DeepSeek 开放平台 → API Keys 页面创建',
+    plans: {
+      standard: { baseUrl: 'https://api.deepseek.com', desc: '标准 API，按量计费' },
+      coding: { baseUrl: 'https://api.deepseek.com', desc: 'Coding Plan 使用相同地址，但 API Key 不同（需在 Coding Plan 页面单独获取）' }
+    }
+  },
+  qwen: {
+    name: '通义千问',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultModel: 'qwen3.6-plus',
+    models: ['qwen3.6-plus', 'qwen3.6-turbo', 'qwen-max', 'qwen-plus', 'qwen-turbo'],
+    apiKeyUrl: 'https://bailian.console.aliyun.com/api-key',
+    apiKeyHint: '在阿里云百炼平台 → API-KEY 管理页面创建（需先开通模型）',
+    plans: {
+      standard: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', desc: '标准 API，兼容 OpenAI 格式' }
+    }
+  },
+  zhipu: {
+    name: '智谱 GLM',
+    baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
+    defaultModel: 'GLM-4.7-Flash',
+    models: ['GLM-4.7-Flash', 'GLM-5', 'GLM-5.1', 'GLM-4-Plus', 'GLM-4-Flash'],
+    apiKeyUrl: 'https://z.ai/manage/apikey',
+    apiKeyHint: '在智谱开放平台 → API Keys 页面创建（GLM-4.7-Flash 永久免费）',
+    plans: {
+      standard: { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', desc: '标准 API' },
+      coding: { baseUrl: 'https://open.bigmodel.cn/api/paas/v4', desc: 'Coding Plan (Lite ¥49/月) 使用相同地址，但 API Key 不同' }
+    }
+  },
+  kimi: {
+    name: 'Kimi',
+    baseUrl: 'https://api.moonshot.cn/v1',
+    defaultModel: 'kimi-k2.6',
+    models: ['kimi-k2.6', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    apiKeyUrl: 'https://platform.moonshot.cn/console/api-keys',
+    apiKeyHint: '在月之暗面开放平台 → API Key 管理页面创建',
+    plans: {
+      standard: { baseUrl: 'https://api.moonshot.cn/v1', desc: '国内端点（.cn）' },
+      token: { baseUrl: 'https://api.moonshot.cn/v1', desc: 'Token Plan 使用相同地址，但 API Key 可能有单独的额度池' }
+    }
+  },
+  doubao: {
+    name: '豆包',
+    baseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
+    defaultModel: 'doubao-pro-32k',
+    models: ['doubao-pro-32k', 'doubao-pro-128k', 'doubao-lite-32k'],
+    apiKeyUrl: 'https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey',
+    apiKeyHint: '在火山引擎 → 方舟平台创建 API Key（需先创建推理接入点获取 Endpoint ID）',
+    plans: {
+      standard: { baseUrl: 'https://ark.cn-beijing.volces.com/api/v3', desc: '标准 API（模型名需用 Endpoint ID）' }
+    }
+  },
+  mimo: {
+    name: '小米 MiMo',
+    baseUrl: 'https://api.mimo-v2.com/v1',
+    defaultModel: 'mimo-v2-pro',
+    models: ['mimo-v2-pro', 'mimo-v2-flash', 'mimo-v2.5-pro', 'mimo-v2.5'],
+    apiKeyUrl: 'https://mimo-v2.com/settings/api-keys',
+    apiKeyHint: '在小米 MiMo 开放平台 → API 密钥控制台创建',
+    plans: {
+      standard: { baseUrl: 'https://api.mimo-v2.com/v1', desc: '标准 API，兼容 OpenAI 格式' }
+    }
+  },
+  hunyuan: {
+    name: '腾讯混元',
+    baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1',
+    defaultModel: 'hunyuan-turbos-latest',
+    models: ['hunyuan-turbos-latest', 'hunyuan-standard', 'hunyuan-lite', 'hunyuan-vision'],
+    apiKeyUrl: 'https://console.cloud.tencent.com/hunyuan/start',
+    apiKeyHint: '在腾讯云 → 混元大模型控制台 → API Key 管理页面创建',
+    plans: {
+      standard: { baseUrl: 'https://api.hunyuan.cloud.tencent.com/v1', desc: '标准 API，兼容 OpenAI 格式' }
+    }
+  },
+  pangu: {
+    name: '华为盘古',
+    baseUrl: 'https://pangu.huawei.com/api/v1',
+    defaultModel: 'pangu-large',
+    models: ['pangu-large', 'pangu-medium', 'pangu-small'],
+    apiKeyUrl: 'https://www.huaweicloud.com/product/pangu.html',
+    apiKeyHint: '在华为云 → 盘古大模型控制台获取 API Key',
+    plans: {
+      standard: { baseUrl: 'https://pangu.huawei.com/api/v1', desc: '标准 API' }
+    }
+  },
+  ollama: {
+    name: 'Ollama (本地)',
+    baseUrl: 'http://localhost:11434/v1',
+    defaultModel: '',
+    models: [],
+    apiKeyUrl: '',
+    apiKeyHint: 'Ollama 本地模型无需 API Key（任意值即可）',
+    plans: {
+      standard: { baseUrl: 'http://localhost:11434/v1', desc: '本地 Ollama 服务，默认端口 11434' }
+    }
+  },
+  custom: {
+    name: '自定义',
+    baseUrl: '',
+    defaultModel: '',
+    models: [],
+    apiKeyUrl: '',
+    apiKeyHint: '填写兼容 OpenAI 格式的 API 地址和密钥',
+    plans: {
+      standard: { baseUrl: '', desc: '自定义 OpenAI 兼容 API' }
+    }
+  }
+};
 
-// 初始化页面
-function initSettingsPage() {
-  loadSettings();
-  loadApiKeys();
+// ================================================================
+// 存储管理
+// ================================================================
+const STORAGE_KEY_MODELS = 'studymind_ai_models';
+const STORAGE_KEY_SETTINGS = 'studymind_ai_settings';
+
+function getModels() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_MODELS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
 }
 
-// 加载设置
-function loadSettings() {
-  currentSettings = window.mockData.settings || {
-    theme: 'light',
-    defaultModel: 'DeepSeek',
+function saveModels(models) {
+  localStorage.setItem(STORAGE_KEY_MODELS, JSON.stringify(models));
+}
+
+function getAISettings() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY_SETTINGS);
+    if (data) return JSON.parse(data);
+  } catch (e) {}
+  return {
+    defaultModelId: '',
+    temperature: 0.7,
+    maxTokens: 4096,
     monthlyBudget: 20,
-    budgetUsed: 8,
+    budgetUsed: 0,
     budgetAlert: true,
     budgetStop: true,
     notificationReview: true,
@@ -291,149 +486,772 @@ function loadSettings() {
     backupFrequency: 'daily',
     backupTarget: 'weiyun'
   };
-
-  // 设置表单值
-  document.getElementById('defaultModel').value = currentSettings.defaultModel;
-  document.getElementById('budgetAmount').textContent = currentSettings.monthlyBudget;
-  document.getElementById('budgetDesc').textContent = `本月已使用 ¥${currentSettings.budgetUsed} / ¥${currentSettings.monthlyBudget} (${Math.round(currentSettings.budgetUsed / currentSettings.monthlyBudget * 100)}%)`;
-  
-  const budgetPercent = (currentSettings.budgetUsed / currentSettings.monthlyBudget * 100);
-  const budgetBar = document.getElementById('budgetBar');
-  budgetBar.style.width = `${budgetPercent}%`;
-  
-  // 设置预算条颜色
-  const budgetWrap = document.querySelector('.budget-row');
-  if (budgetPercent >= 100) {
-    budgetWrap.classList.add('budget-exceed');
-  } else if (budgetPercent >= 80) {
-    budgetWrap.classList.add('budget-warn');
-  }
-
-  document.getElementById('notificationTime').value = currentSettings.notificationTime;
-  document.getElementById('doNotDisturbStart').value = currentSettings.doNotDisturbStart;
-  document.getElementById('doNotDisturbEnd').value = currentSettings.doNotDisturbEnd;
-  
-  document.getElementById('backupFrequency').value = currentSettings.backupFrequency === 'daily' ? '每天' : 
-                                                    currentSettings.backupFrequency === 'weekly' ? '每周' : '关闭';
-  document.getElementById('backupTarget').value = currentSettings.backupTarget === 'weiyun' ? '微云' : 
-                                                 currentSettings.backupTarget === 'cos' ? '腾讯云 COS' : '本地';
 }
 
-// 加载API Key列表
-function loadApiKeys() {
-  const apiKeys = window.mockData.apiKeys || [
-    { _id: 'key-1', provider: 'DeepSeek', key: 'sk-7a8b9c••••••••d4e5f6', enabled: true, statusText: '● 已启用' },
-    { _id: 'key-2', provider: 'Kimi', key: 'sk-kimi••••••••••••xYz', enabled: true, statusText: '● 已启用' }
-  ];
+function saveAISettings(settings) {
+  localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
+}
 
-  const list = document.getElementById('apiKeyList');
-  list.innerHTML = '';
-  
-  apiKeys.forEach(key => {
-    const item = document.createElement('div');
-    item.className = 'api-key-item';
-    item.innerHTML = `
-      <span class="api-key-provider">${key.provider}</span>
-      <span class="api-key-value">${key.key}</span>
-      <span class="api-key-status ${key.enabled ? 'status-active' : 'status-inactive'}">${key.statusText}</span>
-      <button class="btn btn-ghost btn-xs" onclick="editApiKey('${key._id}')">编辑</button>
-      <button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="deleteApiKey('${key._id}')">删除</button>
-    `;
-    list.appendChild(item);
+// ================================================================
+// 当前设置
+// ================================================================
+let currentSettings = getAISettings();
+let editingModelId = null;
+
+// ================================================================
+// Toast 辅助
+// ================================================================
+function settingsToast(message, type) {
+  type = type || 'info';
+  if (window.utils && window.utils.toast) {
+    window.utils.toast(message, type);
+    return;
+  }
+  if (window.showToast) {
+    window.showToast(message, type);
+    return;
+  }
+  console.log('[Settings Toast]', type, message);
+}
+
+// ================================================================
+// 初始化页面
+// ================================================================
+function initSettingsPage() {
+  try {
+    loadSettingsUI();
+    renderModelList();
+    renderDefaultModelSelect();
+    console.log('[Settings] 页面初始化完成');
+  } catch (error) {
+    console.error('[Settings] 页面初始化失败:', error);
+    settingsToast('页面初始化失败: ' + error.message, 'error');
+  }
+}
+
+// ================================================================
+// 加载设置到 UI
+// ================================================================
+function loadSettingsUI() {
+  // Temperature
+  var tempSlider = document.getElementById('temperatureSlider');
+  if (tempSlider) {
+    tempSlider.value = currentSettings.temperature || 0.7;
+    updateTemperatureDisplay(tempSlider.value);
+  }
+
+  // Max Tokens
+  var maxTokensSel = document.getElementById('maxTokensSelect');
+  if (maxTokensSel) {
+    maxTokensSel.value = String(currentSettings.maxTokens || 4096);
+  }
+
+  // Budget
+  var budgetInput = document.getElementById('budgetInput');
+  if (budgetInput) {
+    budgetInput.value = currentSettings.monthlyBudget || 20;
+  }
+  updateBudgetDisplay();
+
+  // Toggles
+  setToggleState('toggleBudgetAlert', currentSettings.budgetAlert);
+  setToggleState('toggleBudgetStop', currentSettings.budgetStop);
+  setToggleState('toggleReview', currentSettings.notificationReview);
+  setToggleState('toggleDeadline', currentSettings.notificationDeadline);
+  setToggleState('toggleSystem', currentSettings.notificationSystem);
+
+  // Time inputs
+  setInputValue('notificationTime', currentSettings.notificationTime || '09:00');
+  setInputValue('doNotDisturbStart', currentSettings.doNotDisturbStart || '22:00');
+  setInputValue('doNotDisturbEnd', currentSettings.doNotDisturbEnd || '08:00');
+
+  // Backup
+  setSelectValue('backupFrequency', currentSettings.backupFrequency || 'daily');
+  setSelectValue('backupTarget', currentSettings.backupTarget || 'weiyun');
+}
+
+function setToggleState(id, active) {
+  var el = document.getElementById(id);
+  if (el) {
+    if (active) el.classList.add('active');
+    else el.classList.remove('active');
+  }
+}
+
+function setInputValue(id, value) {
+  var el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+function setSelectValue(id, value) {
+  var el = document.getElementById(id);
+  if (el) el.value = value;
+}
+
+// ================================================================
+// 模型列表渲染
+// ================================================================
+function renderModelList() {
+  var models = getModels();
+  var list = document.getElementById('modelList');
+  if (!list) return;
+
+  if (models.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);font-size:14px">' +
+      '尚未配置任何 AI 模型<br><span style="font-size:12px">点击右上角「添加模型」开始配置</span>' +
+      '</div>';
+    return;
+  }
+
+  var html = '';
+  models.forEach(function(model) {
+    var isDefault = model.id === currentSettings.defaultModelId;
+    var maskedKey = maskApiKey(model.apiKey);
+    var providerName = PROVIDER_PRESETS[model.provider] ? PROVIDER_PRESETS[model.provider].name : model.provider;
+    var planBadge = model.planType && model.planType !== 'standard'
+      ? '<span class="model-plan-badge">' + escapeHtml(model.planType) + '</span>' : '';
+    var statusClass = model.status === 'error' ? 'model-status-error' : (model.status === 'ok' ? 'model-status-ok' : 'model-status-unknown');
+    var statusText = model.status === 'error' ? '● 连接失败' : (model.status === 'ok' ? '● 已验证' : '● 未测试');
+
+    html += '<div class="model-card' + (isDefault ? ' model-card-default' : '') + '" data-id="' + model.id + '">' +
+      '<div class="model-card-header">' +
+        '<div class="model-card-info">' +
+          '<div class="model-card-name">' + escapeHtml(model.displayName || providerName) + (isDefault ? ' <span class="model-default-badge">默认</span>' : '') + '</div>' +
+          '<div class="model-card-meta">' +
+            '<span class="model-card-provider">' + escapeHtml(providerName) + '</span>' +
+            '<span class="model-card-sep">·</span>' +
+            '<span class="model-card-modelname">' + escapeHtml(model.modelName) + '</span>' +
+            planBadge +
+          '</div>' +
+          '<div class="model-card-url">' + escapeHtml(model.baseUrl) + '</div>' +
+          '<div class="model-card-key">🔑 ' + maskedKey + ' <span class="' + statusClass + '">' + statusText + '</span></div>' +
+        '</div>' +
+        '<div class="model-card-actions">' +
+          (isDefault ? '' : '<button class="btn btn-ghost btn-xs" onclick="setDefaultModel(\'' + model.id + '\')">设为默认</button>') +
+          '<button class="btn btn-ghost btn-xs" onclick="testExistingModel(\'' + model.id + '\')">测试</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="editModel(\'' + model.id + '\')">编辑</button>' +
+          '<button class="btn btn-ghost btn-xs" style="color:var(--danger)" onclick="deleteModel(\'' + model.id + '\')">删除</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  });
+
+  list.innerHTML = html;
+}
+
+function renderDefaultModelSelect() {
+  var models = getModels();
+  var select = document.getElementById('defaultModelSelect');
+  if (!select) return;
+
+  if (models.length === 0) {
+    select.innerHTML = '<option value="">-- 请先添加模型 --</option>';
+    return;
+  }
+
+  var html = '';
+  models.forEach(function(model) {
+    var providerName = PROVIDER_PRESETS[model.provider] ? PROVIDER_PRESETS[model.provider].name : model.provider;
+    var label = (model.displayName || providerName) + ' / ' + model.modelName;
+    var selected = model.id === currentSettings.defaultModelId ? ' selected' : '';
+    html += '<option value="' + model.id + '"' + selected + '>' + escapeHtml(label) + '</option>';
+  });
+
+  // 如果没有默认模型，自动选第一个
+  if (!currentSettings.defaultModelId && models.length > 0) {
+    currentSettings.defaultModelId = models[0].id;
+    saveAISettings(currentSettings);
+  }
+
+  select.innerHTML = html;
+  select.value = currentSettings.defaultModelId;
+}
+
+// ================================================================
+// 模型弹窗操作
+// ================================================================
+function openModelModal() {
+  editingModelId = null;
+  document.getElementById('modelModalTitle').textContent = '➕ 添加 AI 模型';
+  document.getElementById('modelProvider').value = '';
+  document.getElementById('modelPlanType').value = 'standard';
+  document.getElementById('modelName').value = '';
+  document.getElementById('modelDisplayName').value = '';
+  document.getElementById('modelBaseUrl').value = '';
+  document.getElementById('modelApiKey').value = '';
+  document.getElementById('planTypeGroup').style.display = 'none';
+  document.getElementById('ollamaModelGroup').style.display = 'none';
+  document.getElementById('ollamaModelList').innerHTML = '';
+  clearModelHints();
+  openModal('modal-add-model');
+}
+
+function closeModelModal() {
+  closeModal('modal-add-model');
+}
+
+function clearModelHints() {
+  document.getElementById('modelNameHint').textContent = '';
+  document.getElementById('baseUrlHint').textContent = '';
+  document.getElementById('apiKeyHint').textContent = '';
+  document.getElementById('planTypeHint').textContent = '';
+}
+
+function onProviderChange() {
+  var provider = document.getElementById('modelProvider').value;
+  var preset = PROVIDER_PRESETS[provider];
+  clearModelHints();
+
+  if (!preset) {
+    document.getElementById('planTypeGroup').style.display = 'none';
+    document.getElementById('ollamaModelGroup').style.display = 'none';
+    return;
+  }
+
+  // 填充 Base URL
+  document.getElementById('modelBaseUrl').value = preset.baseUrl;
+
+  // 填充模型名
+  document.getElementById('modelName').value = preset.defaultModel;
+
+  // 模型名提示
+  if (preset.models.length > 0) {
+    document.getElementById('modelNameHint').textContent = '可用模型: ' + preset.models.join(', ');
+  }
+
+  // API Key 提示
+  document.getElementById('apiKeyHint').textContent = preset.apiKeyHint;
+
+  // 套餐类型
+  var planKeys = Object.keys(preset.plans);
+  if (planKeys.length > 1) {
+    document.getElementById('planTypeGroup').style.display = '';
+    var planSelect = document.getElementById('modelPlanType');
+    planSelect.innerHTML = '';
+    planKeys.forEach(function(key) {
+      var opt = document.createElement('option');
+      opt.value = key;
+      var planLabels = { standard: '标准 API', coding: 'Coding Plan（编程套餐）', token: 'Token Plan（Token 套餐）' };
+      opt.textContent = planLabels[key] || key;
+      planSelect.appendChild(opt);
+    });
+    onPlanTypeChange();
+  } else {
+    document.getElementById('planTypeGroup').style.display = 'none';
+  }
+
+  // Ollama 特殊处理
+  if (provider === 'ollama') {
+    document.getElementById('ollamaModelGroup').style.display = '';
+    document.getElementById('apiKeyGroup').style.display = 'none';
+    document.getElementById('modelApiKey').value = 'ollama';
+  } else {
+    document.getElementById('ollamaModelGroup').style.display = 'none';
+    document.getElementById('apiKeyGroup').style.display = '';
+  }
+
+  // 显示名称自动填充
+  if (!document.getElementById('modelDisplayName').value) {
+    document.getElementById('modelDisplayName').value = preset.name;
+  }
+}
+
+function onPlanTypeChange() {
+  var provider = document.getElementById('modelProvider').value;
+  var planType = document.getElementById('modelPlanType').value;
+  var preset = PROVIDER_PRESETS[provider];
+  if (!preset || !preset.plans[planType]) return;
+
+  var plan = preset.plans[planType];
+  document.getElementById('modelBaseUrl').value = plan.baseUrl;
+  document.getElementById('planTypeHint').textContent = plan.desc;
+}
+
+// ================================================================
+// Ollama 模型列表获取
+// ================================================================
+function fetchOllamaModels() {
+  var baseUrl = document.getElementById('modelBaseUrl').value || 'http://localhost:11434';
+  // 去掉末尾的 /v1
+  var ollamaUrl = baseUrl.replace(/\/v1\/?$/, '');
+  var listEl = document.getElementById('ollamaModelList');
+
+  listEl.innerHTML = '<div style="color:var(--gray-400);font-size:13px">⏳ 正在获取本地模型列表...</div>';
+
+  fetch(ollamaUrl + '/api/tags')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.models && data.models.length > 0) {
+        var html = '<div style="font-size:13px;margin-bottom:6px;color:var(--gray-500)">点击选择模型:</div>';
+        data.models.forEach(function(m) {
+          html += '<div class="ollama-model-item" onclick="selectOllamaModel(\'' + escapeHtml(m.name) + '\')">' +
+            '<span>📦 ' + escapeHtml(m.name) + '</span>' +
+            '<span style="font-size:11px;color:var(--gray-400)">' + escapeHtml(formatBytes(m.size)) + '</span>' +
+          '</div>';
+        });
+        listEl.innerHTML = html;
+      } else {
+        listEl.innerHTML = '<div style="color:var(--warning);font-size:13px">⚠️ 未找到已安装的模型，请先使用 <code>ollama pull &lt;model&gt;</code> 安装模型</div>';
+      }
+    })
+    .catch(function(err) {
+      listEl.innerHTML = '<div style="color:var(--danger);font-size:13px">❌ 无法连接 Ollama 服务: ' + escapeHtml(err.message) + '<br>' +
+        '<span style="font-size:12px">请确保 Ollama 已启动（默认端口 11434）</span></div>';
+    });
+}
+
+function selectOllamaModel(name) {
+  document.getElementById('modelName').value = name;
+  if (!document.getElementById('modelDisplayName').value) {
+    document.getElementById('modelDisplayName').value = 'Ollama - ' + name;
+  }
+}
+
+// ================================================================
+// 测试连接
+// ================================================================
+function testModelConnection() {
+  var provider = document.getElementById('modelProvider').value;
+  var baseUrl = document.getElementById('modelBaseUrl').value.trim();
+  var apiKey = document.getElementById('modelApiKey').value.trim();
+  var modelName = document.getElementById('modelName').value.trim();
+
+  if (!baseUrl || !modelName) {
+    settingsToast('请填写 Base URL 和模型名称', 'warning');
+    return;
+  }
+
+  var btn = document.getElementById('testConnBtn');
+  var originalText = btn.textContent;
+  btn.textContent = '⏳ 测试中...';
+  btn.disabled = true;
+
+  // 构造 OpenAI 兼容的测试请求
+  var testUrl = baseUrl.replace(/\/$/, '') + '/chat/completions';
+  var headers = { 'Content-Type': 'application/json' };
+  if (provider !== 'ollama' && apiKey) {
+    headers['Authorization'] = 'Bearer ' + apiKey;
+  }
+
+  fetch(testUrl, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({
+      model: modelName,
+      messages: [{ role: 'user', content: 'Hi' }],
+      max_tokens: 5,
+      stream: false
+    })
+  })
+  .then(function(res) {
+    if (res.ok) return res.json();
+    return res.text().then(function(text) {
+      throw new Error('HTTP ' + res.status + ': ' + text.substring(0, 200));
+    });
+  })
+  .then(function(data) {
+    var content = data.choices && data.choices[0] && data.choices[0].message
+      ? data.choices[0].message.content : '(空回复)';
+    settingsToast('✅ 连接成功！回复: ' + content.substring(0, 50), 'success');
+  })
+  .catch(function(err) {
+    settingsToast('❌ 连接失败: ' + err.message, 'error');
+  })
+  .finally(function() {
+    btn.textContent = originalText;
+    btn.disabled = false;
   });
 }
 
-// 保存设置
+function testExistingModel(modelId) {
+  var models = getModels();
+  var model = models.find(function(m) { return m.id === modelId; });
+  if (!model) return;
+
+  settingsToast('⏳ 正在测试 ' + (model.displayName || model.modelName) + '...', 'info');
+
+  var testUrl = model.baseUrl.replace(/\/$/, '') + '/chat/completions';
+  var headers = { 'Content-Type': 'application/json' };
+  if (model.provider !== 'ollama' && model.apiKey) {
+    headers['Authorization'] = 'Bearer ' + model.apiKey;
+  }
+
+  fetch(testUrl, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({
+      model: model.modelName,
+      messages: [{ role: 'user', content: 'Hi' }],
+      max_tokens: 5,
+      stream: false
+    })
+  })
+  .then(function(res) {
+    if (res.ok) {
+      model.status = 'ok';
+      saveModels(models);
+      renderModelList();
+      settingsToast('✅ ' + (model.displayName || model.modelName) + ' 连接成功', 'success');
+    } else {
+      model.status = 'error';
+      saveModels(models);
+      renderModelList();
+      settingsToast('❌ HTTP ' + res.status + ' 连接失败', 'error');
+    }
+  })
+  .catch(function(err) {
+    model.status = 'error';
+    saveModels(models);
+    renderModelList();
+    settingsToast('❌ 连接失败: ' + err.message, 'error');
+  });
+}
+
+// ================================================================
+// 保存模型配置
+// ================================================================
+function saveModelConfig() {
+  var provider = document.getElementById('modelProvider').value;
+  var planType = document.getElementById('modelPlanType').value || 'standard';
+  var modelName = document.getElementById('modelName').value.trim();
+  var displayName = document.getElementById('modelDisplayName').value.trim();
+  var baseUrl = document.getElementById('modelBaseUrl').value.trim();
+  var apiKey = document.getElementById('modelApiKey').value.trim();
+
+  if (!provider) {
+    settingsToast('请选择服务商', 'warning');
+    return;
+  }
+  if (!modelName) {
+    settingsToast('请填写模型名称', 'warning');
+    return;
+  }
+  if (!baseUrl) {
+    settingsToast('请填写 API Base URL', 'warning');
+    return;
+  }
+  if (provider !== 'ollama' && !apiKey) {
+    settingsToast('请填写 API Key', 'warning');
+    return;
+  }
+
+  var models = getModels();
+  var preset = PROVIDER_PRESETS[provider];
+  var finalDisplayName = displayName || (preset ? preset.name : provider) + ' / ' + modelName;
+
+  if (editingModelId) {
+    // 编辑模式
+    var idx = models.findIndex(function(m) { return m.id === editingModelId; });
+    if (idx !== -1) {
+      models[idx].provider = provider;
+      models[idx].planType = planType;
+      models[idx].modelName = modelName;
+      models[idx].displayName = finalDisplayName;
+      models[idx].baseUrl = baseUrl;
+      models[idx].apiKey = apiKey;
+      models[idx].updatedAt = new Date().toISOString();
+    }
+  } else {
+    // 新增模式
+    var newModel = {
+      id: 'model-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+      provider: provider,
+      planType: planType,
+      modelName: modelName,
+      displayName: finalDisplayName,
+      baseUrl: baseUrl,
+      apiKey: apiKey,
+      status: 'unknown',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    models.push(newModel);
+
+    // 如果是第一个模型，自动设为默认
+    if (models.length === 1) {
+      currentSettings.defaultModelId = newModel.id;
+      saveAISettings(currentSettings);
+    }
+  }
+
+  saveModels(models);
+  closeModelModal();
+  renderModelList();
+  renderDefaultModelSelect();
+  settingsToast(editingModelId ? '模型配置已更新' : '模型已添加', 'success');
+}
+
+function editModel(modelId) {
+  var models = getModels();
+  var model = models.find(function(m) { return m.id === modelId; });
+  if (!model) return;
+
+  editingModelId = modelId;
+  document.getElementById('modelModalTitle').textContent = '✏️ 编辑 AI 模型';
+  document.getElementById('modelProvider').value = model.provider;
+  document.getElementById('modelPlanType').value = model.planType || 'standard';
+  document.getElementById('modelName').value = model.modelName;
+  document.getElementById('modelDisplayName').value = model.displayName || '';
+  document.getElementById('modelBaseUrl').value = model.baseUrl;
+  document.getElementById('modelApiKey').value = model.apiKey || '';
+
+  // 触发 onProviderChange 逻辑
+  onProviderChange();
+
+  // 恢复用户填写的值（onProviderChange 会覆盖）
+  document.getElementById('modelPlanType').value = model.planType || 'standard';
+  document.getElementById('modelName').value = model.modelName;
+  document.getElementById('modelDisplayName').value = model.displayName || '';
+  document.getElementById('modelBaseUrl').value = model.baseUrl;
+  document.getElementById('modelApiKey').value = model.apiKey || '';
+
+  openModal('modal-add-model');
+}
+
+function deleteModel(modelId) {
+  var models = getModels();
+  var model = models.find(function(m) { return m.id === modelId; });
+  if (!model) return;
+
+  if (!confirm('确定删除模型「' + (model.displayName || model.modelName) + '」？')) return;
+
+  models = models.filter(function(m) { return m.id !== modelId; });
+  saveModels(models);
+
+  // 如果删除的是默认模型，重新设置默认
+  if (currentSettings.defaultModelId === modelId) {
+    currentSettings.defaultModelId = models.length > 0 ? models[0].id : '';
+    saveAISettings(currentSettings);
+  }
+
+  renderModelList();
+  renderDefaultModelSelect();
+  settingsToast('模型已删除', 'warning');
+}
+
+function setDefaultModel(modelId) {
+  currentSettings.defaultModelId = modelId;
+  saveAISettings(currentSettings);
+  renderModelList();
+  renderDefaultModelSelect();
+  settingsToast('默认模型已更新', 'success');
+}
+
+function saveDefaultModel(modelId) {
+  currentSettings.defaultModelId = modelId;
+  saveAISettings(currentSettings);
+  renderModelList();
+  settingsToast('默认模型已更新', 'success');
+}
+
+// ================================================================
+// 通用设置操作
+// ================================================================
 function saveSetting(key, value) {
   currentSettings[key] = value;
-  window.toast('设置已保存', 'success');
+  saveAISettings(currentSettings);
+  settingsToast('设置已保存', 'success');
 }
 
-// 切换主题
-function switchTheme(el) {
-  document.querySelectorAll('.theme-option').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  
-  const theme = el.querySelector('.theme-option-name').textContent;
-  saveSetting('theme', theme === '亮色' ? 'light' : theme === '暗色' ? 'dark' : 'system');
-  window.toast('主题已切换: ' + theme, 'success');
-}
-
-// 切换Toggle设置
 function toggleSetting(key, el) {
   el.classList.toggle('active');
   currentSettings[key] = el.classList.contains('active');
-  window.toast('设置已保存', 'success');
+  saveAISettings(currentSettings);
+  settingsToast('设置已保存', 'success');
 }
 
-// 添加API Key
-function addApiKey() {
-  document.getElementById('keyProvider').value = 'DeepSeek';
-  document.getElementById('keyValue').value = '';
-  openModal('modal-add-key');
+function updateTemperatureDisplay(value) {
+  var el = document.getElementById('temperatureValue');
+  if (el) el.textContent = value;
+  currentSettings.temperature = parseFloat(value);
+  saveAISettings(currentSettings);
 }
 
-// 保存API Key
-function saveApiKey() {
-  const provider = document.getElementById('keyProvider').value;
-  const key = document.getElementById('keyValue').value;
-  
-  if (!key.trim()) {
-    window.toast('请输入API Key', 'warning');
-    return;
+function saveAIParam(key, value) {
+  currentSettings[key] = value;
+  saveAISettings(currentSettings);
+  settingsToast('设置已保存', 'success');
+  if (key === 'monthlyBudget') updateBudgetDisplay();
+}
+
+function updateBudgetDisplay() {
+  var budget = currentSettings.monthlyBudget || 20;
+  var used = currentSettings.budgetUsed || 0;
+  var percent = budget > 0 ? Math.round((used / budget) * 100) : 0;
+
+  var descEl = document.getElementById('budgetDesc');
+  if (descEl) {
+    descEl.textContent = '本月已使用 ¥' + used + ' / ¥' + budget + ' (' + percent + '%)';
   }
-  
-  closeModal('modal-add-key');
-  window.toast('API Key 已添加', 'success');
-  loadApiKeys();
-}
 
-// 编辑API Key
-function editApiKey(keyId) {
-  window.toast('功能开发中', 'info');
-}
+  var barEl = document.getElementById('budgetBar');
+  if (barEl) {
+    barEl.style.width = percent + '%';
+  }
 
-// 删除API Key
-function deleteApiKey(keyId) {
-  if (confirm('确定删除此API Key？')) {
-    window.toast('API Key 已删除', 'warning');
-    loadApiKeys();
+  var wrap = document.querySelector('.budget-row');
+  if (wrap) {
+    wrap.classList.remove('budget-warn', 'budget-exceed');
+    if (percent >= 100) wrap.classList.add('budget-exceed');
+    else if (percent >= 80) wrap.classList.add('budget-warn');
   }
 }
 
-// 导出数据
+// ================================================================
+// 数据管理
+// ================================================================
 function exportData() {
-  window.toast('数据已导出', 'success');
-}
+  var data = {
+    settings: currentSettings,
+    models: getModels(),
+    exportTime: new Date().toISOString()
+  };
 
-// 导入数据
-function importData() {
-  window.toast('请选择导入文件', 'info');
-}
-
-// 清空数据
-function clearData() {
-  if (confirm('确定清空所有数据？此操作不可恢复！')) {
-    if (confirm('再次确认：确定要清空所有数据吗？')) {
-      window.toast('数据已清空', 'danger');
-    }
+  // 尝试使用 DB 层导出完整数据
+  if (window.DB && window.DB.exportAllData) {
+    window.DB.exportAllData().then(function(result) {
+      if (result.success) {
+        data.cloudbaseData = result.data;
+      }
+      downloadExportData(data);
+    }).catch(function() {
+      downloadExportData(data);
+    });
+  } else {
+    downloadExportData(data);
   }
 }
 
-// 执行备份
+function downloadExportData(data) {
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'studymind-backup-' + new Date().toISOString().split('T')[0] + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  settingsToast('数据已导出', 'success');
+}
+
+function importData() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      try {
+        var data = JSON.parse(ev.target.result);
+        if (data.settings) {
+          currentSettings = Object.assign(getAISettings(), data.settings);
+          saveAISettings(currentSettings);
+        }
+        if (data.models) {
+          saveModels(data.models);
+        }
+        loadSettingsUI();
+        renderModelList();
+        renderDefaultModelSelect();
+        settingsToast('数据导入成功', 'success');
+      } catch (err) {
+        settingsToast('导入失败: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+function clearData() {
+  if (!confirm('确定清空所有数据？此操作不可恢复！')) return;
+  if (!confirm('再次确认：确定要清空所有数据吗？')) return;
+
+  localStorage.removeItem(STORAGE_KEY_MODELS);
+  localStorage.removeItem(STORAGE_KEY_SETTINGS);
+  currentSettings = getAISettings();
+
+  if (window.DB && window.DB.clearAllData) {
+    window.DB.clearAllData().then(function() {
+      settingsToast('所有数据已清空', 'success');
+    }).catch(function() {
+      settingsToast('所有数据已清空', 'success');
+    });
+  } else {
+    settingsToast('所有数据已清空', 'success');
+  }
+
+  loadSettingsUI();
+  renderModelList();
+  renderDefaultModelSelect();
+}
+
 function executeBackup() {
-  window.toast('备份完成', 'success');
+  settingsToast('正在备份...', 'info');
+  if (window.DB && window.DB.triggerBackup) {
+    window.DB.triggerBackup().then(function(result) {
+      if (result.success) settingsToast('备份完成', 'success');
+      else settingsToast('备份失败: ' + (result.error || ''), 'error');
+    }).catch(function(err) {
+      settingsToast('备份失败: ' + err.message, 'error');
+    });
+  } else {
+    // 本地备份
+    exportData();
+  }
+}
+
+// ================================================================
+// 辅助函数
+// ================================================================
+function maskApiKey(key) {
+  if (!key || key === 'ollama') return key || '(未设置)';
+  if (key.length <= 8) return key.substring(0, 2) + '****';
+  return key.substring(0, 4) + '****' + key.substring(key.length - 4);
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  var div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatBytes(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  var input = document.getElementById(inputId);
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁';
+  }
 }
 
 // 弹窗操作
 function openModal(id) {
-  document.getElementById(id).classList.add('show');
+  var el = document.getElementById(id);
+  if (el) el.classList.add('show');
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('show');
+  var el = document.getElementById(id);
+  if (el) el.classList.remove('show');
 }
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', initSettingsPage);
+
+// 暴露全局函数（供 framework.js 调用）
+window.initSettingsPage = initSettingsPage;
 </script>

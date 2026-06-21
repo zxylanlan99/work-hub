@@ -11,6 +11,12 @@
     <div class="overview-grid" id="todayOverview">
     </div>
 
+    <!-- 每日暖身 -->
+    <div class="alert-banner alert-info" style="margin-top:12px;">
+      <span class="alert-icon">🎯</span> 每日暖身 — AI 出一道快速测试题，激活学习状态
+      <div class="alert-actions"><button class="btn btn-primary btn-sm" onclick="generateDailyQuiz()">生成暖身测试题</button></div>
+    </div>
+
     <!-- 提醒条 -->
     <div class="alert-banner alert-warning" id="overdueAlert">
       <span class="alert-icon">⚠️</span> 有 <strong id="overdueCount">0</strong> 张卡片已逾期，建议优先处理
@@ -192,7 +198,7 @@
       </div>
       <div style="margin-top:16px;padding:12px;background:var(--primary-light);border-radius:var(--radius)">
         <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px">🎯 同主题完成 3 条 → 可进行主题串联测试</div>
-        <button class="btn btn-primary btn-sm" onclick="utils.toast('已生成串联测试','success')">生成「Go并发」主题综合测试</button>
+        <button class="btn btn-primary btn-sm" onclick="generateSerialTest()">生成「Go并发」主题综合测试</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -227,7 +233,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-improve')">关闭</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-improve');utils.toast('3个补强目标已创建','success')">一键生成所有补强目标</button>
+      <button class="btn btn-primary" onclick="generateAllImprovementPlans()">一键生成所有补强目标</button>
     </div>
   </div>
 </div>
@@ -467,7 +473,7 @@ function renderImproveItems() {
       <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">${t.name} (${t.mastery})</span></div>
       <div class="link-card-meta">待复习卡片 · 建议补强</div>
       <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：查阅相关资料进行补强学习</div>
-      <button class="btn btn-primary btn-sm" onclick="utils.toast('已创建学习目标','success')">创建补强学习目标</button>
+      <button class="btn btn-primary btn-sm" onclick="generateImprovementPlan('${t.name}')">创建补强学习目标</button>
     </div>
   `).join('')
   document.getElementById('improveItems').innerHTML = html
@@ -587,4 +593,103 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 })
+
+// ================================================================
+// AI 功能连接
+// ================================================================
+
+// 每日暖身 — 快问快答
+async function generateDailyQuiz() {
+  var topic = mockData.review.stats.weakTopics[0]?.name || '学习';
+  utils.toast('正在生成暖身测试题…', 'info');
+  try {
+    var res = await DB.getQuiz(topic);
+    if (res.success && res.content) {
+      utils.toast('暖身测试题已生成', 'success');
+      // 在今日概览区域显示测试题
+      var overviewEl = document.querySelector('.review-overview, .today-overview, #page-today .stat-panel');
+      if (overviewEl) {
+        var quizEl = document.createElement('div');
+        quizEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;';
+        quizEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px">🎯 每日暖身测试题</div><div style="color:var(--gray-600);line-height:1.6">' + res.content + '</div>';
+        overviewEl.appendChild(quizEl);
+      }
+    } else {
+      utils.toast('AI 暂不可用: ' + (res.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    utils.toast('生成失败: ' + e.message, 'error');
+  }
+}
+
+// 串联测试
+async function generateSerialTest() {
+  utils.toast('AI 正在生成串联测试…', 'info');
+  try {
+    var cardIds = mockData.review.currentQueue.slice(0, 3).map(function(c) { return c.id || c.knowledgeId || ''; });
+    var res = await DB.aiSerialTest(cardIds);
+    if (res.success && res.content) {
+      utils.toast('串联测试已生成', 'success');
+      // 在弹窗中显示测试结果
+      var modalBody = document.querySelector('#modal-link .modal-body');
+      if (modalBody) {
+        var testEl = document.createElement('div');
+        testEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+        testEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📝 AI 生成的串联测试</div><div style="color:var(--gray-700)">' + res.content + '</div>';
+        modalBody.appendChild(testEl);
+      }
+    } else {
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    utils.toast('生成失败: ' + e.message, 'error');
+  }
+}
+
+// 生成所有补强计划
+async function generateAllImprovementPlans() {
+  utils.toast('AI 正在生成补强计划…', 'info');
+  try {
+    var res = await DB.aiAllImprovementPlans();
+    if (res.success && res.content) {
+      closeModal('modal-improve');
+      utils.toast('补强计划已生成', 'success');
+      // 显示 AI 生成的补强计划
+      var improveEl = document.getElementById('improveItems');
+      if (improveEl) {
+        var planEl = document.createElement('div');
+        planEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📋 AI 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+        improveEl.appendChild(planEl);
+      }
+    } else {
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    utils.toast('生成失败: ' + e.message, 'error');
+  }
+}
+
+// 生成单个薄弱主题的补强计划
+async function generateImprovementPlan(topicName) {
+  utils.toast('AI 正在为「' + topicName + '」生成补强计划…', 'info');
+  try {
+    var res = await DB.aiImprovementPlan([topicName]);
+    if (res.success && res.content) {
+      utils.toast('补强计划已生成', 'success');
+      // 显示结果
+      var improveEl = document.getElementById('improveItems');
+      if (improveEl) {
+        var planEl = document.createElement('div');
+        planEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">📋 ' + topicName + ' 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+        improveEl.appendChild(planEl);
+      }
+    } else {
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    utils.toast('生成失败: ' + e.message, 'error');
+  }
+}
 </script>

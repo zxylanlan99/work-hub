@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudBase 连接测试</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-family: monospace; font-size: 13px; white-space: pre-wrap; }
+    .success { color: green; }
+    .error { color: red; }
+    .info { color: blue; }
+    button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+    h1 { color: #333; }
+    h3 { color: #666; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🧠 StudyMind - CloudBase 连接测试</h1>
+  
+  <div id="status" class="log">等待初始化...</div>
+  
+  <h3>测试操作</h3>
+  <button onclick="testReadGoals()">测试读取 goals</button>
+  <button onclick="testCreateGoal()">测试创建 goal</button>
+  <button onclick="testReadCategories()">测试读取 categories</button>
+  <button onclick="testReadReviewCards()">测试读取 review_cards</button>
+  <button onclick="testDBStatus()">检查 DB 状态</button>
+  
+  <div id="result" class="log" style="display:none;"></div>
+
+  <!-- CloudBase Mock SDK -->
+  <script src="js/cloudbase-mock.js"></script>
+  
+  <script>
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    
+    function log(msg, type = 'info') {
+      const line = document.createElement('div');
+      line.className = type;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      statusEl.appendChild(line);
+      statusEl.scrollTop = statusEl.scrollHeight;
+    }
+    
+    function showResult(data) {
+      resultEl.style.display = 'block';
+      resultEl.textContent = JSON.stringify(data, null, 2);
+    }
+    
+    // 初始化 CloudBase
+    async function initCloudBase() {
+      try {
+        log('检查 window.cloudbase...', 'info');
+        if (!window.cloudbase) {
+          log('CloudBase SDK 未加载！', 'error');
+          return;
+        }
+        log('CloudBase SDK 已加载', 'success');
+        
+        log('初始化 CloudBase...', 'info');
+        const app = window.cloudbase.init({
+          env: 'studymind-d7g06nv0de98a1f1b',
+          region: 'ap-shanghai'
+        });
+        log('CloudBase 初始化成功', 'success');
+        
+        log('获取数据库引用...', 'info');
+        const db = app.database();
+        log('数据库引用获取成功', 'success');
+        
+        log('尝试匿名登录...', 'info');
+        try {
+          await app.auth().anonymousAuthProvider().signIn();
+          log('匿名登录成功', 'success');
+        } catch (authError) {
+          log('匿名登录失败: ' + authError.message, 'error');
+        }
+        
+        // 全局变量
+        window._app = app;
+        window._db = db;
+        
+        log('✅ CloudBase 环境就绪', 'success');
+        log('环境: studymind-d7g06nv0de98a1f1b', 'info');
+        log('区域: ap-shanghai', 'info');
+        
+      } catch (error) {
+        log('❌ 初始化失败: ' + error.message, 'error');
+        console.error(error);
+      }
+    }
+    
+    // 测试读取 goals
+    async function testReadGoals() {
+      try {
+        log('读取 goals 集合...', 'info');
+        const db = window._db;
+        if (!db) { log('DB 未初始化', 'error'); return; }
+        
+        const res = await db.collection('goals').limit(10).get();
+        log(`读取成功，共 ${res.data.length} 条记录`, 'success');
+        showResult(res.data);
+      } catch (error) {
+        log('读取失败: ' + error.message, 'error');
+      }
+    }
+    
+    // 测试创建 goal
+    async function testCreateGoal() {
+      try {
+        log('创建测试 goal...', 'info');
+        const db = window._db;
+        if (!db) { log('DB 未初始化', 'error'); return; }
+        
+        const res = await db.collection('goals').add({
+          title: '测试目标 - ' + new Date().toLocaleTimeString(),
+          description: '这是一个测试目标',
+          status: 'active',
+          deadline: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        log('创建成功: ' + res.id, 'success');
+        showResult(res);
+      } catch (error) {
+        log('创建失败: ' + error.message, 'error');
+      }
+    }
+    
+    // 测试读取 categories
+    async function testReadCategories() {
+      try {
+        log('读取 categories 集合...', 'info');
+        const db = window._db;
+        if (!db) { log('DB 未初始化', 'error'); return; }
+        
+        const res = await db.collection('categories').limit(10).get();
+        log(`读取成功，共 ${res.data.length} 条记录`, 'success');
+        showResult(res.data);
+      } catch (error) {
+        log('读取失败: ' + error.message, 'error');
+      }
+    }
+    
+    // 测试读取 review_cards
+    async function testReadReviewCards() {
+      try {
+        log('读取 review_cards 集合...', 'info');
+        const db = window._db;
+        if (!db) { log('DB 未初始化', 'error'); return; }
+        
+        const res = await db.collection('review_cards').limit(10).get();
+        log(`读取成功，共 ${res.data.length} 条记录`, 'success');
+        showResult(res.data);
+      } catch (error) {
+        log('读取失败: ' + error.message, 'error');
+      }
+    }
+    
+    // 检查 DB 状态
+    function testDBStatus() {
+      log('--- DB 状态检查 ---', 'info');
+      log('window.cloudbase: ' + (typeof window.cloudbase), window.cloudbase ? 'success' : 'error');
+      log('window._app: ' + (typeof window._app), window._app ? 'success' : 'error');
+      log('window._db: ' + (typeof window._db), window._db ? 'success' : 'error');
+      log('CONFIG: ' + JSON.stringify(window.CONFIG || 'undefined'), 'info');
+    }
+    
+    // 页面加载后初始化
+    initCloudBase();
+  </script>
+</body>
+</html>

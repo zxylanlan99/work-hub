@@ -7,7 +7,7 @@
         <button class="btn btn-primary btn-sm" onclick="createNewChat()">+ 新对话</button>
       </div>
       
-      <div class="conversation-list" id="conversation-list">
+      <div class="conversation-list" id="chat-list">
       </div>
       
       <div class="model-selector">
@@ -20,9 +20,9 @@
         <div class="usage-label">本月已使用</div>
         <div class="usage-amount" id="usage-amount">¥0.00</div>
         <div class="usage-bar">
-          <div class="usage-fill" id="usage-fill"></div>
+          <div class="usage-fill" id="usage-fill" style="width:0%"></div>
         </div>
-        <div class="usage-budget">预算：¥5.00</div>
+        <div class="usage-budget" id="usage-budget">预算：¥20.00</div>
       </div>
     </div>
 
@@ -32,17 +32,18 @@
         <h3 id="chat-title">AI助手</h3>
         <div class="header-actions">
           <button class="action-btn" onclick="exportChat()">📤 导出</button>
-          <button class="action-btn" onclick="deleteChat()">🗑️ 删除</button>
+          <button class="action-btn" onclick="deleteChatConfirm()">🗑️ 删除</button>
         </div>
       </div>
 
-      <div class="messages-container" id="messages-container">
+      <div class="messages-container" id="chat-messages">
       </div>
 
       <div class="chat-input-area">
-        <textarea id="chat-input" placeholder="输入你的问题..." rows="3"></textarea>
+        <textarea id="message-input" placeholder="输入你的问题..." rows="3"></textarea>
         <div class="input-actions">
-          <button class="btn btn-outline">� 上传文件</button>
+          <button class="btn btn-outline" onclick="handleFileUpload()">📎 上传文件</button>
+          <input type="file" id="file-input" style="display:none" onchange="processFileUpload(event)">
           <button class="btn btn-primary" onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -51,225 +52,530 @@
 </div>
 
 <script>
-const chatState = {
+// ================================================================
+// AI 对话页面 — 使用真实 DB + AIService
+// ================================================================
+
+var chatState = {
   currentChatId: null,
-  currentModel: 'mimo',
-  inflightCount: 0
+  currentModel: null,
+  inflightCount: 0,
+  conversations: []
+};
+
+// ================================================================
+// 辅助函数
+// ================================================================
+
+function chatToast(message, type) {
+  type = type || 'info';
+  if (window.utils && window.utils.toast) {
+    window.utils.toast(message, type);
+    return;
+  }
+  console.log('[Chat Toast]', type, message);
 }
 
-function initChatPage() {
-  renderConversationList()
-  renderModelSelector()
-  renderUsageInfo()
-  if (mockData.aiChat.conversations.length > 0) {
-    selectChat(mockData.aiChat.conversations[0]._id)
+function escapeChatHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function formatChatTime(date) {
+  var d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+// ================================================================
+// 初始化（由 framework.js 调用）
+// ================================================================
+
+async function initAiChatPage() {
+  console.log('[AIChat] 🚀 开始初始化 AI 对话页面...');
+  
+  try {
+    // 初始化 DB
+    if (window.DB && window.DB.init) {
+      await window.DB.init();
+    }
+    
+    // 渲染模型选择器
+    renderModelSelector();
+    
+    // 加载对话列表
+    await loadChatList();
+    
+    // 渲染用量信息
+    renderUsageInfo();
+    
+    // 绑定事件
+    bindChatEvents();
+    
+    console.log('[AIChat] ✅ AI 对话页面初始化完成');
+  } catch (error) {
+    console.error('[AIChat] ❌ 初始化失败:', error);
+    chatToast('页面初始化失败: ' + error.message, 'error');
   }
 }
 
-function renderConversationList() {
-  const container = document.getElementById('conversation-list')
-  container.innerHTML = mockData.aiChat.conversations.map(conv => `
-    <div class="conversation-item ${conv._id === chatState.currentChatId ? 'active' : ''}" 
-         onclick="selectChat('${conv._id}')">
-      <div class="conv-icon">🤖</div>
-      <div class="conv-info">
-        <div class="conv-title">${conv.title}</div>
-        <div class="conv-preview">${conv.lastMessage}</div>
-      </div>
-      <div class="conv-time">${conv.createdAt.split(' ')[1]}</div>
-    </div>
-  `).join('')
-}
+// ================================================================
+// 模型选择器
+// ================================================================
 
 function renderModelSelector() {
-  const container = document.getElementById('model-options')
-  container.innerHTML = mockData.aiChat.models.map(model => `
-    <button class="model-option ${model.selected ? 'selected' : ''}" 
-            onclick="selectModel('${model.id}')">
-      ${model.name}
-    </button>
-  `).join('')
-}
-
-function renderUsageInfo() {
-  const usage = mockData.aiChat.usage
-  document.getElementById('usage-amount').textContent = '¥' + usage.monthlyCost.toFixed(2)
-  const percentage = (usage.monthlyCost / usage.monthlyBudget) * 100
-  document.getElementById('usage-fill').style.width = percentage + '%'
-}
-
-function selectChat(chatId) {
-  chatState.currentChatId = chatId
-  renderConversationList()
-  loadMessages(chatId)
-  updateChatTitle()
-}
-
-function updateChatTitle() {
-  const chat = mockData.aiChat.conversations.find(c => c._id === chatState.currentChatId)
-  document.getElementById('chat-title').textContent = chat?.title || 'AI助手'
-}
-
-function loadMessages(chatId) {
-  const container = document.getElementById('messages-container')
-  const messages = mockData.aiChat.messages.filter(m => m.chatId === chatId)
+  var container = document.getElementById('model-options');
+  if (!container) return;
   
-  if (messages.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;color:var(--gray-400)">暂无消息，开始对话吧</div>'
-    return
+  var models = [];
+  if (window.AIService && typeof window.AIService.getAvailableModels === 'function') {
+    models = window.AIService.getAvailableModels();
   }
   
-  container.innerHTML = messages.map(msg => renderMessage(msg)).join('')
-  container.scrollTop = container.scrollHeight
-}
-
-function renderMessage(msg) {
-  return `
-    <div class="message ${msg.role}">
-      <div class="message-avatar">${msg.role === 'user' ? '👤' : '🤖'}</div>
-      <div class="message-content">
-        <pre>${msg.content}</pre>
-      </div>
-      <div class="message-time">${msg.createdAt.split(' ')[1]}</div>
-    </div>
-  `
-}
-
-function createNewChat() {
-  const newChat = {
-    _id: 'chat' + Date.now(),
-    title: '新对话',
-    lastMessage: '',
-    model: chatState.currentModel,
-    createdAt: new Date().toLocaleString('zh-CN'),
-    messageCount: 0
+  if (models.length === 0) {
+    container.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray-400);text-align:center;">' +
+      '⚠️ 未配置模型<br><a href="#settings" style="color:var(--primary);">去设置页面配置</a>' +
+      '</div>';
+    return;
   }
-  mockData.aiChat.conversations.unshift(newChat)
-  selectChat(newChat._id)
-  utils.toast('已创建新对话', 'success')
+  
+  // 设置默认选中
+  if (!chatState.currentModel) {
+    var settings = window.AIService.getAISettings();
+    chatState.currentModel = settings.defaultModelId || models[0].id;
+  }
+  
+  container.innerHTML = models.map(function(model) {
+    var isSelected = model.id === chatState.currentModel;
+    return '<button class="model-option ' + (isSelected ? 'selected' : '') + '" ' +
+      'onclick="selectModel(\'' + model.id + '\')" title="' + escapeChatHtml(model.description || '') + '">' +
+      escapeChatHtml(model.name) +
+      (model.status === 'ok' ? ' ✅' : (model.status === 'error' ? ' ❌' : '')) +
+      '</button>';
+  }).join('');
 }
 
 function selectModel(modelId) {
-  chatState.currentModel = modelId
-  mockData.aiChat.models.forEach(m => m.selected = (m.id === modelId))
-  renderModelSelector()
-  utils.toast(`已选择 ${modelId} 模型`, 'success')
+  chatState.currentModel = modelId;
+  renderModelSelector();
+  var models = window.AIService ? window.AIService.getAvailableModels() : [];
+  var model = models.find(function(m) { return m.id === modelId; });
+  chatToast('已选择 ' + (model ? model.name : modelId), 'success');
 }
 
-async function sendMessage() {
-  const input = document.getElementById('chat-input')
-  const message = input.value.trim()
+// ================================================================
+// 对话列表
+// ================================================================
+
+async function loadChatList() {
+  var list = document.getElementById('chat-list');
+  if (!list) return;
   
-  if (!message) {
-    utils.toast('请输入消息', 'warning')
-    return
+  try {
+    var result = window.DB
+      ? await window.DB.getChats(1, 50)
+      : { success: true, data: [] };
+    
+    chatState.conversations = result.data || [];
+    
+    if (chatState.conversations.length === 0) {
+      list.innerHTML = '<div class="empty-state" style="text-align:center;padding:30px 20px;">' +
+        '<div style="font-size:32px;margin-bottom:8px;">💬</div>' +
+        '<div style="color:var(--gray-500);font-size:13px;">暂无对话</div>' +
+        '<div style="color:var(--gray-400);font-size:12px;margin-top:4px;">点击「+ 新对话」开始</div>' +
+        '</div>';
+      return;
+    }
+    
+    list.innerHTML = chatState.conversations.map(function(chat) {
+      var isActive = chatState.currentChatId === (chat._id || chat.id);
+      var title = escapeChatHtml(chat.title || '未命名对话');
+      var preview = escapeChatHtml((chat.lastMessage || '暂无消息').substring(0, 40));
+      var time = chat.updatedAt || chat.createdAt;
+      var timeStr = time ? formatChatTime(time) : '';
+      var chatId = chat._id || chat.id;
+      
+      return '<div class="conversation-item ' + (isActive ? 'active' : '') + '" ' +
+        'onclick="selectChat(\'' + chatId + '\', \'' + title.replace(/'/g, "\\'") + '\')" ' +
+        'id="chat-item-' + chatId + '" style="cursor:pointer;">' +
+        '<div class="conv-icon">🤖</div>' +
+        '<div class="conv-info">' +
+        '<div class="conv-title">' + title + '</div>' +
+        '<div class="conv-preview">' + preview + '</div>' +
+        '</div>' +
+        '<div class="conv-time">' + timeStr + '</div>' +
+        '</div>';
+    }).join('');
+  } catch (error) {
+    console.error('[AIChat] 加载对话列表失败:', error);
+    list.innerHTML = '<div class="empty-state" style="text-align:center;padding:30px;color:var(--gray-400);">加载失败</div>';
+  }
+}
+
+// ================================================================
+// 创建新对话
+// ================================================================
+
+async function createNewChat() {
+  try {
+    var result = window.DB
+      ? await window.DB.createChat({ title: '新对话', model: chatState.currentModel })
+      : { success: true, data: { id: 'local-' + Date.now() } };
+    
+    if (result.success) {
+      var chatId = result.data ? (result.data.id || result.data._id) : null;
+      if (chatId) {
+        chatState.currentChatId = chatId;
+        document.getElementById('chat-messages').innerHTML = '';
+        document.getElementById('chat-title').textContent = '新对话';
+      }
+      chatToast('新对话已创建', 'success');
+      await loadChatList();
+    } else {
+      chatToast('创建失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('[AIChat] 创建对话失败:', error);
+    chatToast('创建对话失败: ' + error.message, 'error');
+  }
+}
+
+// ================================================================
+// 选择对话 & 加载消息
+// ================================================================
+
+async function selectChat(chatId, title) {
+  chatState.currentChatId = chatId;
+  
+  // 更新 UI 选中状态
+  document.querySelectorAll('.conversation-item').forEach(function(el) {
+    el.classList.remove('active');
+  });
+  var item = document.getElementById('chat-item-' + chatId);
+  if (item) item.classList.add('active');
+  
+  document.getElementById('chat-title').textContent = title || 'AI助手';
+  
+  await loadMessages(chatId);
+}
+
+async function loadMessages(chatId) {
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
+  
+  try {
+    var result = window.DB
+      ? await window.DB.getMessages(chatId)
+      : { success: true, data: [] };
+    
+    var messages = (result.data || []).sort(function(a, b) {
+      return new Date(a.createdAt) - new Date(b.createdAt);
+    });
+    
+    if (messages.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="text-align:center;padding:60px 20px;">' +
+        '<div style="font-size:48px;margin-bottom:12px;">💭</div>' +
+        '<div style="color:var(--gray-500);font-size:14px;">开始对话</div>' +
+        '<div style="color:var(--gray-400);font-size:12px;margin-top:4px;">输入消息开始与 AI 聊天</div>' +
+        '</div>';
+      return;
+    }
+    
+    container.innerHTML = messages.map(function(msg) {
+      return renderMessageHtml(msg);
+    }).join('');
+    
+    container.scrollTop = container.scrollHeight;
+  } catch (error) {
+    console.error('[AIChat] 加载消息失败:', error);
+    container.innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;color:var(--gray-400);">加载失败</div>';
+  }
+}
+
+function renderMessageHtml(msg) {
+  var isUser = msg.role === 'user';
+  var time = msg.createdAt ? formatChatTime(msg.createdAt) : '';
+  var content = escapeChatHtml(msg.content);
+  
+  return '<div class="message ' + msg.role + '" style="display:flex;margin-bottom:16px;' +
+    (isUser ? 'justify-content:flex-end;' : '') + '">' +
+    '<div style="max-width:75%;">' +
+    '<div style="background:' + (isUser ? 'var(--primary)' : 'var(--gray-100)') + ';' +
+    'color:' + (isUser ? '#fff' : 'var(--gray-800)') + ';' +
+    'padding:12px 16px;border-radius:' + (isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px') + ';' +
+    'word-break:break-word;line-height:1.6;font-size:14px;">' +
+    '<pre style="margin:0;white-space:pre-wrap;font-family:inherit;">' + content + '</pre>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;' +
+    (isUser ? 'text-align:right;' : '') + '">' +
+    (isUser ? '👤 我' : '🤖 AI') + ' · ' + time +
+    '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+// ================================================================
+// 发送消息 & 获取 AI 回复
+// ================================================================
+
+async function sendMessage() {
+  var input = document.getElementById('message-input');
+  var content = input ? input.value.trim() : '';
+  
+  if (!content) {
+    chatToast('请输入消息', 'warning');
+    return;
+  }
+  
+  if (!chatState.currentChatId) {
+    chatToast('请先创建或选择一个对话', 'warning');
+    return;
   }
   
   if (chatState.inflightCount >= 2) {
-    utils.toast('正在处理上一条消息，请稍候', 'warning')
-    return
+    chatToast('正在处理上一条消息，请稍候', 'warning');
+    return;
   }
   
-  const container = document.getElementById('messages-container')
-  const userMsg = {
-    _id: 'msg' + Date.now(),
-    chatId: chatState.currentChatId,
-    role: 'user',
-    content: message,
-    createdAt: new Date().toLocaleString('zh-CN')
+  // 检查模型配置
+  var models = window.AIService ? window.AIService.getAvailableModels() : [];
+  if (models.length === 0) {
+    chatToast('请先在设置页面配置 AI 模型', 'warning');
+    return;
   }
   
-  container.innerHTML += renderMessage(userMsg)
-  input.value = ''
-  container.scrollTop = container.scrollHeight
+  if (input) input.value = '';
   
-  chatState.inflightCount++
+  var container = document.getElementById('chat-messages');
+  
+  // 显示用户消息
+  if (container) {
+    container.innerHTML += renderMessageHtml({
+      role: 'user',
+      content: content,
+      createdAt: new Date()
+    });
+    container.scrollTop = container.scrollHeight;
+  }
+  
+  // 显示 typing indicator
+  if (container) {
+    container.innerHTML += '<div id="typing-indicator" style="display:flex;margin-bottom:16px;">' +
+      '<div style="background:var(--gray-100);padding:12px 16px;border-radius:16px 16px 16px 4px;">' +
+      '<div class="typing-dots"><span></span><span></span><span></span></div>' +
+      '</div></div>';
+    container.scrollTop = container.scrollHeight;
+  }
+  
+  chatState.inflightCount++;
+  
   try {
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    console.log('[AIChat] 📡 发送消息:', { chatId: chatState.currentChatId, model: chatState.currentModel });
     
-    const aiMsg = {
-      _id: 'msg' + Date.now(),
-      chatId: chatState.currentChatId,
-      role: 'assistant',
-      content: `这是 ${chatState.currentModel} 模型的回复。\n\n您的问题是：${message}\n\n这是详细回答内容，包含对问题的分析和建议。AI 可以帮助您解决各种技术问题、提供学习建议等。`,
-      model: chatState.currentModel + '-v2.5-pro',
-      tokens: Math.floor(Math.random() * 100) + 50,
-      cost: (Math.random() * 0.001).toFixed(4),
-      createdAt: new Date().toLocaleString('zh-CN')
+    var result = window.DB
+      ? await window.DB.sendMessageAndReply(chatState.currentChatId, content, chatState.currentModel)
+      : { success: false, error: 'DB 不可可用' };
+    
+    // 移除 typing indicator
+    var typing = document.getElementById('typing-indicator');
+    if (typing) typing.remove();
+    
+    if (result.success && result.data && result.data.reply) {
+      // 显示 AI 回复
+      if (container) {
+        container.innerHTML += renderMessageHtml({
+          role: 'assistant',
+          content: result.data.reply,
+          createdAt: new Date()
+        });
+        container.scrollTop = container.scrollHeight;
+      }
+      console.log('[AIChat] ✅ AI 回复成功');
+    } else {
+      chatToast('AI 回复失败: ' + (result.error || '未知错误'), 'error');
+      // 显示错误消息
+      if (container) {
+        container.innerHTML += renderMessageHtml({
+          role: 'assistant',
+          content: '❌ 抱歉，回复失败：' + (result.error || '未知错误'),
+          createdAt: new Date()
+        });
+        container.scrollTop = container.scrollHeight;
+      }
     }
     
-    container.innerHTML += renderMessage(aiMsg)
-    container.scrollTop = container.scrollHeight
-    
-    const convIndex = mockData.aiChat.conversations.findIndex(c => c._id === chatState.currentChatId)
-    if (convIndex !== -1) {
-      mockData.aiChat.conversations[convIndex].lastMessage = message.substring(0, 30) + (message.length > 30 ? '...' : '')
-      mockData.aiChat.conversations[convIndex].messageCount++
-      mockData.aiChat.conversations[convIndex].createdAt = new Date().toLocaleString('zh-CN')
-      renderConversationList()
-      updateChatTitle()
-    }
+    // 刷新对话列表
+    await loadChatList();
   } catch (error) {
-    utils.toast('AI 服务暂时不可用，请稍后重试', 'error')
+    console.error('[AIChat] 发送消息失败:', error);
+    var typing = document.getElementById('typing-indicator');
+    if (typing) typing.remove();
+    chatToast('发送失败: ' + error.message, 'error');
   } finally {
-    chatState.inflightCount--
+    chatState.inflightCount--;
   }
 }
+
+// ================================================================
+// 删除对话
+// ================================================================
+
+async function deleteChatConfirm() {
+  if (!chatState.currentChatId) {
+    chatToast('请先选择一个对话', 'warning');
+    return;
+  }
+  
+  if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
+  
+  try {
+    var result = window.DB
+      ? await window.DB.deleteChat(chatState.currentChatId)
+      : { success: true };
+    
+    if (result.success) {
+      chatToast('对话已删除', 'success');
+      chatState.currentChatId = null;
+      document.getElementById('chat-messages').innerHTML = '';
+      document.getElementById('chat-title').textContent = 'AI助手';
+      await loadChatList();
+    } else {
+      chatToast('删除失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('[AIChat] 删除对话失败:', error);
+    chatToast('删除失败', 'error');
+  }
+}
+
+// ================================================================
+// 导出对话
+// ================================================================
 
 function exportChat() {
   if (!chatState.currentChatId) {
-    utils.toast('请先选择一个对话', 'warning')
-    return
+    chatToast('请先选择一个对话', 'warning');
+    return;
   }
   
-  const messages = mockData.aiChat.messages.filter(m => m.chatId === chatState.currentChatId)
-  const content = messages.map(m => `${m.role === 'user' ? '我' : 'AI'}: ${m.content}`).join('\n\n---\n\n')
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
   
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `对话_${new Date().toISOString().split('T')[0]}.txt`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  // 从 DOM 提取消息文本
+  var messages = container.querySelectorAll('.message');
+  if (messages.length === 0) {
+    chatToast('暂无消息可导出', 'warning');
+    return;
+  }
   
-  utils.toast('对话已导出', 'success')
+  var lines = [];
+  messages.forEach(function(msgEl) {
+    var isUser = msgEl.classList.contains('user');
+    var pre = msgEl.querySelector('pre');
+    var content = pre ? pre.textContent : '';
+    lines.push((isUser ? '我' : 'AI') + ': ' + content);
+  });
+  
+  var content = lines.join('\n\n---\n\n');
+  var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = '对话_' + new Date().toISOString().split('T')[0] + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  chatToast('对话已导出', 'success');
 }
 
-function deleteChat() {
-  if (!chatState.currentChatId) {
-    utils.toast('请先选择一个对话', 'warning')
-    return
+// ================================================================
+// 文件上传（基础实现）
+// ================================================================
+
+function handleFileUpload() {
+  var input = document.getElementById('file-input');
+  if (input) input.click();
+}
+
+function processFileUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  
+  // 目前支持文本文件，将内容附加到输入框
+  if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var input = document.getElementById('message-input');
+      if (input) {
+        var existing = input.value.trim();
+        var fileContent = '\n\n--- 文件: ' + file.name + ' ---\n' + e.target.result.substring(0, 2000);
+        input.value = existing + (existing ? '\n' : '') + fileContent;
+        chatToast('文件内容已附加（前2000字符）', 'success');
+      }
+    };
+    reader.readAsText(file);
+  } else {
+    chatToast('暂仅支持文本文件（.txt/.md）', 'warning');
   }
   
-  if (confirm('确定要删除这个对话吗？')) {
-    mockData.aiChat.conversations = mockData.aiChat.conversations.filter(c => c._id !== chatState.currentChatId)
-    mockData.aiChat.messages = mockData.aiChat.messages.filter(m => m.chatId !== chatState.currentChatId)
-    
-    if (mockData.aiChat.conversations.length > 0) {
-      selectChat(mockData.aiChat.conversations[0]._id)
-    } else {
-      document.getElementById('messages-container').innerHTML = '<div class="empty-state" style="text-align:center;padding:40px;color:var(--gray-400)">暂无对话，请创建新对话开始聊天</div>'
-      document.getElementById('chat-title').textContent = 'AI助手'
-      chatState.currentChatId = null
-    }
-    
-    renderConversationList()
-    utils.toast('对话已删除', 'success')
+  // 重置 input 以便重复上传
+  event.target.value = '';
+}
+
+// ================================================================
+// 用量信息
+// ================================================================
+
+function renderUsageInfo() {
+  var settings = window.AIService ? window.AIService.getAISettings() : {};
+  var used = settings.budgetUsed || 0;
+  var budget = settings.monthlyBudget || 20;
+  
+  var amountEl = document.getElementById('usage-amount');
+  if (amountEl) amountEl.textContent = '¥' + used.toFixed(2);
+  
+  var budgetEl = document.getElementById('usage-budget');
+  if (budgetEl) budgetEl.textContent = '预算：¥' + budget.toFixed(2);
+  
+  var fillEl = document.getElementById('usage-fill');
+  if (fillEl) {
+    var pct = budget > 0 ? Math.min(100, (used / budget) * 100) : 0;
+    fillEl.style.width = pct + '%';
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initChatPage()
-  
-  const input = document.getElementById('chat-input')
-  input?.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  })
-})
+// ================================================================
+// 绑定事件
+// ================================================================
+
+function bindChatEvents() {
+  var input = document.getElementById('message-input');
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+}
+
+// ================================================================
+// 暴露全局函数
+// ================================================================
+
+window.initAiChatPage = initAiChatPage;
+window.createNewChat = createNewChat;
+window.selectChat = selectChat;
+window.selectModel = selectModel;
+window.sendMessage = sendMessage;
+window.deleteChatConfirm = deleteChatConfirm;
+window.exportChat = exportChat;
+window.handleFileUpload = handleFileUpload;
+window.processFileUpload = processFileUpload;
 </script>

@@ -32,3 +32,8 @@ cloudbaserc.json
 *.tmp
 *.temp
 .cache/
+
+# WorkBuddy / Dev tools
+.workbuddy/
+.playwright-cli/
+deliverables/

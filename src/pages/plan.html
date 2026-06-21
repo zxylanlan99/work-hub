@@ -1,3 +1,9 @@
+<style>
+  #goalTitleInput { width: 350px !important; }
+  #goalDeadline { width: 350px !important; }
+  #goalWeeklyHours { width: 350px !important; }
+</style>
+
 <!-- ===== 列表视图 ===== -->
 <div id="planListView">
 
@@ -40,9 +46,9 @@
   <!-- 【AGG-002】筛选 & 统计 -->
   <div class="goals-header">
     <div class="goals-stats">
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--primary)"></span> 进行中 <span id="planActiveCount">3</span></div>
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--warning)"></span> 暂停中 <span id="planPausedCount">1</span></div>
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--success)"></span> 已完成 <span id="planDoneCount">2</span></div>
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--primary)"></span> 进行中 <span id="planActiveCount">0</span></div>
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--warning)"></span> 暂停中 <span id="planPausedCount">0</span></div>
+      <div class="stat-pill"><span class="stat-dot" style="background:var(--success)"></span> 已完成 <span id="planDoneCount">0</span></div>
     </div>
     <div style="display:flex;gap:8px;">
       <select class="form-select" style="width:130px;padding:5px 10px;font-size:12.5px;" onchange="sortPlanGoals(this.value)">
@@ -118,35 +124,13 @@
       <div class="panel" id="aiDiagPanel">
         <div class="panel-header">
           <div class="panel-title">🤖 AI 进度诊断</div>
-          <span style="font-size:11px;color:var(--gray-400);">6月16日更新</span>
+          <span style="font-size:11px;color:var(--gray-400);" id="aiDiagUpdateTime">点击下方按钮生成</span>
         </div>
-        <div class="panel-body">
-          <div class="ai-diag-header">
-            <div class="ai-diag-avatar">🤖</div>
-            <div class="ai-diag-score-info">
-              <strong>本周综合得分 72分</strong><br>
-              比上周 <span style="color:var(--success);">↑ 3分</span>，节奏稳定
-            </div>
+        <div class="panel-body" id="aiDiagPanelBody">
+          <div style="text-align:center;padding:20px;color:var(--gray-400);">
+            <div style="font-size:28px;margin-bottom:8px;">🤖</div>
+            <div style="font-size:13px;">选择一个学习目标后，AI 将自动生成诊断报告</div>
           </div>
-          <div class="ai-diag-section">
-            <div class="ai-diag-section-title">📊 本周数据</div>
-            <div class="ai-diag-row"><span class="emoji">✅</span> 完成 3/4 任务（75%）</div>
-            <div class="ai-diag-row"><span class="emoji">⏱️</span> 学习 6.5h（比计划少 1.5h）</div>
-            <div class="ai-diag-row"><span class="emoji">🎯</span> 当前里程碑完成度 50%</div>
-          </div>
-          <div class="ai-diag-section">
-            <div class="ai-diag-section-title">⚠️ 卡点分析</div>
-            <div style="font-size:12.5px;color:var(--gray-600);line-height:1.6;">
-              发现 <strong style="color:var(--danger);">DDD 拆分</strong> 卡点——本周在领域驱动设计上耗时过长。建议优先完成概念理解，再进入实操练习。
-            </div>
-          </div>
-          <div class="ai-diag-section">
-            <div class="ai-diag-section-title">💡 下周建议</div>
-            <div class="ai-diag-row"><span class="emoji">📌</span> 优先完成 gRPC 对比分析</div>
-            <div class="ai-diag-row"><span class="emoji">📌</span> 消息队列可调整至下下周</div>
-            <div class="ai-diag-row"><span class="emoji">🚀</span> 在截止日前仍可按时完成</div>
-          </div>
-          <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;justify-content:center;" onclick="openDiagModal()">查看完整诊断报告 →</button>
         </div>
       </div>
 
@@ -209,7 +193,7 @@
 <!-- ===== 弹窗1：新建目标 ===== -->
 <!-- 【AI-002 + DB-W-001】AI辅助创建目标 -->
 <div class="modal-overlay" id="createGoalModal">
-  <div class="modal modal-xl" onclick="event.stopPropagation()">
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
     <div class="modal-header">
       <div>
         <div class="modal-title">🤖 AI 辅助创建学习目标</div>
@@ -248,11 +232,6 @@
           <label class="form-label">当前基础（可选）</label>
           <textarea class="form-textarea" id="goalBackground" rows="2" placeholder="简述你目前的知识水平，帮助 AI 精准拆解…"></textarea>
         </div>
-        <div class="form-hint">💡 也可以在下方向 AI 描述你的目标，它会自动拆解为里程碑和任务</div>
-        <div class="form-group" style="margin-top:12px;">
-          <label class="form-label">向 AI 描述你想学什么</label>
-          <textarea class="form-textarea" id="goalDescription" rows="3" placeholder="例如：我想在两个月内掌握 Docker 和 Kubernetes，能够独立部署和管理生产级容器化应用..."></textarea>
-        </div>
       </div>
 
       <div id="createStep2" style="display:none;">
@@ -269,58 +248,24 @@
       </div>
 
       <div id="createStep3" style="display:none;">
-        <div class="gen-result">
-          <div class="gen-result-title">✨ AI 生成的目标方案</div>
-          <div style="display:flex;gap:16px;margin-bottom:16px;font-size:12px;color:var(--gray-500);">
-            <span>📦 3 个里程碑</span>
-            <span>⏱️ ~6h/周</span>
-            <span>📅 预计 12 周</span>
-            <span>📊 中等难度</span>
+        <!-- 统一的里程碑/任务编辑器（AI拆解和手动创建共用） -->
+        <div id="step3Editor">
+          <div class="gen-result-title" style="margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+            <span id="step3Title">✍️ 里程碑与任务</span>
+            <span id="step3Source" style="font-size:12px;color:var(--gray-400);"></span>
           </div>
-          <div id="genMilestones">
-            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
-              <div class="milestone-preview-title">
-                <span>里程碑1：微服务核心概念</span>
-                <span style="font-size:11px;color:var(--gray-400);">~2周</span>
-              </div>
-              <ul class="milestone-task-list">
-                <li>单体架构 vs 微服务对比分析</li>
-                <li>微服务设计原则与拆分策略</li>
-                <li>CAP 理论与数据一致性</li>
-              </ul>
-            </div>
-            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
-              <div class="milestone-preview-title">
-                <span>里程碑2：服务间通信</span>
-                <span style="font-size:11px;color:var(--gray-400);">~3周</span>
-              </div>
-              <ul class="milestone-task-list">
-                <li>REST API 设计最佳实践</li>
-                <li>gRPC 与 Protocol Buffers</li>
-                <li>消息队列（RabbitMQ/Kafka）</li>
-              </ul>
-            </div>
-            <div class="milestone-preview" style="border-left:3px solid var(--primary);">
-              <div class="milestone-preview-title">
-                <span>里程碑3：服务治理与部署</span>
-                <span style="font-size:11px;color:var(--gray-400);">~4周</span>
-              </div>
-              <ul class="milestone-task-list">
-                <li>服务发现与注册中心</li>
-                <li>API 网关配置</li>
-                <li>容器化部署（Docker + K8s）</li>
-              </ul>
-            </div>
-          </div>
+          <div id="milestoneEditorList"></div>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addEditorMilestone()" style="margin-top:8px;">+ 添加里程碑</button>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-top:16px;">
           <label class="form-label">目标名称</label>
-          <input class="form-input" id="genGoalTitle" value="微服务架构实战" style="font-weight:600;">
+          <input class="form-input" id="genGoalTitle" value="" placeholder="输入目标名称" style="font-weight:600;">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">所属领域</label>
             <select class="form-select" id="genGoalDomain">
+              <option value="">不选择</option>
               <option>后端开发</option>
               <option>前端开发</option>
               <option>DevOps</option>
@@ -329,11 +274,13 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">主题锁定</label>
+            <label class="form-label">当前基础</label>
             <select class="form-select" id="genGoalTopic">
-              <option>微服务</option>
-              <option>云原生</option>
-              <option>分布式系统</option>
+              <option value="">不选择</option>
+              <option>零基础</option>
+              <option>入门</option>
+              <option>中级</option>
+              <option>高级</option>
             </select>
           </div>
         </div>
@@ -343,7 +290,7 @@
       <button class="btn btn-secondary" onclick="closePlanModal('createGoalModal')">取消</button>
       <button class="btn btn-secondary btn-sm" id="createPrevBtn" style="display:none;" onclick="createPrevStep()">← 上一步</button>
       <button class="btn btn-primary" id="createNextBtn" onclick="createNextStep()">AI 智能拆解 →</button>
-      <button class="btn btn-primary" id="createManualBtn" style="display:none;" onclick="confirmCreateGoal()">手动创建</button>
+      <button class="btn btn-primary" id="createManualBtn" onclick="manualCreateToStep3()">手动创建</button>
       <button class="btn btn-primary" id="createConfirmBtn" style="display:none;" onclick="confirmCreateGoal()">✅ 确认创建</button>
     </div>
   </div>
@@ -450,77 +397,18 @@
     <div class="modal-header">
       <div>
         <div class="modal-title">🤖 AI 进度诊断报告</div>
-        <div class="modal-subtitle">微服务架构实战 · 第9周诊断 · 2026-06-09</div>
+        <div class="modal-subtitle" id="diagModalSubtitle">AI 正在分析学习进度...</div>
       </div>
       <button class="modal-close" onclick="closePlanModal('diagModal')">×</button>
     </div>
-    <div class="modal-body">
-      <div class="diag-score">
-        <div class="diag-score-num">72</div>
-        <div class="diag-score-label">综合学习健康度（满分100）<br><span style="color: var(--warning);">⚠️ 轻微落后</span></div>
-      </div>
-
-      <div class="diag-metric">
-        <span class="diag-metric-icon">✅</span>
-        <div class="diag-metric-info">
-          <div class="diag-metric-name">任务完成率</div>
-          <div class="diag-metric-desc">本周完成3个，计划4个</div>
-        </div>
-        <div class="diag-metric-val val-good">75%</div>
-      </div>
-      <div class="diag-metric">
-        <span class="diag-metric-icon">⏱️</span>
-        <div class="diag-metric-info">
-          <div class="diag-metric-name">学习时长</div>
-          <div class="diag-metric-desc">实际 6.5h，计划 8h</div>
-        </div>
-        <div class="diag-metric-val val-warn">81%</div>
-      </div>
-      <div class="diag-metric">
-        <span class="diag-metric-icon">🎯</span>
-        <div class="diag-metric-info">
-          <div class="diag-metric-name">进度符合率</div>
-          <div class="diag-metric-desc">当前65%，按时完成需达75%</div>
-        </div>
-        <div class="diag-metric-val val-warn">落后10%</div>
-      </div>
-      <div class="diag-metric">
-        <span class="diag-metric-icon">📈</span>
-        <div class="diag-metric-info">
-          <div class="diag-metric-name">估时准确度</div>
-          <div class="diag-metric-desc">实际/预期耗时偏差</div>
-        </div>
-        <div class="diag-metric-val val-good">+18%</div>
-      </div>
-      <div class="diag-metric" style="border-bottom: none;">
-        <span class="diag-metric-icon">🔥</span>
-        <div class="diag-metric-info">
-          <div class="diag-metric-name">连续打卡</div>
-          <div class="diag-metric-desc">连续7天有学习记录</div>
-        </div>
-        <div class="diag-metric-val val-good">7天🔥</div>
-      </div>
-
-      <div class="diag-section-title-lg">💡 AI 调整建议</div>
-      <div class="advice-card">
-        <div class="advice-title">建议1：先跳过「DDD」重新看，直到学完里程碑3</div>
-        <div class="advice-body">DDD 领域驱动设计在没有实战背景时比较抽象。建议先完成服务治理的学习后，再回头看 DDD，那时会有更多"对号入座"的感触，理解效率高 40%。</div>
-      </div>
-      <div class="advice-card">
-        <div class="advice-title">建议2：下周适当减量，专注里程碑2收尾</div>
-        <div class="advice-body">下周专注完成剩余2个任务（gRPC对比 + 消息队列），不要开新坑。完成里程碑2后再规划里程碑3。"完成一个 > 开始三个"。</div>
-      </div>
-
-      <div class="diag-section-title-lg">📅 下周规划建议</div>
-      <div class="planning-block">
-        <strong>周一/周三 晚（碎片 30min 各）</strong>：完成 gRPC 对比分析的2个子任务<br>
-        <strong>周六上午（深度 2h）</strong>：消息队列应用 + 完成里程碑2<br>
-        <strong>周日（轻松 1h）</strong>：复习里程碑1-2的内容 + 规划里程碑3
+    <div class="modal-body" id="diagModalBody">
+      <div style="text-align:center;padding:40px;color:var(--gray-400);">
+        <div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>
+        <div style="margin-top:12px;font-size:14px;">AI 正在生成诊断报告…</div>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closePlanModal('diagModal')">关闭</button>
-      <button class="btn btn-primary" onclick="closePlanModal('diagModal');openRescheduleModal()">📅 按建议调整排期</button>
     </div>
   </div>
 </div>
@@ -565,23 +453,22 @@
           </select>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">优先级</label>
-          <select class="form-select" id="taskPriority">
-            <option value="high">高优先级</option>
-            <option value="mid">中优先级</option>
-            <option value="low">低优先级</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">AI 辅助类型</label>
-          <select class="form-select" id="taskAiType">
-            <option>无</option>
-            <option>生成学习资料</option>
-            <option>生成练习题</option>
-          </select>
-        </div>
+      <div class="form-group">
+        <label class="form-label">优先级</label>
+        <select class="form-select" id="taskPriority">
+          <option value="high">高优先级</option>
+          <option value="mid" selected>中优先级</option>
+          <option value="low">低优先级</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">AI 辅助类型</label>
+        <select class="form-select" id="taskAiType">
+          <option value="">无</option>
+          <option value="resource">AI 提供资源</option>
+          <option value="exercise">AI 生成练习题</option>
+          <option value="guide">AI 引导学习</option>
+        </select>
       </div>
       <div class="form-group">
         <label class="form-label">任务描述（可选）</label>
@@ -626,72 +513,100 @@ let createStep = 1;
 
 // 初始化
 async function initPlanPage() {
+  console.log('[Plan] 🚀 开始初始化学习计划页面...');
+  // 初始化 CloudBase（使用 mock SDK 或真实 SDK）
+  try {
+    await initCloudbase();
+    console.log('[Plan] ✅ CloudBase 初始化成功');
+  } catch (e) {
+    console.error('[Plan] ❌ CloudBase 初始化失败:', e);
+  }
   await loadWarmupData();
   await loadResumeData();
   await loadGoalStats();
   await renderGoalCards(planFilter);
+  console.log('[Plan] ✅ 学习计划页面初始化完成');
 }
 
 // 加载暖身数据
 async function loadWarmupData() {
+  console.log('[Plan] 📡 开始加载暖身数据...');
   try {
     const [reviewRes, quizRes] = await Promise.all([
       DB.getYesterdayReview(),
       DB.getQuiz('学习')
     ]);
     
+    console.log('[Plan] 📥 昨日回顾响应:', reviewRes);
+    console.log('[Plan] 📥 快问快答响应:', quizRes);
+    
     if (reviewRes.success && reviewRes.data.length > 0) {
-      document.getElementById('planYesterdayText').textContent = 
-        reviewRes.data[0].summary || mockData.plan.warmup.yesterday;
+      const summary = reviewRes.data[0].summary || '暂无昨日学习记录';
+      document.getElementById('planYesterdayText').textContent = summary;
+      console.log('[Plan] ✅ 昨日回顾已渲染:', summary);
     } else {
-      document.getElementById('planYesterdayText').textContent = mockData.plan.warmup.yesterday;
+      document.getElementById('planYesterdayText').textContent = '暂无昨日学习记录';
+      console.log('[Plan] ⚠️ 昨日回顾为空');
     }
     
     if (quizRes.success) {
-      document.getElementById('planQuizQuestion').textContent = quizRes.content || mockData.plan.warmup.quizQuestion;
+      const question = quizRes.content || '暂无快问快答';
+      document.getElementById('planQuizQuestion').textContent = question;
+      console.log('[Plan] ✅ 快问快答已渲染:', question);
     } else {
-      document.getElementById('planQuizQuestion').textContent = mockData.plan.warmup.quizQuestion;
+      document.getElementById('planQuizQuestion').textContent = '暂无快问快答';
+      console.log('[Plan] ⚠️ 快问快答为空');
     }
-    document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + mockData.plan.warmup.quizAnswer;
+    document.getElementById('planQuizAnswer').textContent = '';
+    console.log('[Plan] ✅ 暖身数据加载完成');
   } catch (error) {
-    console.error('加载暖身数据失败:', error);
-    // 降级使用模拟数据
-    document.getElementById('planYesterdayText').textContent = mockData.plan.warmup.yesterday;
-    document.getElementById('planQuizQuestion').textContent = mockData.plan.warmup.quizQuestion;
-    document.getElementById('planQuizAnswer').textContent = '✅ 答案：' + mockData.plan.warmup.quizAnswer;
+    console.error('[Plan] ❌ 加载暖身数据失败:', error);
+    document.getElementById('planYesterdayText').textContent = '暂无昨日学习记录';
+    document.getElementById('planQuizQuestion').textContent = '暂无快问快答';
   }
 }
 
 // 加载续接数据
 async function loadResumeData() {
+  console.log('[Plan] 📡 开始加载续接数据...');
   try {
     const res = await DB.getLastBreakpoint();
+    console.log('[Plan] 📥 续接数据响应:', res);
+    
     if (res.success && res.data.goals.length > 0) {
       const goal = res.data.goals[0];
       document.getElementById('planResumeTitle').textContent = '继续上次学习：' + goal.title;
       document.getElementById('planResumeSub').textContent = '上次停在「学习中」· 预计剩余时间';
+      console.log('[Plan] ✅ 续接数据已渲染:', goal.title);
     } else {
-      document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
-      document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+      document.getElementById('planResumeTitle').textContent = '暂无学习断点';
+      document.getElementById('planResumeSub').textContent = '开始你的第一个学习目标吧';
+      console.log('[Plan] ⚠️ 续接数据为空');
     }
   } catch (error) {
-    console.error('加载续接数据失败:', error);
-    document.getElementById('planResumeTitle').textContent = mockData.plan.resume.title;
-    document.getElementById('planResumeSub').textContent = mockData.plan.resume.subtitle;
+    console.error('[Plan] ❌ 加载续接数据失败:', error);
+    document.getElementById('planResumeTitle').textContent = '暂无学习断点';
+    document.getElementById('planResumeSub').textContent = '开始你的第一个学习目标吧';
   }
 }
 
 // 加载目标统计
 async function loadGoalStats() {
+  console.log('[Plan] 📡 开始加载目标统计...');
   try {
     const res = await DB.getPlanStats();
+    console.log('[Plan] 📥 目标统计响应:', res);
+    
     if (res.success) {
       document.getElementById('planActiveCount').textContent = res.data.active;
       document.getElementById('planPausedCount').textContent = res.data.paused;
       document.getElementById('planDoneCount').textContent = res.data.completed;
+      console.log('[Plan] ✅ 目标统计已渲染:', { active: res.data.active, paused: res.data.paused, completed: res.data.completed });
+    } else {
+      console.log('[Plan] ⚠️ 目标统计加载失败');
     }
   } catch (error) {
-    console.error('加载目标统计失败:', error);
+    console.error('[Plan] ❌ 加载目标统计失败:', error);
   }
 }
 
@@ -717,9 +632,13 @@ function sortPlanGoals(type) {
 
 // 渲染目标卡片
 async function renderGoalCards(filter, sortBy = 'recent') {
+  console.log('[Plan] 📡 开始加载目标列表...', { filter, sortBy });
   try {
     const res = await DB.getGoals(filter);
+    console.log('[Plan] 📥 目标列表响应:', res);
+    
     let goals = res.success ? res.data : [];
+    console.log('[Plan] 📊 目标数量:', goals.length);
     
     // 本地排序
     if (sortBy === 'progress') {
@@ -786,82 +705,33 @@ async function renderGoalCards(filter, sortBy = 'recent') {
 
     // 更新统计
     await loadGoalStats();
+    console.log('[Plan] ✅ 目标卡片渲染完成');
   } catch (error) {
-    console.error('渲染目标卡片失败:', error);
-    // 降级使用模拟数据
-    const goals = mockData.plan.goals.filter(g => filter === 'all' || g.status === filter);
-    renderMockGoalCards(goals);
-  }
-}
-
-// 降级渲染（使用模拟数据）
-function renderMockGoalCards(goals) {
-  const grid = document.getElementById('planGoalsGrid');
-  const empty = document.getElementById('planEmptyState');
-
-  if (goals.length === 0) {
+    console.error('[Plan] ❌ 渲染目标卡片失败:', error);
+    const grid = document.getElementById('planGoalsGrid');
+    const empty = document.getElementById('planEmptyState');
     grid.innerHTML = '';
     empty.style.display = 'flex';
-  } else {
-    empty.style.display = 'none';
-    grid.innerHTML = goals.map(g => {
-      const stateClass = g.status === 'active' ? 'active-state' : (g.status === 'paused' ? 'paused-state' : 'completed-state');
-      const badgeHtml = g.status === 'active' ? '<span class="badge badge-active">🟢 进行中</span>'
-        : (g.status === 'paused' ? '<span class="badge badge-paused">⏸️ 暂停中</span>'
-        : '<span class="badge badge-completed">✅ 已完成</span>');
-      const progressColor = g.status === 'completed' ? 'success' : (g.status === 'paused' ? 'warning' : 'primary');
-      const metaHtml = g.status === 'completed'
-        ? `<span>✅ 完成于 ${g.completedAt || g.deadline}</span><span>📋 ${g.completedTasks || g.tasks}/${g.tasks} 任务</span>`
-        : `<span>📅 截止 ${g.deadline}</span><span>📋 ${g.completedTasks}/${g.tasks} 任务</span><span>⏱️ 约${g.estimatedHours || 42}小时</span>`;
-      const footerLeft = g.tags ? g.tags.map(t => `<span class="tag">🏷️ ${t}</span>`).join('') : '';
-      const isPaused = g.status === 'paused';
-      const isCompleted = g.status === 'completed';
-
-      let footerRight = '';
-      if (isCompleted) {
-        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toast('查看学习总结','info')">📋 总结</button>`;
-      } else if (isPaused) {
-        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resumeGoal('${g.id}')">▶ 恢复</button><button class="btn btn-ghost btn-sm">⋯</button>`;
-      } else {
-        footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRescheduleModal()">📅 排期</button><button class="btn btn-ghost btn-sm">⋯</button>`;
-      }
-
-      return `<div class="goal-card ${stateClass}" onclick="openPlanDetail('${g.id}')">
-        <div class="goal-header">
-          <div class="goal-title">${g.title}</div>
-          ${badgeHtml}
-        </div>
-        <div class="goal-desc">${g.description}</div>
-        <div class="progress-bar-wrap">
-          <div class="progress-label"><span>总体进度</span><span style="color:var(--${progressColor});font-weight:600;">${g.progress}%</span></div>
-          <div class="progress-bar"><div class="progress-fill ${progressColor}" style="width:${g.progress}%"></div></div>
-        </div>
-        <div class="goal-meta">${metaHtml}</div>
-        <div class="goal-footer">
-          <div style="display:flex;gap:6px;">${footerLeft}</div>
-          <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">${footerRight}</div>
-        </div>
-      </div>`;
-    }).join('');
   }
-
-  document.getElementById('planActiveCount').textContent = mockData.plan.goals.filter(g => g.status === 'active').length;
-  document.getElementById('planPausedCount').textContent = mockData.plan.goals.filter(g => g.status === 'paused').length;
-  document.getElementById('planDoneCount').textContent = mockData.plan.goals.filter(g => g.status === 'completed').length;
 }
 
 // 打开详情
 async function openPlanDetail(goalId) {
+  console.log('[Plan] 📡 开始加载目标详情...', { goalId });
   currentDetailGoalId = goalId;
   
   try {
     const res = await DB.getGoalDetail(goalId);
+    console.log('[Plan] 📥 目标详情响应:', res);
+    
     if (!res.success || !res.data) {
+      console.log('[Plan] ⚠️ 目标不存在:', goalId);
       toast('目标不存在', 'error');
       return;
     }
     
     const goal = res.data;
+    console.log('[Plan] 📊 目标详情:', { title: goal.title, status: goal.status, tasks: (goal.tasks || []).length, milestones: (goal.milestones || []).length });
 
     document.getElementById('planListView').style.display = 'none';
     document.getElementById('planDetailView').style.display = 'block';
@@ -961,101 +831,15 @@ async function openPlanDetail(goalId) {
 
     // 滚动到顶部
     document.getElementById('planDetailView').scrollIntoView();
+    console.log('[Plan] ✅ 目标详情渲染完成');
+
+    // 异步加载 AI 诊断面板（不阻塞详情渲染）
+    loadAiDiagPanel(currentDetailGoalId);
   } catch (error) {
-    console.error('打开目标详情失败:', error);
-    // 降级使用模拟数据
-    const goal = mockData.plan.goals.find(g => g.id === goalId);
-    if (!goal) {
-      toast('目标不存在', 'error');
-      return;
-    }
-    renderMockGoalDetail(goal);
+    console.error('[Plan] ❌ 打开目标详情失败:', error);
+    toast('加载目标详情失败', 'error');
+    closePlanDetail();
   }
-}
-
-// 降级渲染目标详情
-function renderMockGoalDetail(goal) {
-  document.getElementById('planListView').style.display = 'none';
-  document.getElementById('planDetailView').style.display = 'block';
-
-  document.getElementById('page-title').textContent = '🎯 ' + goal.title;
-  var topbarRight = document.querySelector('.topbar-right');
-  if (topbarRight) {
-    var pauseBtnHtml = goal.status === 'active'
-      ? '<button class="btn btn-sm" style="background:var(--warning);color:#fff;" onclick="openPauseGoalModal()">⏸️ 暂停目标</button>'
-      : (goal.status === 'paused'
-        ? '<button class="btn btn-primary btn-sm" onclick="resumeGoal(\'' + goal.id + '\')">▶ 恢复目标</button>'
-        : '');
-    topbarRight.innerHTML = pauseBtnHtml + '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
-  }
-
-  document.getElementById('detailTitle').textContent = goal.title;
-  document.getElementById('detailDesc').textContent = goal.description;
-  document.getElementById('detailProgress').textContent = goal.progress + '%';
-  document.getElementById('detailProgressFill').style.width = goal.progress + '%';
-  document.getElementById('detailTaskSummary').textContent = goal.completedTasks + ' / ' + goal.tasks + ' 任务完成';
-
-  const badge = document.getElementById('detailStatusBadge');
-  if (goal.status === 'active') {
-    badge.className = 'badge badge-active';
-    badge.textContent = '🟢 进行中';
-  } else if (goal.status === 'paused') {
-    badge.className = 'badge badge-paused';
-    badge.textContent = '⏸️ 暂停中';
-  } else {
-    badge.className = 'badge badge-completed';
-    badge.textContent = '✅ 已完成';
-  }
-
-  const milestones = mockData.plan.milestones.filter(m => m.goalId === goal.id);
-  document.getElementById('milestonesContainer').innerHTML = milestones.map(m => {
-    const iconClass = m.status === 'completed' ? 'done' : (m.status === 'active' ? 'active' : 'pending');
-    const iconEmoji = m.status === 'completed' ? '✅' : (m.status === 'active' ? '🔵' : '⏳');
-    const progressColor = m.status === 'completed' ? 'success' : 'primary';
-    const tasks = mockData.plan.tasks.filter(t => t.milestoneId === m.id);
-    const completedTasks = tasks.filter(t => t.completed).length;
-    const hasTasks = tasks.length > 0;
-    const toggleClass = hasTasks ? 'open' : '';
-
-    const tasksHtml = hasTasks ? tasks.map(t => {
-      const checkClass = t.completed ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
-      const checkContent = t.completed ? '✓' : (t.status === 'in_progress' ? '●' : '');
-      const titleClass = t.completed ? 'done-text' : '';
-      const priorityClass = t.priority === 'high' ? 'priority-high' : (t.priority === 'mid' ? 'priority-mid' : 'priority-low');
-      const metaHtml = t.timeActual ? `<span class="task-tag">⏱️ 实际 ${t.timeActual}（预计 ${t.timeEst}）</span>`
-        : (t.completed ? `<span class="task-tag">✅ ${t.dueDate || ''}</span>`
-        : (t.dueDate ? `<span class="task-tag overdue">⚠️ 截止 ${t.dueDate}</span>` : ''));
-      return `<div class="task-item">
-        <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${t.id}', this)">${checkContent}</div>
-        <div class="task-priority ${priorityClass}"></div>
-        <div class="task-body">
-          <div class="task-title ${titleClass}">${t.title}</div>
-          <div class="task-meta">${metaHtml}</div>
-        </div>
-        <div class="task-actions">
-          <button class="btn btn-ghost btn-sm">✏️</button>
-        </div>
-      </div>`;
-    }).join('') : '<div style="padding:8px 0;color:var(--gray-400);font-size:12.5px;">暂无任务</div>';
-
-    return `<div class="milestone-item">
-      <div class="milestone-header" onclick="toggleMilestone(this)">
-        <span class="milestone-toggle ${toggleClass}">▶</span>
-        <div class="milestone-icon ${iconClass}">${iconEmoji}</div>
-        <div class="milestone-info">
-          <div class="milestone-name">${m.title}</div>
-          <div class="milestone-sub">${m.status === 'completed' ? '完成于 ' + m.completedAt : (m.status === 'active' ? '进行中 · ' + completedTasks + '/' + tasks.length + ' 任务完成' : '待开始 · ' + tasks.length + ' 个任务')}</div>
-        </div>
-        <div class="milestone-progress">
-          <div style="color:var(--${progressColor});font-weight:600;">${m.progress}%</div>
-          <div class="mini-progress"><div class="mini-fill ${progressColor === 'success' ? 'success' : ''}" style="width:${m.progress}%"></div></div>
-        </div>
-      </div>
-      <div class="tasks-list">${tasksHtml}</div>
-    </div>`;
-  }).join('');
-
-  document.getElementById('planDetailView').scrollIntoView();
 }
 
 // 关闭详情
@@ -1081,18 +865,148 @@ function toggleMilestone(el) {
 
 // 任务完成切换
 function toggleTaskComplete(taskId, el) {
-  const task = mockData.plan.tasks.find(t => t.id === taskId);
-  if (!task) return;
-
-  if (!task.completed) {
-    openTaskCompleteModal(taskId);
-  }
+  openTaskCompleteModal(taskId);
 }
 
 // 弹窗控制
-function openCreateModal() { document.getElementById('createGoalModal').classList.add('show'); }
+function openCreateModal() {
+  resetCreateWizard();
+  document.getElementById('createGoalModal').classList.add('show');
+}
 function openRescheduleModal() { document.getElementById('rescheduleModal').classList.add('show'); }
-function openDiagModal() { document.getElementById('diagModal').classList.add('show'); }
+
+// AI 诊断：调用真实 AI 服务
+var diagCache = {}; // goalId -> {content, time}
+async function openDiagModal() {
+  document.getElementById('diagModal').classList.add('show');
+
+  var goalId = currentDetailGoalId;
+  if (!goalId) {
+    document.getElementById('diagModalBody').innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);">请先选择一个学习目标</div>';
+    return;
+  }
+
+  var body = document.getElementById('diagModalBody');
+  var subtitle = document.getElementById('diagModalSubtitle');
+
+  // 如果有缓存，直接展示
+  if (diagCache[goalId]) {
+    renderDiagReport(diagCache[goalId].content, subtitle, body);
+    return;
+  }
+
+  // 显示加载状态
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div style="margin-top:12px;font-size:14px;">AI 正在生成诊断报告…</div></div>';
+  subtitle.textContent = 'AI 正在分析学习进度...';
+
+  try {
+    console.log('[Plan] 📡 调用 AI 诊断...', { goalId: goalId });
+    var res = await DB.aiDiagnoseGoal(goalId);
+    console.log('[Plan] 📥 AI 诊断响应:', res);
+
+    if (res.success && res.content) {
+      diagCache[goalId] = { content: res.content, time: new Date() };
+      renderDiagReport(res.content, subtitle, body);
+    } else {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">⚠️</div><div style="font-size:14px;">AI 诊断失败：' + (res.error || '请稍后重试') + '</div></div>';
+      subtitle.textContent = '诊断失败';
+    }
+  } catch (error) {
+    console.error('[Plan] ❌ AI 诊断失败:', error);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">⚠️</div><div style="font-size:14px;">AI 诊断出错：' + error.message + '</div></div>';
+    subtitle.textContent = '诊断出错';
+  }
+}
+
+// 渲染诊断报告到弹窗
+function renderDiagReport(content, subtitleEl, bodyEl) {
+  var now = new Date();
+  var timeStr = now.getMonth() + 1 + '月' + now.getDate() + '日 ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  subtitleEl.textContent = 'AI 诊断报告 · 生成于 ' + timeStr;
+
+  // 将 AI 返回的 Markdown 文本渲染为 HTML
+  var html = renderMarkdown(content);
+  bodyEl.innerHTML = '<div style="line-height:1.8;font-size:14px;">' + html + '</div>' +
+    '<div style="margin-top:20px;text-align:right;"><button class="btn btn-primary btn-sm" onclick="closePlanModal(\'diagModal\');openRescheduleModal()">📅 按建议调整排期</button></div>';
+}
+
+// 简单 Markdown 渲染
+function renderMarkdown(text) {
+  if (!text) return '';
+  var html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    // 标题
+    .replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;color:var(--gray-700);">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:18px 0 10px;color:var(--gray-700);">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="margin:20px 0 12px;color:var(--gray-700);">$1</h2>')
+    // 粗体
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // 列表
+    .replace(/^[-*] (.+)$/gm, '<div style="padding-left:16px;margin:4px 0;">• $1</div>')
+    .replace(/^\d+[.)] (.+)$/gm, function(m, p1) { return '<div style="padding-left:16px;margin:4px 0;">' + m + '</div>'; })
+    // 换行
+    .replace(/\n/g, '<br>');
+  return html;
+}
+
+// 加载右侧 AI 诊断面板（在目标详情加载时调用）
+async function loadAiDiagPanel(goalId) {
+  var panelBody = document.getElementById('aiDiagPanelBody');
+  var updateTime = document.getElementById('aiDiagUpdateTime');
+  if (!panelBody) return;
+
+  if (!goalId) {
+    panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">选择一个学习目标后，AI 将自动生成诊断报告</div></div>';
+    return;
+  }
+
+  // 如果有缓存，直接展示摘要
+  if (diagCache[goalId]) {
+    renderDiagPanelSummary(diagCache[goalId].content, panelBody, updateTime);
+    return;
+  }
+
+  // 显示加载状态
+  panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div style="margin-top:8px;font-size:13px;">AI 正在分析学习进度…</div></div>';
+  updateTime.textContent = '分析中...';
+
+  try {
+    var res = await DB.aiDiagnoseGoal(goalId);
+    if (res.success && res.content) {
+      diagCache[goalId] = { content: res.content, time: new Date() };
+      renderDiagPanelSummary(res.content, panelBody, updateTime);
+    } else {
+      panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:13px;">AI 诊断暂不可用</div><button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="loadAiDiagPanel(currentDetailGoalId)">重试</button></div>';
+      updateTime.textContent = '诊断失败';
+    }
+  } catch (error) {
+    panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:13px;">AI 诊断出错</div><button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="loadAiDiagPanel(currentDetailGoalId)">重试</button></div>';
+    updateTime.textContent = '诊断出错';
+  }
+}
+
+// 渲染诊断面板摘要
+function renderDiagPanelSummary(content, panelBody, updateTime) {
+  var now = new Date();
+  updateTime.textContent = now.getMonth() + 1 + '月' + now.getDate() + '日更新';
+
+  // 提取前 200 字作为摘要
+  var summary = (content || '').substring(0, 200);
+  var hasMore = content && content.length > 200;
+
+  panelBody.innerHTML =
+    '<div class="ai-diag-header">' +
+      '<div class="ai-diag-avatar">🤖</div>' +
+      '<div class="ai-diag-score-info"><strong>AI 诊断报告已生成</strong><br><span style="color:var(--gray-400);font-size:12px;">点击下方查看完整报告</span></div>' +
+    '</div>' +
+    '<div class="ai-diag-section">' +
+      '<div class="ai-diag-section-title">📋 诊断摘要</div>' +
+      '<div style="font-size:12.5px;color:var(--gray-600);line-height:1.6;">' + renderMarkdown(summary) + (hasMore ? '...' : '') + '</div>' +
+    '</div>' +
+    '<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;justify-content:center;" onclick="openDiagModal()">查看完整诊断报告 →</button>';
+}
 function openAddTaskModal() { document.getElementById('addTaskModal').classList.add('show'); }
 function openTaskCompleteModal(taskId) {
   document.getElementById('taskCompleteModal').setAttribute('data-task-id', taskId);
@@ -1108,6 +1022,9 @@ document.addEventListener('click', function(e) {
 });
 
 // 新建目标步骤
+var isManualCreateMode = false;
+var editorMilestones = []; // 第3步编辑器数据（AI和手动共用）
+
 function createNextStep() {
   createStep++;
   document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
@@ -1126,7 +1043,273 @@ function createNextStep() {
     document.getElementById('createNextBtn').style.display = 'none';
     document.getElementById('createConfirmBtn').style.display = 'inline-flex';
     document.getElementById('createPrevBtn').style.display = 'inline-flex';
+    // AI 模式：调用 AI 拆解
+    isManualCreateMode = false;
+    aiGeneratePlan();
   }
+}
+
+// 手动创建：从第1步跳到第3步，带入第1步信息
+function manualCreateToStep3() {
+  var titleEl = document.getElementById('goalTitleInput');
+  var title = titleEl ? titleEl.value.trim() : '';
+  if (!title) { toast('请输入目标名称', 'warning'); return; }
+
+  // 将第1步信息带入第3步
+  var genTitleEl = document.getElementById('genGoalTitle');
+  if (genTitleEl) genTitleEl.value = title;
+
+  // 带入描述
+  var bgEl = document.getElementById('goalBackground');
+  // 描述保留在第1步的元素中，confirmCreateGoal 时读取
+
+  // 设置手动模式标记
+  isManualCreateMode = true;
+
+  // 初始化空里程碑
+  editorMilestones = [{ title: '', tasks: [''] }];
+
+  // 更新第3步标题
+  var step3Title = document.getElementById('step3Title');
+  if (step3Title) step3Title.textContent = '✍️ 手动创建里程碑与任务';
+  var step3Source = document.getElementById('step3Source');
+  if (step3Source) step3Source.textContent = '手动模式';
+
+  renderMilestoneEditor();
+
+  // 跳到第3步
+  createStep = 3;
+  document.getElementById('createStep1').style.display = 'none';
+  document.getElementById('createStep2').style.display = 'none';
+  document.getElementById('createStep3').style.display = 'block';
+  document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
+    s.classList.toggle('active', i + 1 === 3);
+    s.classList.toggle('done', i + 1 < 3);
+  });
+
+  // 切换按钮
+  document.getElementById('createNextBtn').style.display = 'none';
+  document.getElementById('createManualBtn').style.display = 'none';
+  document.getElementById('createConfirmBtn').style.display = 'inline-flex';
+  document.getElementById('createPrevBtn').style.display = 'inline-flex';
+}
+
+// AI 拆解：调用接口生成里程碑和任务
+async function aiGeneratePlan() {
+  var titleEl = document.getElementById('goalTitleInput');
+  var bgEl = document.getElementById('goalBackground');
+  var title = titleEl ? titleEl.value.trim() : '';
+  var description = bgEl ? bgEl.value.trim() : '';
+
+  if (!title && !description) {
+    toast('请先在第一步填写目标信息', 'warning');
+    createPrevStep();
+    return;
+  }
+
+  // 将标题带入第3步
+  var genTitleEl = document.getElementById('genGoalTitle');
+  if (genTitleEl && title) genTitleEl.value = title;
+
+  // 显示加载中
+  var listEl = document.getElementById('milestoneEditorList');
+  if (listEl) {
+    listEl.innerHTML = '<div style="text-align:center;padding:30px;color:var(--gray-400);"><div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div style="margin-top:8px;font-size:13px;">AI 正在拆解学习目标…</div></div>';
+  }
+
+  var step3Title = document.getElementById('step3Title');
+  if (step3Title) step3Title.textContent = '✨ AI 拆解结果（可编辑）';
+  var step3Source = document.getElementById('step3Source');
+  if (step3Source) step3Source.textContent = 'AI 模式';
+
+  try {
+    var aiDesc = title + (description ? '。背景：' + description : '');
+    console.log('[Plan] 📡 调用 AI 创建目标...', { description: aiDesc });
+    var res = await DB.aiCreateGoal(aiDesc);
+    console.log('[Plan] 📥 AI 响应:', res);
+
+    if (res.success) {
+      // 尝试解析 AI 返回的结构化数据
+      var parsed = parseAIPlanResponse(res.content, title);
+      editorMilestones = parsed;
+      renderMilestoneEditor();
+      toast('AI 方案已生成，可编辑后确认', 'success');
+    } else {
+      // AI 失败，生成默认里程碑
+      editorMilestones = generateDefaultPlan(title);
+      renderMilestoneEditor();
+      toast('AI 暂不可用，已生成默认方案', 'info');
+    }
+  } catch (error) {
+    console.error('[Plan] ❌ AI 拆解失败:', error);
+    editorMilestones = generateDefaultPlan(title);
+    renderMilestoneEditor();
+    toast('AI 拆解失败，已生成默认方案', 'info');
+  }
+}
+
+// 解析 AI 返回内容为里程碑/任务结构
+function parseAIPlanResponse(content, defaultTitle) {
+  if (!content) return generateDefaultPlan(defaultTitle);
+
+  // 1. 去除 markdown 代码块标记（```json ... ``` 或 ``` ... ```）
+  var cleaned = content.trim();
+  var codeBlockMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    cleaned = codeBlockMatch[1].trim();
+  }
+
+  // 2. 尝试 JSON 解析
+  try {
+    var parsed = JSON.parse(cleaned);
+    if (parsed.milestones && Array.isArray(parsed.milestones)) {
+      return parsed.milestones.map(function(ms) {
+        return {
+          title: ms.title || '里程碑',
+          tasks: Array.isArray(ms.tasks) ? ms.tasks.map(function(t) {
+            return typeof t === 'string' ? t : (t.title || t.name || '');
+          }).filter(function(t) { return t; }) : []
+        };
+      });
+    }
+  } catch (e) {
+    console.log('[Plan] JSON 解析失败，尝试 Markdown 解析...', e.message);
+  }
+
+  // 3. 尝试从 Markdown 文本解析（## 里程碑 / - 任务）
+  var mdMilestones = [];
+  var lines = cleaned.split('\n');
+  var currentMs = null;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    // ## 开头或 ### 开头视为里程碑标题
+    var msMatch = line.match(/^#{2,3}\s+(.+)/);
+    if (msMatch) {
+      if (currentMs) mdMilestones.push(currentMs);
+      currentMs = { title: msMatch[1], tasks: [] };
+      continue;
+    }
+    // - 或 * 或 数字. 开头视为任务
+    var taskMatch = line.match(/^[-*]\s+(.+)/) || line.match(/^\d+[.)]\s+(.+)/);
+    if (taskMatch && currentMs) {
+      currentMs.tasks.push(taskMatch[1]);
+    }
+  }
+  if (currentMs) mdMilestones.push(currentMs);
+  if (mdMilestones.length > 0) {
+    console.log('[Plan] ✅ Markdown 解析成功:', mdMilestones.length, '个里程碑');
+    return mdMilestones;
+  }
+
+  // 4. 兜底：生成默认方案
+  console.log('[Plan] ⚠️ 无法解析 AI 返回内容，使用默认方案');
+  return generateDefaultPlan(defaultTitle);
+}
+
+// 生成默认学习计划
+function generateDefaultPlan(title) {
+  return [
+    {
+      title: '阶段一：基础认知',
+      tasks: ['了解核心概念和术语', '阅读入门资料', '梳理知识框架']
+    },
+    {
+      title: '阶段二：核心实践',
+      tasks: ['动手实践核心功能', '完成练习项目', '记录学习笔记']
+    },
+    {
+      title: '阶段三：进阶与总结',
+      tasks: ['深入高级主题', '总结学习成果', '输出学习文档']
+    }
+  ];
+}
+
+// 渲染里程碑编辑器
+function renderMilestoneEditor() {
+  var container = document.getElementById('milestoneEditorList');
+  if (!container) return;
+
+  if (!editorMilestones || editorMilestones.length === 0) {
+    container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px 0;">暂无里程碑，点击下方按钮添加。</div>';
+    return;
+  }
+
+  // 先同步输入框值到内存
+  syncEditorMilestones();
+
+  var html = '';
+  editorMilestones.forEach(function(ms, mIdx) {
+    html += '<div class="editor-ms-item" style="border-left:3px solid var(--primary);padding:12px;margin-bottom:12px;border-radius:0 8px 8px 0;background:var(--gray-50,#f9fafb);">';
+    html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">';
+    html += '<span style="font-size:12px;color:var(--gray-400);flex-shrink:0;">M' + (mIdx + 1) + '</span>';
+    html += '<input class="form-input editor-ms-title" placeholder="里程碑名称" value="' + escapeAttr(ms.title) + '" style="flex:1;font-weight:600;" oninput="syncEditorMilestones()">';
+    html += '<button type="button" class="btn btn-secondary btn-sm" onclick="removeEditorMilestone(' + mIdx + ')" style="flex-shrink:0;">删除</button>';
+    html += '</div>';
+
+    // 任务列表
+    if (ms.tasks && ms.tasks.length > 0) {
+      html += '<div style="padding-left:28px;">';
+      ms.tasks.forEach(function(task, tIdx) {
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">';
+        html += '<span style="font-size:11px;color:var(--gray-400);">•</span>';
+        html += '<input class="form-input editor-task-input" placeholder="任务名称" value="' + escapeAttr(task) + '" style="flex:1;font-size:13px;" oninput="syncEditorMilestones()">';
+        html += '<button type="button" class="btn btn-secondary btn-sm" onclick="removeEditorTask(' + mIdx + ',' + tIdx + ')" style="flex-shrink:0;padding:4px 8px;">×</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<button type="button" class="btn btn-secondary btn-sm" onclick="addEditorTask(' + mIdx + ')" style="margin-left:28px;margin-top:4px;font-size:12px;">+ 添加任务</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function escapeAttr(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function addEditorMilestone() {
+  editorMilestones.push({ title: '', tasks: [''] });
+  renderMilestoneEditor();
+}
+
+function removeEditorMilestone(idx) {
+  editorMilestones.splice(idx, 1);
+  renderMilestoneEditor();
+}
+
+function addEditorTask(mIdx) {
+  if (!editorMilestones[mIdx]) return;
+  if (!editorMilestones[mIdx].tasks) editorMilestones[mIdx].tasks = [];
+  editorMilestones[mIdx].tasks.push('');
+  renderMilestoneEditor();
+}
+
+function removeEditorTask(mIdx, tIdx) {
+  if (!editorMilestones[mIdx]) return;
+  editorMilestones[mIdx].tasks.splice(tIdx, 1);
+  renderMilestoneEditor();
+}
+
+// 同步输入框值到内存
+function syncEditorMilestones() {
+  var container = document.getElementById('milestoneEditorList');
+  if (!container) return;
+  var msItems = container.querySelectorAll('.editor-ms-item');
+  msItems.forEach(function(msEl, mIdx) {
+    if (!editorMilestones[mIdx]) return;
+    var titleInput = msEl.querySelector('.editor-ms-title');
+    if (titleInput) editorMilestones[mIdx].title = titleInput.value.trim();
+    var taskInputs = msEl.querySelectorAll('.editor-task-input');
+    // 如果任务数量不匹配，跳过（避免渲染中的竞争）
+    if (taskInputs.length === editorMilestones[mIdx].tasks.length) {
+      taskInputs.forEach(function(taskInput, tIdx) {
+        editorMilestones[mIdx].tasks[tIdx] = taskInput.value.trim();
+      });
+    }
+  });
 }
 
 function createPrevStep() {
@@ -1147,39 +1330,180 @@ function createPrevStep() {
   }
 }
 
-function confirmCreateGoal() {
-  toast('目标创建成功！', 'success');
-  closePlanModal('createGoalModal');
+// 确认创建目标 — 真实调用 DB 接口
+async function confirmCreateGoal() {
+  // 同步编辑器数据
+  syncEditorMilestones();
+
+  // 获取标题
+  var genTitleEl = document.getElementById('genGoalTitle');
+  var titleEl = document.getElementById('goalTitleInput');
+  var title = genTitleEl ? genTitleEl.value.trim() : '';
+  if (!title && titleEl) title = titleEl.value.trim();
+
+  if (!title) { toast('请输入目标名称', 'warning'); return; }
+
+  // 获取其他字段
+  var bgEl = document.getElementById('goalBackground');
+  var deadlineEl = document.getElementById('goalDeadline');
+  var weeklyEl = document.getElementById('goalWeeklyHours');
+  var domainEl = document.getElementById('genGoalDomain');
+  var topicEl = document.getElementById('genGoalTopic');
+
+  var goalData = {
+    title: title,
+    description: bgEl ? bgEl.value.trim() : '',
+    domain: domainEl ? domainEl.value : '',
+    currentLevel: topicEl ? topicEl.value : '',
+    deadline: deadlineEl && deadlineEl.value ? new Date(deadlineEl.value) : null,
+    weeklyHours: weeklyEl ? weeklyEl.value : ''
+  };
+
+  console.log('[Plan] 📡 开始创建目标...', goalData);
+
+  try {
+    var res = await DB.createGoal(goalData);
+    console.log('[Plan] 📥 创建目标响应:', res);
+
+    if (res.success) {
+      var goalId = res.data && res.data._id ? res.data._id : (res.id || (res.data && res.data.id));
+      console.log('[Plan] ✅ 目标创建成功, ID:', goalId);
+
+      // 创建里程碑和任务
+      var msCount = 0;
+      var taskCount = 0;
+      for (var mIdx = 0; mIdx < editorMilestones.length; mIdx++) {
+        var ms = editorMilestones[mIdx];
+        if (!ms.title) continue;
+
+        console.log('[Plan] 📡 创建里程碑...', { title: ms.title, sort: mIdx });
+        var msRes = await DB.createMilestone({
+          goalId: goalId,
+          title: ms.title,
+          sort: mIdx
+        });
+        console.log('[Plan] 📥 里程碑响应:', msRes);
+
+        if (msRes.success) {
+          var msId = msRes.data && msRes.data._id ? msRes.data._id : (msRes.id || (msRes.data && msRes.data.id));
+          msCount++;
+
+          // 创建该里程碑下的任务
+          if (ms.tasks && ms.tasks.length > 0 && msId) {
+            for (var tIdx = 0; tIdx < ms.tasks.length; tIdx++) {
+              var taskTitle = ms.tasks[tIdx];
+              if (!taskTitle) continue;
+
+              console.log('[Plan] 📡 创建任务...', { title: taskTitle, milestoneId: msId });
+              await DB.createTask({
+                goalId: goalId,
+                milestoneId: msId,
+                title: taskTitle,
+                sort: tIdx,
+                priority: 'mid',
+                estimatedTime: 0
+              });
+              taskCount++;
+            }
+          }
+        }
+      }
+
+      toast('目标创建成功（' + msCount + ' 个里程碑，' + taskCount + ' 个任务）', 'success');
+      console.log('[Plan] ✅ 全部创建完成');
+
+      // 重置向导
+      resetCreateWizard();
+      closePlanModal('createGoalModal');
+
+      // 刷新列表
+      await renderGoalCards(planFilter);
+
+      // 跳转到目标详情
+      if (goalId) {
+        await openPlanDetail(goalId);
+      }
+    } else {
+      toast('创建失败: ' + (res.error || '未知错误'), 'error');
+      console.log('[Plan] ⚠️ 创建失败:', res.error);
+    }
+  } catch (error) {
+    console.error('[Plan] ❌ 创建目标失败:', error);
+    toast('创建目标失败: ' + error.message, 'error');
+  }
+}
+
+// 重置创建向导
+function resetCreateWizard() {
   createStep = 1;
+  isManualCreateMode = false;
+  editorMilestones = [];
+  document.getElementById('createStep1').style.display = 'block';
   document.getElementById('createStep2').style.display = 'none';
   document.getElementById('createStep3').style.display = 'none';
-  document.getElementById('createStep1').style.display = 'block';
   document.getElementById('createNextBtn').style.display = 'inline-flex';
   document.getElementById('createConfirmBtn').style.display = 'none';
   document.getElementById('createPrevBtn').style.display = 'none';
+  document.getElementById('createManualBtn').style.display = 'inline-flex';
   document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
     s.classList.toggle('active', i === 0);
     s.classList.toggle('done', false);
   });
+  // 清空第1步输入
+  var titleInput = document.getElementById('goalTitleInput');
+  var bgInput = document.getElementById('goalBackground');
+  var dlInput = document.getElementById('goalDeadline');
+  if (titleInput) titleInput.value = '';
+  if (bgInput) bgInput.value = '';
+  if (dlInput) dlInput.value = '';
+  var genTitleEl = document.getElementById('genGoalTitle');
+  if (genTitleEl) genTitleEl.value = '';
 }
 
 // AI对话发送
-function sendChatReply() {
+async function sendChatReply() {
   const input = document.getElementById('chatInput');
   if (!input.value.trim()) return;
   const wrap = document.getElementById('aiChatWrap');
+  const userMsg = input.value.trim();
   wrap.innerHTML += `<div class="chat-bubble user">
     <div class="chat-avatar user">👤</div>
-    <div class="chat-content user">${input.value}</div>
+    <div class="chat-content user">${userMsg}</div>
   </div>`;
   input.value = '';
 
-  // 模拟AI回复
-  wrap.innerHTML += '<div class="chat-bubble"><div class="chat-avatar ai">🤖</div><div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>';
-  setTimeout(() => {
-    const typing = wrap.querySelector('.typing-indicator');
-    if (typing) typing.parentElement.innerHTML = '<div class="chat-content ai">了解了。那么你的目标时间范围是多久？每周能投入多少小时？</div>';
-  }, 2000);
+  // 显示 AI 正在输入
+  wrap.innerHTML += '<div class="chat-bubble" id="aiTypingBubble"><div class="chat-avatar ai">🤖</div><div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>';
+  wrap.scrollTop = wrap.scrollHeight;
+
+  try {
+    // 调用真实 AI 服务
+    var aiReply = '抱歉，AI 暂时无法回复。';
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      var res = await window.AIService.callAI({
+        action: 'chat',
+        messages: [{ role: 'user', content: userMsg }]
+      });
+      if (res.success && res.content) {
+        aiReply = res.content;
+      } else {
+        aiReply = 'AI 回复失败：' + (res.error || '未知错误');
+      }
+    } else {
+      aiReply = 'AI 服务未初始化，请先在设置页面配置 AI 模型。';
+    }
+
+    var typingBubble = document.getElementById('aiTypingBubble');
+    if (typingBubble) {
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">' + aiReply + '</div>';
+    }
+    wrap.scrollTop = wrap.scrollHeight;
+  } catch (error) {
+    var typingBubble = document.getElementById('aiTypingBubble');
+    if (typingBubble) {
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">AI 回复出错：' + error.message + '</div>';
+    }
+  }
 }
 
 // 弹性排期选择
@@ -1188,9 +1512,73 @@ function selectRescheduleOption(el) {
   el.classList.add('selected');
 }
 
-function confirmReschedule() {
-  toast('排期已更新', 'success');
+async function confirmReschedule() {
+  if (!currentDetailGoalId) { toast('未选择目标', 'warning'); return; }
+
+  // 获取选择的方案
+  var rescheduleModal = document.getElementById('rescheduleModal');
+  var selectedOption = rescheduleModal ? rescheduleModal.querySelector('.reschedule-option.selected') : null;
+  var allOptions = rescheduleModal ? rescheduleModal.querySelectorAll('.reschedule-option') : [];
+  var optionIndex = 0;
+  for (var i = 0; i < allOptions.length; i++) {
+    if (allOptions[i] === selectedOption) { optionIndex = i; break; }
+  }
+
+  console.log('[Plan] 📡 开始弹性排期...', { goalId: currentDetailGoalId, option: optionIndex });
+
+  try {
+    // 获取当前目标的任务列表
+    var detailRes = await DB.getGoalDetail(currentDetailGoalId);
+    if (!detailRes.success || !detailRes.data) {
+      toast('获取目标数据失败', 'error');
+      return;
+    }
+
+    var tasks = detailRes.data.tasks || [];
+    var pendingTasks = tasks
+      .filter(function(t) { return t.status !== 'completed'; })
+      .sort(function(a, b) { return (a.sort || 0) - (b.sort || 0); });
+
+    var taskUpdates = [];
+
+    if (optionIndex === 0) {
+      // 方案A：顺延 — 所有未完成任务截止日期延后5天
+      pendingTasks.forEach(function(task) {
+        var dl = task.deadline ? new Date(task.deadline) : new Date();
+        dl.setDate(dl.getDate() + 5);
+        taskUpdates.push({ taskId: task._id || task.id, deadline: dl, sort: task.sort || 0 });
+      });
+    } else if (optionIndex === 1) {
+      // 方案B：跳过 — 第一个任务标记为待补学
+      if (pendingTasks.length > 0) {
+        var skipTask = pendingTasks[0];
+        var dl = skipTask.deadline ? new Date(skipTask.deadline) : null;
+        taskUpdates.push({ taskId: skipTask._id || skipTask.id, deadline: dl, sort: 999, status: 'skipped' });
+      }
+    } else if (optionIndex === 2) {
+      // 方案C：拆分 — 第一个任务不变，后续延后3天
+      for (var i = 1; i < pendingTasks.length; i++) {
+        var dl = pendingTasks[i].deadline ? new Date(pendingTasks[i].deadline) : new Date();
+        dl.setDate(dl.getDate() + 3);
+        taskUpdates.push({ taskId: pendingTasks[i]._id || pendingTasks[i].id, deadline: dl, sort: pendingTasks[i].sort || 0 });
+      }
+    }
+
+    var res = await DB.rescheduleGoal(currentDetailGoalId, { taskUpdates: taskUpdates });
+    console.log('[Plan] 📥 排期响应:', res);
+
+    if (res.success) {
+      toast('排期已更新', 'success');
+    } else {
+      toast('排期失败: ' + (res.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('[Plan] ❌ 排期失败:', error);
+    toast('排期失败: ' + error.message, 'error');
+  }
+
   closePlanModal('rescheduleModal');
+  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
 // 暂停目标弹窗
@@ -1206,51 +1594,45 @@ async function openPauseGoalModal() {
     }
   } catch (error) {
     console.error('获取目标进度失败:', error);
-    var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
-    if (goal) {
-      document.getElementById('pauseGoalProgress').textContent = goal.progress + '%';
-    }
   }
   document.getElementById('pauseGoalModal').classList.add('show');
 }
 
 async function confirmPauseGoal() {
+  console.log('[Plan] 📡 开始暂停目标...', { goalId: currentDetailGoalId });
   try {
     const res = await DB.pauseGoal(currentDetailGoalId);
+    console.log('[Plan] 📥 暂停目标响应:', res);
     if (res.success) {
       toast('目标已暂停', 'info');
+      console.log('[Plan] ✅ 目标已暂停');
     } else {
       toast('暂停失败: ' + res.error, 'error');
+      console.log('[Plan] ⚠️ 暂停失败:', res.error);
     }
   } catch (error) {
-    console.error('暂停目标失败:', error);
-    // 降级使用模拟数据
-    var goal = mockData.plan.goals.find(function(g) { return g.id === currentDetailGoalId; });
-    if (goal) {
-      goal.status = 'paused';
-      toast('目标「' + goal.title + '」已暂停', 'info');
-    }
+    console.error('[Plan] ❌ 暂停目标失败:', error);
+    toast('暂停失败', 'error');
   }
   closePlanModal('pauseGoalModal');
   if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
 async function resumeGoal(goalId) {
+  console.log('[Plan] 📡 开始恢复目标...', { goalId });
   try {
     const res = await DB.resumeGoal(goalId);
+    console.log('[Plan] 📥 恢复目标响应:', res);
     if (res.success) {
       toast('目标已恢复进行中', 'success');
+      console.log('[Plan] ✅ 目标已恢复');
     } else {
       toast('恢复失败: ' + res.error, 'error');
+      console.log('[Plan] ⚠️ 恢复失败:', res.error);
     }
   } catch (error) {
-    console.error('恢复目标失败:', error);
-    // 降级使用模拟数据
-    var goal = mockData.plan.goals.find(function(g) { return g.id === goalId; });
-    if (goal) {
-      goal.status = 'active';
-      toast('目标「' + goal.title + '」已恢复进行中', 'success');
-    }
+    console.error('[Plan] ❌ 恢复目标失败:', error);
+    toast('恢复失败', 'error');
   }
   await renderGoalCards(planFilter);
   if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
@@ -1259,18 +1641,20 @@ async function resumeGoal(goalId) {
 // 任务完成后续
 async function completeWith(type) {
   const taskId = document.getElementById('taskCompleteModal').getAttribute('data-task-id');
+  console.log('[Plan] 📡 开始完成任务...', { taskId, type });
   try {
     const res = await DB.completeTask(taskId);
+    console.log('[Plan] 📥 完成任务响应:', res);
     if (res.success) {
       toast('任务已完成', 'success');
+      console.log('[Plan] ✅ 任务已完成');
     } else {
       toast('完成失败: ' + res.error, 'error');
+      console.log('[Plan] ⚠️ 完成失败:', res.error);
     }
   } catch (error) {
-    console.error('完成任务失败:', error);
-    // 降级使用模拟数据
-    const task = mockData.plan.tasks.find(t => t.id === taskId);
-    if (task) task.completed = true;
+    console.error('[Plan] ❌ 完成任务失败:', error);
+    toast('完成失败', 'error');
   }
   closePlanModal('taskCompleteModal');
   if (type === 'note') {
@@ -1290,26 +1674,27 @@ async function confirmAddTask() {
     milestoneId: document.getElementById('taskMilestone').value,
     title: name,
     deadline: document.getElementById('taskDeadline').value || null,
-    estimatedHours: document.getElementById('taskDuration').value,
+    estimatedTime: parseInt(document.getElementById('taskDuration').value) || 0,
     priority: document.getElementById('taskPriority').value,
-    aiType: document.getElementById('taskAiType').value,
     description: document.getElementById('taskDesc').value || ''
   };
+  console.log('[Plan] 📡 开始创建任务...', taskData);
   
   try {
     const res = await DB.createTask(taskData);
+    console.log('[Plan] 📥 创建任务响应:', res);
     if (res.success) {
       toast('任务创建成功', 'success');
+      console.log('[Plan] ✅ 任务创建成功');
     } else {
       toast('创建失败: ' + res.error, 'error');
+      console.log('[Plan] ⚠️ 创建失败:', res.error);
     }
   } catch (error) {
-    console.error('创建任务失败:', error);
-    toast('任务创建成功', 'success'); // 降级提示
+    console.error('[Plan] ❌ 创建任务失败:', error);
+    toast('任务创建成功', 'success');
   }
   closePlanModal('addTaskModal');
   if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
-
-initPlanPage();
 </script>

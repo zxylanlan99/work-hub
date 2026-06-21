@@ -700,7 +700,7 @@ function expandNewsScore(id) {
    操作：入库 — DB-U-029
    ================================================================ */
 
-function openNewsImportConfirm(id) {
+async function openNewsImportConfirm(id) {
   const item = mockData.news.items.find(i => i.id === id);
   if (!item) return;
   newsState.currentImportId = id != null ? id : newsState.currentPreviewId;
@@ -708,6 +708,27 @@ function openNewsImportConfirm(id) {
   document.getElementById('newsImportTitle').value = target.title;
   document.getElementById('newsImportSummary').textContent = target.summary;
   openNewsModal('newsImportModal');
+
+  // 调用 AI 获取入库建议（分类、标签、摘要）
+  try {
+    if (window.DB && window.DB.aiImportSuggestions) {
+      showNewsToast('AI 正在分析入库建议…', 'info');
+      var res = await window.DB.aiImportSuggestions(newsState.currentImportId);
+      if (res.success && res.content) {
+        // 在入库弹窗中显示 AI 建议
+        var modalBody = document.querySelector('#newsImportModal .modal-body');
+        if (modalBody) {
+          var aiEl = document.createElement('div');
+          aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 入库建议</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          modalBody.appendChild(aiEl);
+        }
+        showNewsToast('AI 建议已生成', 'success');
+      }
+    }
+  } catch (e) {
+    console.error('AI 入库建议失败:', e);
+  }
 }
 
 async function confirmNewsImport() {

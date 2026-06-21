@@ -336,8 +336,8 @@ async function loadResume() {
         if (lastGoal.updatedAt) {
           parts.push(`⏱ ${formatDate(lastGoal.updatedAt)}`);
         }
-        if (lastGoal.estimatedHours) {
-          parts.push(`📖 预计剩余约 ${Math.round(lastGoal.estimatedHours * 0.4)} 分钟`);
+        if (lastGoal.weeklyHours) {
+          parts.push(`📖 ${lastGoal.weeklyHours}`);
         }
       }
       if (chats && chats.length > 0 && chats[0].updatedAt) {

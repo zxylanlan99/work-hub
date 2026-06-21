@@ -92,7 +92,7 @@ async function _attachTasksProgress(goals) {
 
     goals.forEach((goal, i) => {
       const tasks = (taskResults[i].success ? taskResults[i].data : []) || [];
-      goal._totalTasks = tasks.length;
+      goal._totalTasks = tasks.filter(t => t.status !== 'skipped').length;
       goal._completedTasks = tasks.filter(t => t.status === 'completed').length;
     });
   } catch (e) {
@@ -312,7 +312,7 @@ async function _renderDetailView(goalId) {
 
     const tasks = goal.tasks || [];
     const completed = tasks.filter(t => t.status === 'completed').length;
-    const total = tasks.length;
+    const total = tasks.filter(t => t.status !== 'skipped').length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     if (dp) dp.textContent = progress + '%';
@@ -371,23 +371,27 @@ function _renderMilestones(milestones, tasks, goalId) {
     const pColor = m.status === 'completed' ? 'success' : 'primary';
     const mTasks = tasks.filter(t => t.milestoneId === m._id);
     const mCompleted = mTasks.filter(t => t.status === 'completed').length;
-    const mTotal = mTasks.length;
+    const mTotal = mTasks.filter(t => t.status !== 'skipped').length;
     const mProgress = mTotal > 0 ? Math.round((mCompleted / mTotal) * 100) : 0;
     const hasTasks = mTasks.length > 0;
     const toggleClass = hasTasks ? 'open' : '';
 
     const tasksHtml = hasTasks
       ? mTasks.map(t => {
-          const checkClass = t.status === 'completed' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
-          const checkContent = t.status === 'completed' ? '✓' : (t.status === 'in_progress' ? '●' : '');
-          const titleClass = t.status === 'completed' ? 'done-text' : '';
+          const checkClass = t.status === 'completed' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : (t.status === 'skipped' ? 'skipped' : ''));
+          const checkContent = t.status === 'completed' ? '✓' : (t.status === 'in_progress' ? '●' : (t.status === 'skipped' ? '⏭' : ''));
+          const titleClass = t.status === 'completed' ? 'done-text' : (t.status === 'skipped' ? 'skipped-text' : '');
           const priorityClass = t.priority === 'high' ? 'priority-high'
             : (t.priority === 'mid' || t.priority === 'medium' ? 'priority-mid' : 'priority-low');
-          const metaHtml = t.deadline
-            ? `<span class="task-tag ${t.status !== 'completed' && new Date(t.deadline) < new Date() ? 'overdue' : ''}">📅 ${_formatDate(t.deadline)}</span>`
-            : '';
+          let metaHtml = '';
+          if (t.status === 'skipped') {
+            metaHtml += `<span class="task-tag" style="background:#fef3c7;color:#d97706;">🔖 待补学</span>`;
+          }
+          if (t.deadline) {
+            metaHtml += `<span class="task-tag ${t.status !== 'completed' && new Date(t.deadline) < new Date() ? 'overdue' : ''}">📅 ${_formatDate(t.deadline)}</span>`;
+          }
           return `<div class="task-item">
-            <div class="task-check ${checkClass}" onclick="event.stopPropagation();_handleTaskComplete('${t._id}', '${goalId}', this)">${checkContent}</div>
+            <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${t._id}', '${goalId}', this)">${checkContent}</div>
             <div class="task-priority ${priorityClass}"></div>
             <div class="task-body">
               <div class="task-title ${titleClass}">${_escapeHTML(t.title || '未命名任务')}</div>
@@ -425,19 +429,30 @@ function _renderMilestones(milestones, tasks, goalId) {
 
 /** 创建目标 (支持手动模式与 AI 方案确认两种入口) */
 async function _handleCreateGoal() {
-  // 优先取 AI 生成确认页（step 3）的标题，否则取 step 1 的标题
+  // 判断创建模式：手动模式（从第1步跳到第3步）vs AI 模式（经过 AI 拆解到第3步）
+  const isManualMode = window.isManualCreateMode === true;
+
+  // 第3步的标题字段（手动模式和 AI 模式都在这里）
   const genTitleEl = document.getElementById('genGoalTitle');
   const titleEl = document.getElementById('goalTitleInput');
 
-  let title = genTitleEl ? genTitleEl.value.trim() : '';
-  if (!title && titleEl) title = titleEl.value.trim();
+  let title = '';
+  if (isManualMode) {
+    // 手动模式：genGoalTitle 已被 manualCreateToStep3 预填充
+    title = genTitleEl ? genTitleEl.value.trim() : '';
+    if (!title && titleEl) title = titleEl.value.trim();
+  } else {
+    // AI 模式：优先取 AI 生成的标题
+    title = genTitleEl ? genTitleEl.value.trim() : '';
+    if (!title && titleEl) title = titleEl.value.trim();
+  }
 
   if (!title) {
     toast('请输入目标名称', 'error');
     return;
   }
 
-  const descEl = document.getElementById('goalDescription');
+  const descEl = document.getElementById('goalBackground');
   const deadlineEl = document.getElementById('goalDeadline');
   const weeklyEl = document.getElementById('goalWeeklyHours');
   const domainEl = document.getElementById('genGoalDomain');
@@ -454,13 +469,63 @@ async function _handleCreateGoal() {
     });
 
     if (result.success) {
-      toast('目标创建成功', 'success');
+      var goalId = result.data && result.data._id ? result.data._id : (result.id || null);
+
+      // 手动模式：创建里程碑和任务
+      if (isManualMode && goalId && window._manualMilestones && window._manualMilestones.length > 0) {
+        // 先同步一次输入框内容
+        if (window._syncManualMilestones) window._syncManualMilestones();
+
+        var msCount = 0;
+        var taskCount = 0;
+        for (var mIdx = 0; mIdx < window._manualMilestones.length; mIdx++) {
+          var ms = window._manualMilestones[mIdx];
+          if (!ms.title) continue; // 跳过空标题里程碑
+
+          var msResult = await DB.createMilestone({
+            goalId: goalId,
+            title: ms.title,
+            sort: mIdx
+          });
+
+          if (msResult.success) {
+            var msId = msResult.data && msResult.data._id ? msResult.data._id : (msResult.id || null);
+            msCount++;
+
+            // 创建该里程碑下的任务
+            if (ms.tasks && ms.tasks.length > 0 && msId) {
+              for (var tIdx = 0; tIdx < ms.tasks.length; tIdx++) {
+                var taskTitle = ms.tasks[tIdx];
+                if (!taskTitle) continue; // 跳过空标题任务
+
+                await DB.createTask({
+                  goalId: goalId,
+                  milestoneId: msId,
+                  title: taskTitle,
+                  sort: tIdx,
+                  priority: 'mid',
+                  estimatedTime: 0
+                });
+                taskCount++;
+              }
+            }
+          }
+        }
+        toast('目标创建成功（' + msCount + ' 个里程碑，' + taskCount + ' 个任务）', 'success');
+      } else {
+        toast('目标创建成功', 'success');
+      }
 
       // 重置向导状态
       _resetCreateWizard();
 
       _closePlanModal('createGoalModal');
       await _loadGoals(planFilter);
+
+      // 手动模式：跳转到目标详情页
+      if (isManualMode && goalId) {
+        await _renderDetailView(goalId);
+      }
     } else {
       toast('创建失败: ' + (result.error || '未知错误'), 'error');
     }
@@ -496,6 +561,24 @@ function _resetCreateWizard() {
       s.classList.toggle('done', false);
     });
   }
+
+  // 重置手动模式状态
+  window.isManualCreateMode = false;
+  window._manualMilestones = [];
+
+  // 恢复 AI 预览显示，隐藏手动编辑器
+  var aiPreview = document.querySelector('#createStep3 .gen-result');
+  var manualEditor = document.getElementById('manualMilestoneEditor');
+  if (aiPreview) aiPreview.style.display = '';
+  if (manualEditor) manualEditor.style.display = 'none';
+
+  // 清空第1步输入
+  var titleInput = document.getElementById('goalTitleInput');
+  var bgInput = document.getElementById('goalBackground');
+  var dlInput = document.getElementById('goalDeadline');
+  if (titleInput) titleInput.value = '';
+  if (bgInput) bgInput.value = '';
+  if (dlInput) dlInput.value = '';
 }
 
 /** 更新目标 */
@@ -613,14 +696,14 @@ async function _handleCreateTask() {
   }
 
   // 解析耗时
-  let estimatedHours = 0;
+  let estimatedTime = 0;
   if (durationEl) {
     const val = durationEl.value;
-    if (val.includes('30')) estimatedHours = 0.5;
-    else if (val.includes('45')) estimatedHours = 0.75;
-    else if (val.includes('60')) estimatedHours = 1;
-    else if (val.includes('90')) estimatedHours = 1.5;
-    else if (val.includes('120')) estimatedHours = 2;
+    if (val.includes('30')) estimatedTime = 0.5;
+    else if (val.includes('45')) estimatedTime = 0.75;
+    else if (val.includes('60')) estimatedTime = 1;
+    else if (val.includes('90')) estimatedTime = 1.5;
+    else if (val.includes('120')) estimatedTime = 2;
   }
 
   try {
@@ -630,7 +713,7 @@ async function _handleCreateTask() {
       title,
       description: descEl ? descEl.value.trim() : '',
       deadline: deadlineEl && deadlineEl.value ? new Date(deadlineEl.value) : null,
-      estimatedHours,
+      estimatedTime,
       priority: priorityEl ? priorityEl.value : 'medium',
       aiType: aiTypeEl ? aiTypeEl.value : ''
     });
@@ -709,7 +792,7 @@ async function _handleDeleteMilestone(milestoneId, goalId) {
 
 /** AI 辅助创建目标 */
 async function _handleAICreateGoal() {
-  const descEl = document.getElementById('goalDescription');
+  const descEl = document.getElementById('goalBackground');
   const description = descEl ? descEl.value.trim() : '';
   if (!description) {
     toast('请描述你想学习的内容', 'warning');
@@ -767,8 +850,73 @@ async function _handleReschedule() {
     return;
   }
 
+  // 获取用户选择的排期方案
+  var rescheduleModal = document.getElementById('rescheduleModal');
+  var selectedOption = rescheduleModal ? rescheduleModal.querySelector('.reschedule-option.selected') : null;
+  var allOptions = rescheduleModal ? rescheduleModal.querySelectorAll('.reschedule-option') : [];
+  var optionIndex = 0;
+  for (var i = 0; i < allOptions.length; i++) {
+    if (allOptions[i] === selectedOption) { optionIndex = i; break; }
+  }
+  // optionIndex: 0=方案A(顺延), 1=方案B(跳过), 2=方案C(拆分)
+
   try {
-    const result = await DB.rescheduleGoal(currentDetailGoalId, { taskUpdates: [] });
+    // 获取当前目标的任务列表
+    var detailResult = await DB.getGoalDetail(currentDetailGoalId);
+    if (!detailResult.success || !detailResult.data) {
+      toast('获取目标数据失败', 'error');
+      return;
+    }
+
+    var tasks = detailResult.data.tasks || [];
+    var taskUpdates = [];
+
+    // 找到未完成的任务，按排序/截止日期排序
+    var pendingTasks = tasks
+      .filter(function (t) { return t.status !== 'completed'; })
+      .sort(function (a, b) {
+        return (a.sort || 0) - (b.sort || 0) ||
+          new Date(a.deadline || 0) - new Date(b.deadline || 0);
+      });
+
+    if (optionIndex === 0) {
+      // 方案A：顺延当前里程碑 — 未完成任务截止日期延后5天
+      for (var i = 0; i < pendingTasks.length; i++) {
+        var task = pendingTasks[i];
+        var newDeadline = task.deadline ? new Date(task.deadline) : new Date();
+        newDeadline.setDate(newDeadline.getDate() + 5);
+        taskUpdates.push({
+          taskId: task._id,
+          deadline: newDeadline,
+          sort: task.sort || 0
+        });
+      }
+    } else if (optionIndex === 1) {
+      // 方案B：跳过当前任务 — 第一个未完成任务标记为"待补学"，降至最低优先级
+      if (pendingTasks.length > 0) {
+        var skipTask = pendingTasks[0];
+        taskUpdates.push({
+          taskId: skipTask._id,
+          deadline: skipTask.deadline ? new Date(skipTask.deadline) : null,
+          sort: 999,
+          status: 'skipped'
+        });
+      }
+    } else if (optionIndex === 2) {
+      // 方案C：拆分任务 — 当前任务截止日期不变，后续任务延后3天
+      for (var i = 1; i < pendingTasks.length; i++) {
+        var task = pendingTasks[i];
+        var newDeadline = task.deadline ? new Date(task.deadline) : new Date();
+        newDeadline.setDate(newDeadline.getDate() + 3);
+        taskUpdates.push({
+          taskId: task._id,
+          deadline: newDeadline,
+          sort: task.sort || 0
+        });
+      }
+    }
+
+    var result = await DB.rescheduleGoal(currentDetailGoalId, { taskUpdates: taskUpdates });
     if (result.success) {
       toast('排期已更新', 'success');
       _closePlanModal('rescheduleModal');
@@ -874,6 +1022,54 @@ function _openAddTaskModal() {
 }
 
 /* ================================================================
+   手动创建模式：里程碑/任务编辑器渲染
+   ================================================================ */
+function _renderManualMilestones() {
+  var container = document.getElementById('manualMilestonesList');
+  if (!container) return;
+
+  // 先同步当前输入到内存
+  if (window._syncManualMilestones) window._syncManualMilestones();
+
+  if (!window._manualMilestones || window._manualMilestones.length === 0) {
+    container.innerHTML = '<div style="color:var(--gray-400);font-size:13px;padding:12px 0;">暂无里程碑，点击下方按钮添加。</div>';
+    return;
+  }
+
+  var html = '';
+  window._manualMilestones.forEach(function (ms, mIdx) {
+    html += '<div class="manual-ms-item" style="border-left:3px solid var(--primary);padding:12px;margin-bottom:12px;border-radius:0 8px 8px 0;background:var(--gray-50,#f9fafb);">';
+    html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">';
+    html += '<span style="font-size:12px;color:var(--gray-400);flex-shrink:0;">M' + (mIdx + 1) + '</span>';
+    html += '<input class="form-input manual-ms-title" placeholder="里程碑名称" value="' + _escapeHtml(ms.title) + '" style="flex:1;font-weight:600;" oninput="window._syncManualMilestones()">';
+    html += '<button type="button" class="btn btn-secondary btn-sm" onclick="removeManualMilestone(' + mIdx + ')" style="flex-shrink:0;">删除</button>';
+    html += '</div>';
+
+    // 任务列表
+    if (ms.tasks && ms.tasks.length > 0) {
+      html += '<div style="padding-left:28px;">';
+      ms.tasks.forEach(function (task, tIdx) {
+        html += '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">';
+        html += '<span style="font-size:11px;color:var(--gray-400);">•</span>';
+        html += '<input class="form-input manual-task-input" placeholder="任务名称" value="' + _escapeHtml(task) + '" style="flex:1;font-size:13px;" oninput="window._syncManualMilestones()">';
+        html += '<button type="button" class="btn btn-secondary btn-sm" onclick="removeManualTask(' + mIdx + ',' + tIdx + ')" style="flex-shrink:0;padding:4px 8px;">×</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<button type="button" class="btn btn-secondary btn-sm" onclick="addManualTask(' + mIdx + ')" style="margin-left:28px;margin-top:4px;font-size:12px;">+ 添加任务</button>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
+function _escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ================================================================
    覆盖 plan.html 内联脚本中 mockData 相关函数
    在 initLearningPage 中调用，通过 window 赋值覆盖
    ================================================================ */
@@ -925,16 +1121,123 @@ function _patchGlobalFunctions() {
   window.closePlanDetail = _closePlanDetail;
   window.toggleMilestone = _toggleMilestone;
 
-  // 任务完成切换
-  window.toggleTaskComplete = function (taskId, el) {
-    if (currentDetailGoalId) {
-      _handleTaskComplete(taskId, currentDetailGoalId, el);
+  // 任务完成切换 — 先弹出完成确认弹窗
+  window.toggleTaskComplete = function (taskId, goalId, el) {
+    var modal = document.getElementById('taskCompleteModal');
+    if (modal) {
+      modal.setAttribute('data-task-id', taskId);
+      modal.setAttribute('data-goal-id', goalId || currentDetailGoalId || '');
+      modal.classList.add('show');
+    } else if (goalId || currentDetailGoalId) {
+      // 无弹窗时回退直接完成
+      _handleTaskComplete(taskId, goalId || currentDetailGoalId, el);
     }
   };
 
   // 创建目标（从弹窗保存）
   window.confirmCreateGoal = function () {
     _handleCreateGoal();
+  };
+
+  /* ---- 手动创建模式：跳到第3步，携带第1步内容 ---- */
+  window.isManualCreateMode = false;
+
+  window.manualCreateToStep3 = function () {
+    // 校验第1步标题
+    var titleEl = document.getElementById('goalTitleInput');
+    var title = titleEl ? titleEl.value.trim() : '';
+    if (!title) {
+      toast('请输入目标名称', 'error');
+      return;
+    }
+
+    // 将第1步内容带入第3步
+    var genTitleEl = document.getElementById('genGoalTitle');
+    if (genTitleEl) genTitleEl.value = title;
+
+    // 设置手动模式标记
+    window.isManualCreateMode = true;
+
+    // 切换显示：隐藏 AI 预览，显示手动编辑器
+    var aiPreview = document.querySelector('#createStep3 .gen-result');
+    var manualEditor = document.getElementById('manualMilestoneEditor');
+    if (aiPreview) aiPreview.style.display = 'none';
+    if (manualEditor) manualEditor.style.display = 'block';
+
+    // 初始化一个空里程碑
+    _renderManualMilestones();
+
+    // 跳到第3步
+    window.createStep = 3;
+    var step1 = document.getElementById('createStep1');
+    var step2 = document.getElementById('createStep2');
+    var step3 = document.getElementById('createStep3');
+    if (step1) step1.style.display = 'none';
+    if (step2) step2.style.display = 'none';
+    if (step3) step3.style.display = 'block';
+
+    // 更新步骤指示器
+    var steps = document.getElementById('createSteps');
+    if (steps) {
+      steps.querySelectorAll('.step').forEach(function (s, i) {
+        s.classList.toggle('active', i + 1 === 3);
+        s.classList.toggle('done', i + 1 < 3);
+      });
+    }
+
+    // 切换按钮
+    var nextBtn = document.getElementById('createNextBtn');
+    var manualBtn = document.getElementById('createManualBtn');
+    var confirmBtn = document.getElementById('createConfirmBtn');
+    var prevBtn = document.getElementById('createPrevBtn');
+    if (nextBtn) nextBtn.style.display = 'none';
+    if (manualBtn) manualBtn.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'inline-flex';
+    if (prevBtn) prevBtn.style.display = 'inline-flex';
+  };
+
+  // 手动里程碑数据（内存中）
+  window._manualMilestones = [];
+
+  window.addManualMilestone = function () {
+    window._manualMilestones.push({ title: '', tasks: [] });
+    _renderManualMilestones();
+  };
+
+  window.removeManualMilestone = function (idx) {
+    window._manualMilestones.splice(idx, 1);
+    _renderManualMilestones();
+  };
+
+  window.addManualTask = function (mIdx) {
+    if (!window._manualMilestones[mIdx]) return;
+    window._manualMilestones[mIdx].tasks.push('');
+    _renderManualMilestones();
+  };
+
+  window.removeManualTask = function (mIdx, tIdx) {
+    if (!window._manualMilestones[mIdx]) return;
+    window._manualMilestones[mIdx].tasks.splice(tIdx, 1);
+    _renderManualMilestones();
+  };
+
+  // 同步输入框值到内存数据
+  window._syncManualMilestones = function () {
+    var container = document.getElementById('manualMilestonesList');
+    if (!container) return;
+    var msItems = container.querySelectorAll('.manual-ms-item');
+    msItems.forEach(function (msEl, mIdx) {
+      var titleInput = msEl.querySelector('.manual-ms-title');
+      if (titleInput && window._manualMilestones[mIdx]) {
+        window._manualMilestones[mIdx].title = titleInput.value.trim();
+      }
+      var taskInputs = msEl.querySelectorAll('.manual-task-input');
+      taskInputs.forEach(function (taskInput, tIdx) {
+        if (window._manualMilestones[mIdx] && window._manualMilestones[mIdx].tasks[tIdx] !== undefined) {
+          window._manualMilestones[mIdx].tasks[tIdx] = taskInput.value.trim();
+        }
+      });
+    });
   };
 
   // 确认排期
@@ -986,14 +1289,23 @@ function _patchGlobalFunctions() {
   };
 
   // 任务完成后续
-  window.completeWith = function (type) {
+  window.completeWith = async function (type) {
+    var modal = document.getElementById('taskCompleteModal');
+    var taskId = modal ? modal.getAttribute('data-task-id') : null;
+    var goalId = modal ? modal.getAttribute('data-goal-id') : currentDetailGoalId;
+
     _closePlanModal('taskCompleteModal');
+
+    // 标记任务完成（await 确保"任务完成"toast 先于后续操作 toast 显示）
+    if (taskId) {
+      await _handleTaskComplete(taskId, goalId || currentDetailGoalId);
+    }
+
     if (type === 'note') {
       toast('已打开笔记编辑器', 'info');
     } else {
       toast('复习卡片已生成', 'success');
     }
-    if (currentDetailGoalId) _renderDetailView(currentDetailGoalId);
   };
 
   // 新建目标向导
@@ -1025,6 +1337,12 @@ function _patchGlobalFunctions() {
       if (nextBtn) nextBtn.style.display = 'none';
       if (confirmBtn) confirmBtn.style.display = 'inline-flex';
       if (prevBtn) prevBtn.style.display = 'inline-flex';
+      // AI 模式：确保标记正确，显示 AI 预览
+      window.isManualCreateMode = false;
+      var aiPreview = document.querySelector('#createStep3 .gen-result');
+      var manualEditor = document.getElementById('manualMilestoneEditor');
+      if (aiPreview) aiPreview.style.display = '';
+      if (manualEditor) manualEditor.style.display = 'none';
       // AI 生成阶段：调用 AI 创建目标
       _handleAICreateGoal();
     }

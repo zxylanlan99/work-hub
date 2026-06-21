@@ -19,11 +19,15 @@ const DB = {
 
   /** 安全执行查询, 统一返回 {success, data, error} */
   async _exec(promise) {
+    const startTime = Date.now();
     try {
       const result = await promise;
+      const duration = Date.now() - startTime;
+      console.log(`[DB] ✅ 查询成功 (${duration}ms):`, { dataCount: (result.data || result).length || 0 });
       return { success: true, data: result.data || result };
     } catch (error) {
-      console.error('DB Error:', error);
+      const duration = Date.now() - startTime;
+      console.error(`[DB] ❌ 查询失败 (${duration}ms):`, error);
       return { success: false, error: error.message || error, data: [] };
     }
   },
@@ -93,47 +97,183 @@ const DB = {
      二、AI 调用代理
      ================================================================ */
 
-  /** 调用 ai-proxy 云函数 */
-  async _aiProxy(data) {
-    if (!app) {
-      console.warn('CloudBase 未初始化, 返回模拟 AI 响应');
-      return { success: true, content: this._mockAI(data), tokens: 0, model: 'mock' };
-    }
-    try {
-      const result = await app.callFunction({ name: 'ai-proxy', data });
-      if (result && result.result) {
-        return { success: true, ...result.result };
+  /**
+   * 根据 action 类型构建用户消息（非 chat action 的消息构建）
+   * 对引用 DB 实体的参数（goalId/itemId/newsId/docId），尝试从 DB 获取数据
+   */
+  async _buildMessagesForAction(data) {
+    const { action, description, topic, goalId, cardIds, weakTopics, itemId, newsId, docId, section, content } = data;
+
+    switch (action) {
+      case 'goal-create':
+        return [{ role: 'user', content: '请为以下学习目标制定学习计划，拆解为里程碑和任务：\n\n' + (description || '请制定一个学习计划') }];
+
+      case 'quiz':
+        return [{ role: 'user', content: '请出一道关于「' + (topic || '学习') + '」的知识检测题，包含问题和答案。' }];
+
+      case 'goal-diagnosis':
+      case 'time-estimate':
+      case 'goal-summary': {
+        let goalInfo = '';
+        if (goalId) {
+          try {
+            const goalRes = await this._exec(this._collection('goals').doc(goalId).get());
+            const goal = goalRes.data && goalRes.data[0];
+            if (goal) {
+              goalInfo = '标题：' + goal.title + '\n描述：' + (goal.description || '无') + '\n状态：' + (goal.status || '未知');
+            }
+          } catch (e) { /* 忽略 DB 错误 */ }
+        }
+        const task = action === 'goal-diagnosis' ? '诊断报告' : (action === 'time-estimate' ? '时间预估(P70)' : '学习总结');
+        return [{ role: 'user', content: '请生成学习目标的' + task + '。\n' + (goalInfo || '（无目标数据，请给出通用建议）') }];
       }
-      return { success: false, error: 'AI 响应为空' };
-    } catch (error) {
-      console.error('AI Proxy Error:', error);
-      return { success: false, error: error.message || 'AI 调用失败' };
+
+      case 'serial-test': {
+        let cardInfo = '';
+        if (cardIds && Array.isArray(cardIds) && cardIds.length > 0) {
+          try {
+            const cardPromises = cardIds.map(id => this._exec(this._collection('review_cards').doc(id).get()));
+            const cardResults = await Promise.all(cardPromises);
+            const cards = cardResults.map(r => r.data && r.data[0]).filter(Boolean);
+            if (cards.length > 0) {
+              cardInfo = cards.map((c, i) => '卡片' + (i + 1) + '：\n问题：' + (c.question || '无') + '\n答案：' + (c.answer || '无')).join('\n\n');
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        return [{ role: 'user', content: '请根据以下复习卡片生成一道综合性的串联测试题，考察知识点之间的关联：\n\n' + (cardInfo || '（无卡片数据，请生成通用串联测试题）') }];
+      }
+
+      case 'improvement-plan':
+        return [{ role: 'user', content: '以下是我掌握度偏低的主题，请生成有针对性的补强学习计划：\n' + (Array.isArray(weakTopics) ? weakTopics.join('、') : (weakTopics || '通用学习')) }];
+
+      case 'all-improvement-plans':
+        return [{ role: 'user', content: '请分析我所有的薄弱知识点，批量生成补强计划。' }];
+
+      case 'process-orphaned':
+        return [{ role: 'user', content: '请分析知识库中的孤岛知识（未分类或无关联的知识条目），给出分类和关联建议。' }];
+
+      case 'health-report':
+        return [{ role: 'user', content: '请分析知识库的整体健康状况，包括分类覆盖度、知识更新频率、关联密度等，给出健康报告。' }];
+
+      case 'generate-cards': {
+        let itemInfo = '';
+        if (itemId) {
+          try {
+            const itemRes = await this._exec(this._collection('knowledge_items').doc(itemId).get());
+            const item = itemRes.data && itemRes.data[0];
+            if (item) {
+              itemInfo = '标题：' + item.title + '\n内容：' + (item.content || '无') + '\n标签：' + ((item.tags || []).join('、') || '无');
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        return [{ role: 'user', content: '请根据以下知识条目生成 3-5 张复习卡片，每张包含问题和答案：\n' + (itemInfo || '（无具体条目，请生成通用复习卡片）') }];
+      }
+
+      case 'import-suggestions': {
+        let newsInfo = '';
+        if (newsId) {
+          try {
+            const newsRes = await this._exec(this._collection('news_items').doc(newsId).get());
+            const news = newsRes.data && newsRes.data[0];
+            if (news) {
+              newsInfo = '标题：' + news.title + '\n摘要：' + (news.summary || '无') + '\n来源：' + (news.sourceUrl || '未知');
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        return [{ role: 'user', content: '请分析以下资讯是否值得入库，并给出分类和标签建议：\n' + (newsInfo || '（无资讯数据）') }];
+      }
+
+      case 'recommend-materials': {
+        let docInfo = '';
+        if (docId) {
+          try {
+            const docRes = await this._exec(this._collection('output_docs').doc(docId).get());
+            const doc = docRes.data && docRes.data[0];
+            if (doc) {
+              docInfo = '文档标题：' + doc.title + '\n内容摘要：' + ((doc.content || '').substring(0, 500));
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        return [{ role: 'user', content: '请根据当前文档内容推荐相关知识条目作为参考素材：\n' + (docInfo || '（无文档数据）') }];
+      }
+
+      case 'expand':
+        return [{ role: 'user', content: '请将以下内容扩写为详细的学习笔记：\n\n' + (section || content || '（无内容）') }];
+
+      case 'refine':
+        return [{ role: 'user', content: '请对以下内容进行润色优化，提升表达清晰度和可读性：\n\n' + (content || '（无内容）') }];
+
+      case 'outline':
+        return [{ role: 'user', content: '请为以下主题生成结构化的文章大纲：\n\n' + (topic || '（无主题）') }];
+
+      case 'review': {
+        let docInfo = '';
+        if (docId) {
+          try {
+            const docRes = await this._exec(this._collection('output_docs').doc(docId).get());
+            const doc = docRes.data && docRes.data[0];
+            if (doc) {
+              docInfo = '标题：' + doc.title + '\n内容：' + (doc.content || '无');
+            }
+          } catch (e) { /* 忽略 */ }
+        }
+        return [{ role: 'user', content: '请对以下文档进行质量评审，给出改进建议：\n' + (docInfo || '（无文档数据）') }];
+      }
+
+      default:
+        return [{ role: 'user', content: description || topic || content || '请处理请求' }];
     }
   },
 
-  _mockAI(data) {
-    const mockResponses = {
-      'goal-create': '已为你生成学习目标与里程碑计划',
-      'goal-diagnosis': '本周完成 3/4 任务(75%), 学习 6.5h, 进度符合率 65%',
-      'time-estimate': '预估剩余时间: 里程牌3约5h, 总计约28h',
-      'goal-summary': '本周学习内容总结: 完成了微服务架构核心概念学习',
-      'quiz': '这是一道快问快答题',
-      'serial-test': '串联测试题目已生成',
-      'improvement-plan': '基于薄弱项生成了补强计划',
-      'all-improvement-plans': '全部薄弱项的补强计划已生成',
-      'process-orphaned': '孤岛知识处理完成',
-      'health-report': '知识健康度报告已生成',
-      'generate-cards': '复习卡片已生成',
-      'chat': '这是一个模拟的AI回复',
-      'compare': '双模型对比结果',
-      'import-suggestions': '入库建议已生成',
-      'recommend-materials': '推荐素材已生成',
-      'expand': '内容已扩写',
-      'refine': '内容已润色',
-      'outline': '大纲已生成',
-      'review': '评审完成'
+  /** 调用 AI — 优先使用客户端 AI 服务，回退到云函数 */
+  async _aiProxy(data) {
+    // 如果没有 messages，根据 action 构建用户消息
+    if (!data.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
+      try {
+        data.messages = await this._buildMessagesForAction(data);
+        console.log('[DB] 📝 构建 AI 消息:', { action: data.action, msgCount: data.messages.length });
+      } catch (e) {
+        console.warn('[DB] 消息构建失败，使用默认消息:', e.message);
+        data.messages = [{ role: 'user', content: data.description || data.topic || data.content || '请处理请求' }];
+      }
+    }
+
+    // 优先使用客户端 AI 服务（直接调用 AI 提供商 API）
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      console.log('[DB] 🤖 使用客户端 AI 服务调用:', data.action);
+      try {
+        const result = await window.AIService.callAI(data);
+        if (result.success) {
+          return result;
+        }
+        // 客户端 AI 失败，记录错误但继续尝试云函数回退
+        console.warn('[DB] 客户端 AI 调用失败，尝试云函数回退:', result.error);
+      } catch (e) {
+        console.warn('[DB] 客户端 AI 异常，尝试云函数回退:', e.message);
+      }
+    }
+
+    // 回退：尝试通过 CloudBase 云函数调用
+    if (app) {
+      try {
+        const result = await app.callFunction({ name: 'ai-proxy', data });
+        if (result && result.result) {
+          return { success: true, ...result.result };
+        }
+        return { success: false, error: 'AI 响应为空' };
+      } catch (error) {
+        console.error('AI Proxy Error:', error);
+        return { success: false, error: error.message || 'AI 调用失败' };
+      }
+    }
+
+    // 最终回退：返回提示信息（不再返回 mock 数据）
+    console.warn('[DB] AI 服务不可用 — 未配置模型且 CloudBase 未初始化');
+    return {
+      success: false,
+      error: 'AI 服务未配置，请先在设置页面添加 AI 模型配置',
+      content: ''
     };
-    return mockResponses[data.action] || 'AI 响应 (模拟模式)';
   },
 
   /* ================================================================
@@ -163,7 +303,7 @@ const DB = {
   async getLastBreakpoint() {
     const [goals, reviewCards, chats] = await Promise.all([
       this._exec(this._collection('goals').where({ status: 'active' }).orderBy('updatedAt', 'desc').limit(1).get()),
-      this._exec(this._collection('review_cards').orderBy('lastReviewed', 'desc').limit(1).get()),
+      this._exec(this._collection('review_cards').orderBy('lastReviewAt', 'desc').limit(1).get()),
       this._exec(this._collection('chats').orderBy('updatedAt', 'desc').limit(1).get())
     ]);
     return { success: true, data: { goals: goals.data, reviewCards: reviewCards.data, chats: chats.data } };
@@ -234,38 +374,49 @@ const DB = {
   async getGoals(status) {
     const where = {};
     if (status && status !== 'all') where.status = status;
-    return this._exec(
+    console.log('[DB] 📡 getGoals 查询条件:', where);
+    const result = await this._exec(
       this._collection('goals').where(where).orderBy('createdAt', 'desc').get()
     );
+    console.log('[DB] 📊 getGoals 返回:', { count: result.data.length, data: result.data });
+    return result;
   },
 
   /** DB-R-004: 目标详情 (含关联里程碑/任务) */
   async getGoalDetail(goalId) {
+    console.log('[DB] 📡 getGoalDetail 查询:', { goalId });
     const [goalResult, milestones, tasks] = await Promise.all([
       this._exec(this._collection('goals').doc(goalId).get()),
       this._exec(this._collection('milestones').where({ goalId }).orderBy('sort', 'asc').get()),
       this._exec(this._collection('tasks').where({ goalId }).orderBy('sort', 'asc').get())
     ]);
     const goalData = goalResult.data && goalResult.data.length > 0 ? goalResult.data[0] : null;
-    if (!goalData) return { success: false, error: '目标不存在', data: null };
+    if (!goalData) {
+      console.log('[DB] ⚠️ 目标不存在:', goalId);
+      return { success: false, error: '目标不存在', data: null };
+    }
+    console.log('[DB] 📊 getGoalDetail 返回:', { title: goalData.title, milestones: milestones.data.length, tasks: tasks.data.length });
     return { success: true, data: { ...goalData, milestones: milestones.data, tasks: tasks.data } };
   },
 
   /** DB-W-001: 创建目标 */
   async createGoal(data) {
-    return this._exec(
+    console.log('[DB] 📡 createGoal 写入:', { title: data.title });
+    const result = await this._exec(
       this._collection('goals').add({
         title: data.title,
         description: data.description || '',
         domain: data.domain || '',
-        deadline: data.deadline || null,
         weeklyHours: data.weeklyHours || '',
         currentLevel: data.currentLevel || '',
+        deadline: data.deadline || null,
         status: 'active',
         createdAt: new Date(),
         updatedAt: new Date()
       })
     );
+    console.log('[DB] ✅ createGoal 返回:', result);
+    return result;
   },
 
   /** DB-U-001: 更新目标 */
@@ -288,25 +439,31 @@ const DB = {
 
   /** DB-U-002: 暂停目标 */
   async pauseGoal(goalId) {
-    return this._exec(
+    console.log('[DB] 📡 pauseGoal 更新:', { goalId, status: 'paused' });
+    const result = await this._exec(
       this._collection('goals').doc(goalId).update({ status: 'paused', updatedAt: new Date() })
     );
+    console.log('[DB] ✅ pauseGoal 返回:', result);
+    return result;
   },
 
   /** DB-U-003: 恢复目标 */
   async resumeGoal(goalId) {
-    return this._exec(
+    console.log('[DB] 📡 resumeGoal 更新:', { goalId, status: 'active' });
+    const result = await this._exec(
       this._collection('goals').doc(goalId).update({ status: 'active', updatedAt: new Date() })
     );
+    console.log('[DB] ✅ resumeGoal 返回:', result);
+    return result;
   },
 
   /** DB-U-004: 弹性排期 (复合操作) */
   async rescheduleGoal(goalId, options) {
     if (options.taskUpdates && options.taskUpdates.length > 0) {
       for (const update of options.taskUpdates) {
-        await this._collection('tasks').doc(update.taskId).update({
-          sort: update.sort, deadline: update.deadline, updatedAt: new Date()
-        });
+        var fields = { sort: update.sort, deadline: update.deadline, updatedAt: new Date() };
+        if (update.status) fields.status = update.status;
+        await this._collection('tasks').doc(update.taskId).update(fields);
       }
     }
     return this._exec(
@@ -336,15 +493,16 @@ const DB = {
 
   /** DB-W-002: 创建任务 */
   async createTask(data) {
-    return this._exec(
+    console.log('[DB] 📡 createTask 写入:', { title: data.title, goalId: data.goalId });
+    const result = await this._exec(
       this._collection('tasks').add({
         goalId: data.goalId,
         milestoneId: data.milestoneId,
         title: data.title,
         description: data.description || '',
         deadline: data.deadline || null,
-        estimatedHours: data.estimatedHours || 0,
-        priority: data.priority || 'medium',
+        estimatedTime: data.estimatedTime || 0,
+        priority: data.priority || 'mid',
         aiType: data.aiType || '',
         status: 'pending',
         sort: data.sort || 0,
@@ -352,6 +510,8 @@ const DB = {
         updatedAt: new Date()
       })
     );
+    console.log('[DB] ✅ createTask 返回:', result);
+    return result;
   },
 
   /** DB-U-005: 更新任务 */
@@ -363,9 +523,12 @@ const DB = {
 
   /** DB-U-006: 完成任务 */
   async completeTask(taskId) {
-    return this._exec(
+    console.log('[DB] 📡 completeTask 更新:', { taskId, status: 'completed' });
+    const result = await this._exec(
       this._collection('tasks').doc(taskId).update({ status: 'completed', updatedAt: new Date() })
     );
+    console.log('[DB] ✅ completeTask 返回:', result);
+    return result;
   },
 
   /* ---------- 里程碑操作 (无编号, 2.2.2 节) ---------- */
@@ -383,7 +546,6 @@ const DB = {
       this._collection('milestones').add({
         goalId: data.goalId,
         title: data.title,
-        description: data.description || '',
         status: 'pending',
         sort: data.sort || 0,
         createdAt: new Date()
@@ -444,7 +606,7 @@ const DB = {
     if (!c) return { success: false, error: '卡片不存在' };
     const { interval, mastery, nextReview } = this._sm2(c, quality);
     await Promise.all([
-      this._collection('review_cards').doc(cardId).update({ interval, mastery, nextReview, lastReviewed: new Date(), updatedAt: new Date() }),
+      this._collection('review_cards').doc(cardId).update({ interval, mastery, nextReview, lastReviewAt: new Date(), updatedAt: new Date() }),
       this._collection('review_history').add({ cardId, quality, interval, mastery, reviewedAt: new Date() })
     ]);
     return { success: true, data: { interval, mastery, nextReview } };
@@ -472,7 +634,7 @@ const DB = {
   /** DB-U-008: 开始复习 */
   async startReviewCard(cardId) {
     return this._exec(
-      this._collection('review_cards').doc(cardId).update({ status: 'reviewing', updatedAt: new Date() })
+      this._collection('review_cards').doc(cardId).update({ lastReviewAt: new Date(), updatedAt: new Date() })
     );
   },
 
@@ -593,13 +755,16 @@ const DB = {
       this._collection('review_cards').add({
         question: data.question,
         answer: data.answer,
+        questionType: data.questionType || 'choice',
         knowledgeId: data.knowledgeId || '',
-        category: data.category || '',
-        mastery: 0.3,
+        mastery: 1.0,
         interval: 1,
-        easeFactor: 2.5,
         nextReview: new Date(),
-        createdAt: new Date()
+        lastQuality: null,
+        reviewCount: 0,
+        lastReviewAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       })
     );
   },
@@ -639,7 +804,7 @@ const DB = {
       this._collection('categories').add({
         name: data.name,
         parentId: data.parentId || '',
-        icon: data.icon || '',
+        color: data.color || '',
         sort: data.sort || 0,
         createdAt: new Date()
       })
@@ -701,11 +866,13 @@ const DB = {
         summary: data.summary || '',
         categoryId: data.categoryId || '',
         tags: data.tags || [],
-        source: data.source || '',
+        sourceUrl: data.sourceUrl || '',
         sourceType: data.sourceType || 'manual',
-        status: data.status || 'active',
+        level: data.level || 'public',
         isDeleted: false,
-        relatedIds: data.relatedIds || [],
+        deletedAt: null,
+        readAt: null,
+        readProgress: 0,
         createdAt: new Date(),
         updatedAt: new Date()
       })
@@ -722,7 +889,7 @@ const DB = {
   /** DB-D-003: 删除知识条目 (软删除) */
   async softDeleteKnowledgeItem(itemId) {
     return this._exec(
-      this._collection('knowledge_items').doc(itemId).update({ isDeleted: true, updatedAt: new Date() })
+      this._collection('knowledge_items').doc(itemId).update({ isDeleted: true, deletedAt: new Date(), updatedAt: new Date() })
     );
   },
 
@@ -774,21 +941,21 @@ const DB = {
   /** DB-U-017: 归档知识 */
   async archiveKnowledge(itemId) {
     return this._exec(
-      this._collection('knowledge_items').doc(itemId).update({ status: 'archived', updatedAt: new Date() })
+      this._collection('knowledge_items').doc(itemId).update({ level: 'secret', updatedAt: new Date() })
     );
   },
 
   /** DB-U-018: 暂缓入库 */
-  async delayKnowledge(itemId, delayDays = 7) {
+  async delayKnowledge(itemId) {
     return this._exec(
-      this._collection('knowledge_items').doc(itemId).update({ status: 'delayed', delayDays, updatedAt: new Date() })
+      this._collection('knowledge_items').doc(itemId).update({ updatedAt: new Date() })
     );
   },
 
   /** DB-U-019: 关联知识 */
   async linkKnowledge(itemId, relatedIds) {
     return this._exec(
-      this._collection('knowledge_items').doc(itemId).update({ relatedIds: relatedIds, updatedAt: new Date() })
+      this._collection('knowledge_items').doc(itemId).update({ tags: relatedIds, updatedAt: new Date() })
     );
   },
 
@@ -829,12 +996,12 @@ const DB = {
 
   /** DB-U-022: 批量入库 */
   async batchImportItems(itemIds) {
-    return this._batchUpdate('knowledge_items', itemIds, { status: 'active', updatedAt: new Date() });
+    return this._batchUpdate('knowledge_items', itemIds, { isDeleted: false, updatedAt: new Date() });
   },
 
   /** DB-U-023: 批量忽略 */
   async batchIgnoreItems(itemIds) {
-    return this._batchUpdate('knowledge_items', itemIds, { status: 'ignored', updatedAt: new Date() });
+    return this._batchUpdate('knowledge_items', itemIds, { level: 'secret', updatedAt: new Date() });
   },
 
   /** DB-U-024: 合并知识条目 */
@@ -846,8 +1013,8 @@ const DB = {
     }
     const mergedContent = items.map(i => i.content).join('\n\n---\n\n');
     const newItem = await this._collection('knowledge_items').add({
-      title: targetData.title, content: mergedContent, status: 'active',
-      isDeleted: false, createdAt: new Date(), updatedAt: new Date()
+      title: targetData.title, content: mergedContent, isDeleted: false,
+      level: 'public', tags: [], createdAt: new Date(), updatedAt: new Date()
     });
     for (const id of sourceIds) {
       await this._collection('knowledge_items').doc(id).remove();
@@ -919,8 +1086,8 @@ const DB = {
     return this._exec(
       this._collection('chats').add({
         title: data.title || '新对话',
-        topic: data.topic || '',
         model: data.model || 'mimo',
+        knowledgeId: data.knowledgeId || null,
         createdAt: new Date(),
         updatedAt: new Date()
       })
@@ -953,16 +1120,16 @@ const DB = {
   /** AI-012: 发送消息并获取 AI 回复 */
   async sendMessageAndReply(chatId, content, model = 'mimo') {
     await this._collection('messages').add({
-      chatId, role: 'user', content, createdAt: new Date()
+      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
     });
     const aiResult = await this._aiProxy({
       action: 'chat', messages: [{ role: 'user', content }], model
     });
     const reply = aiResult.success ? aiResult.content : '抱歉,AI 暂时无法回复';
     await this._collection('messages').add({
-      chatId, role: 'assistant', content: reply, createdAt: new Date()
+      chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
     });
-    await this._collection('chats').doc(chatId).update({ lastMessage: content.substring(0, 50), updatedAt: new Date() });
+    await this._collection('chats').doc(chatId).update({ updatedAt: new Date() });
     return { success: true, data: { reply } };
   },
 
@@ -991,6 +1158,8 @@ const DB = {
         content: msg.content,
         sourceType: 'chat',
         isDeleted: false,
+        level: 'public',
+        tags: [],
         createdAt: new Date(),
         updatedAt: new Date()
       })
@@ -1021,14 +1190,14 @@ const DB = {
     );
   },
 
-  /** CONST-001: 可用模型列表 */
+  /** CONST-001: 可用模型列表 — 从 AI 服务获取用户配置的模型 */
   getAvailableModels() {
-    return [
-      { id: 'mimo', name: 'MiMo (主力)', description: '中文问答、知识库检索' },
-      { id: 'deepseek', name: 'DeepSeek-V3', description: '代码生成、调试' },
-      { id: 'kimi', name: 'Kimi', description: '长文写作、整理' },
-      { id: 'doubao', name: '豆包 Lite', description: '简单问答、快速响应' }
-    ];
+    if (window.AIService && typeof window.AIService.getAvailableModels === 'function') {
+      const models = window.AIService.getAvailableModels();
+      if (models.length > 0) return models;
+    }
+    // 回退：返回空数组，UI 层会提示用户去设置页面配置
+    return [];
   },
 
   /* ================================================================
@@ -1056,12 +1225,12 @@ const DB = {
 
   /** AGG-014: 资讯统计 */
   async getNewsOverviewStats() {
-    const [unread, total, imported] = await Promise.all([
+    const [unread, total, saved] = await Promise.all([
       this._count('news_items', { hasRead: false }),
       this._count('news_items', {}),
-      this._count('news_items', { imported: true })
+      this._count('news_items', { isSaved: true })
     ]);
-    return { success: true, data: { unread, total, imported } };
+    return { success: true, data: { unread, total, saved } };
   },
 
   /** AGG-015: 资讯统计详情 */
@@ -1095,7 +1264,7 @@ const DB = {
     const result = await this._exec(this._collection('news_items').where({}).get());
     const ranking = {};
     for (const item of result.data) {
-      const source = item.source || item.sourceName || '未知来源';
+      const source = item.sourceName || '未知来源';
       ranking[source] = (ranking[source] || 0) + 1;
     }
     return { success: true, data: ranking };
@@ -1125,18 +1294,19 @@ const DB = {
     const newsResult = await this._exec(this._collection('news_items').doc(newsId).get());
     const news = newsResult.data && newsResult.data.length > 0 ? newsResult.data[0] : null;
     if (!news) return { success: false, error: '资讯不存在' };
-    await this._collection('knowledge_items').add({
-      title: news.title, content: news.content || news.summary || '', sourceType: 'news',
-      isDeleted: false, createdAt: new Date(), updatedAt: new Date()
+    const knowledgeResult = await this._collection('knowledge_items').add({
+      title: news.title, content: news.summary || '', sourceUrl: news.sourceUrl || '',
+      sourceType: 'news', isDeleted: false, level: 'public', tags: news.tags || [],
+      createdAt: new Date(), updatedAt: new Date()
     });
-    await this._collection('news_items').doc(newsId).update({ isSaved: true, imported: true, updatedAt: new Date() });
+    await this._collection('news_items').doc(newsId).update({ isSaved: true, knowledgeId: knowledgeResult.id });
     return { success: true };
   },
 
   /** DB-U-030: 忽略资讯 */
   async ignoreNews(newsId) {
     return this._exec(
-      this._collection('news_items').doc(newsId).update({ hasRead: true, ignored: true, updatedAt: new Date() })
+      this._collection('news_items').doc(newsId).update({ hasRead: true })
     );
   },
 
@@ -1144,10 +1314,18 @@ const DB = {
   async addManualNews(data) {
     return this._exec(
       this._collection('news_items').add({
-        title: data.title, content: data.content || '', summary: data.summary || '',
-        source: data.source || '手动录入', sourceUrl: data.sourceUrl || '',
-        hasRead: false, isSaved: false, ignored: false,
-        createdAt: new Date(), updatedAt: new Date()
+        title: data.title,
+        sourceUrl: data.sourceUrl || '',
+        sourceName: data.sourceName || '',
+        category: data.category || '',
+        tags: data.tags || [],
+        summary: data.summary || '',
+        importance: data.importance || 0,
+        hasRead: false,
+        isSaved: false,
+        knowledgeId: null,
+        publishedAt: null,
+        createdAt: new Date()
       })
     );
   },
@@ -1162,7 +1340,7 @@ const DB = {
 
   /** DB-U-032: 批量忽略资讯 */
   async batchIgnoreNews(newsIds) {
-    return this._batchUpdate('news_items', newsIds, { hasRead: true, ignored: true, updatedAt: new Date() });
+    return this._batchUpdate('news_items', newsIds, { hasRead: true });
   },
 
   /** DB-U-033: 批量暂缓资讯 */
@@ -1216,6 +1394,7 @@ const DB = {
         content: data.content || '',
         type: data.type || 'note',
         status: data.status || 'draft',
+        knowledgeIds: data.knowledgeIds || [],
         wordCount: data.wordCount || 0,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -1250,9 +1429,9 @@ const DB = {
   },
 
   /** DB-W-012: 创建碎片 */
-  async createScrap(content) {
+  async createScrap(content, source) {
     return this._exec(
-      this._collection('scraps').add({ content, status: 'raw', createdAt: new Date() })
+      this._collection('scraps').add({ content, source: source || '', status: 'raw', outputDocId: null, createdAt: new Date() })
     );
   },
 
@@ -1340,7 +1519,15 @@ const DB = {
       const doc = result.data[0];
       return this._exec(this._collection('user_settings').doc(doc._id).update({ ...partial, updatedAt: new Date() }));
     }
-    return this._exec(this._collection('user_settings').add({ ...partial, createdAt: new Date() }));
+    const defaults = {
+      defaultModel: 'mimo',
+      dailyReviewCount: 20,
+      notificationEnabled: true,
+      autoBackup: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    return this._exec(this._collection('user_settings').add({ ...defaults, ...partial }));
   },
 
   /** AGG-021: 导出数据 (读取全部集合) */

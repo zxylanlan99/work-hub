@@ -1323,6 +1323,12 @@
   color: #fff;
 }
 
+.task-check.skipped {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #fff;
+}
+
 .task-priority {
   width: 6px;
   height: 6px;
@@ -1345,6 +1351,11 @@
 .task-title.done-text {
   text-decoration: line-through;
   color: var(--gray-400);
+}
+
+.task-title.skipped-text {
+  color: var(--gray-400);
+  font-style: italic;
 }
 
 .task-meta {
@@ -5973,4 +5984,152 @@
   font-size: 12px;
   color: var(--gray-500);
   margin-bottom: 10px;
+}
+
+/* ================================================================
+   AI 模型配置卡片
+   ================================================================ */
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-card {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.model-card:hover {
+  border-color: var(--gray-300);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.model-card-default {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.model-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.model-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.model-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 4px;
+}
+
+.model-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--gray-500);
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.model-card-provider {
+  font-weight: 500;
+  color: var(--gray-600);
+}
+
+.model-card-sep {
+  color: var(--gray-300);
+}
+
+.model-card-modelname {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11.5px;
+  background: var(--gray-100);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.model-plan-badge {
+  background: var(--purple-light);
+  color: var(--purple);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.model-card-url {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-card-key {
+  font-size: 11.5px;
+  color: var(--gray-400);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-default-badge {
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.model-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.model-status-ok {
+  color: var(--success);
+}
+
+.model-status-error {
+  color: var(--danger);
+}
+
+.model-status-unknown {
+  color: var(--gray-400);
+}
+
+/* Ollama 模型列表项 */
+.ollama-model-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-size: 13px;
+}
+
+.ollama-model-item:hover {
+  background: var(--gray-50);
+  border-color: var(--primary);
 }

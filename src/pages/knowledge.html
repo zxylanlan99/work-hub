@@ -1331,9 +1331,30 @@ function mergeKnowledge() {
   showToast('合并功能开发中', 'info');
 }
 
-function processOrphaned() {
+async function processOrphaned() {
   showToast('AI正在处理孤岛知识...', 'info');
-  setTimeout(() => showToast('处理完成', 'success'), 1500);
+  try {
+    if (window.DB && window.DB.aiProcessOrphaned) {
+      var res = await window.DB.aiProcessOrphaned();
+      if (res.success && res.content) {
+        showToast('孤岛知识处理完成', 'success');
+        // 在体检弹窗中显示 AI 处理结果
+        var modalBody = document.querySelector('#modal-health .modal-body');
+        if (modalBody) {
+          var aiEl = document.createElement('div');
+          aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 孤岛知识处理建议</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          modalBody.appendChild(aiEl);
+        }
+      } else {
+        showToast('AI 处理失败: ' + (res.error || '未知错误'), 'error');
+      }
+    } else {
+      showToast('DB 不可可用', 'error');
+    }
+  } catch (e) {
+    showToast('处理失败: ' + e.message, 'error');
+  }
 }
 
 function generateImprovementPlan() {
@@ -1341,9 +1362,30 @@ function generateImprovementPlan() {
   setTimeout(() => showToast('改进计划已生成', 'success'), 1000);
 }
 
-function generateHealthReport() {
+async function generateHealthReport() {
   showToast('正在生成体检报告...', 'info');
-  setTimeout(() => showToast('报告已生成', 'success'), 1500);
+  try {
+    if (window.DB && window.DB.aiHealthReport) {
+      var res = await window.DB.aiHealthReport();
+      if (res.success && res.content) {
+        showToast('报告已生成', 'success');
+        // 在体检弹窗中显示 AI 报告
+        var modalBody = document.querySelector('#modal-health .modal-body');
+        if (modalBody) {
+          var aiEl = document.createElement('div');
+          aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
+          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 体检报告</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          modalBody.appendChild(aiEl);
+        }
+      } else {
+        showToast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+      }
+    } else {
+      showToast('DB 不可可用', 'error');
+    }
+  } catch (e) {
+    showToast('生成失败: ' + e.message, 'error');
+  }
 }
 
 document.addEventListener('DOMContentLoaded', function() {

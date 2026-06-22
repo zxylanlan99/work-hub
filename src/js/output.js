@@ -90,12 +90,16 @@ async function loadOutputStats() {
   try {
     const result = window.DB
       ? await window.DB.getOutputStats()
-      : { success: true, data: { docCount: 0, scrapCount: 0 } };
+      : { success: true, data: { draftCount: 0, publishedCount: 0, totalWords: 0, scrapCount: 0 } };
     if (result.success && result.data) {
-      const docCountEl = document.getElementById('doc-count');
+      const docCountEl = document.getElementById('stat-drafts');
+      const publishedCountEl = document.getElementById('stat-published');
+      const totalWordsEl = document.getElementById('stat-words');
       const scrapCountEl = document.getElementById('scrap-count');
-      if (docCountEl) docCountEl.textContent = result.data.docCount || 0;
-      if (scrapCountEl) scrapCountEl.textContent = result.data.scrapCount || 0;
+      if (docCountEl) docCountEl.textContent = result.data.draftCount || 0;
+      if (publishedCountEl) publishedCountEl.textContent = result.data.publishedCount || 0;
+      if (totalWordsEl) totalWordsEl.textContent = (result.data.totalWords || 0).toLocaleString();
+      if (scrapCountEl) scrapCountEl.textContent = (result.data.scrapCount || 0) + '条';
     }
   } catch (error) {
     console.error('加载输出统计失败:', error);
@@ -107,7 +111,7 @@ async function loadOutputStats() {
    ================================================================ */
 
 async function loadDocs() {
-  const list = document.getElementById('doc-list');
+  const list = document.getElementById('docGrid');
   if (!list) return;
 
   list.innerHTML = `<div class="spin-loading" style="text-align:center;padding:40px;"><div class="spin"></div><p>加载中...</p></div>`;
@@ -188,12 +192,62 @@ function switchDocTab(e) {
    ================================================================ */
 
 async function createDoc() {
-  const title = prompt('请输入文档标题:');
-  if (!title || !title.trim()) return;
+  const types = [
+    { value: 'note', label: '笔记' },
+    { value: 'article', label: '文章' },
+    { value: 'speech', label: '演讲' },
+    { value: 'practice', label: '练习' },
+    { value: 'tutorial', label: '教程' }
+  ];
+  
+  const typeHtml = types.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+  const modal = document.createElement('div');
+  modal.id = 'create-doc-modal';
+  modal.className = 'modal-overlay show';
+  modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+  modal.innerHTML = `
+    <div class="modal modal-md" style="width:90%;max-width:440px;background:#fff;border-radius:12px;overflow:hidden;">
+      <div class="modal-header" style="padding:16px 20px;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;">
+        <div class="modal-title" style="font-size:18px;font-weight:600;">新建文档</div>
+        <span class="modal-close" onclick="document.getElementById('create-doc-modal').remove()" style="cursor:pointer;font-size:24px;color:#9ca3af;">&times;</span>
+      </div>
+      <div class="modal-body" style="padding:20px;">
+        <div style="margin-bottom:16px;">
+          <label style="display:block;margin-bottom:6px;font-weight:500;">标题</label>
+          <input id="new-doc-title" type="text" placeholder="请输入文档标题（≤200字）" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="display:block;margin-bottom:6px;font-weight:500;">类型</label>
+          <select id="new-doc-type" style="width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">
+            ${typeHtml}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding:12px 20px;border-top:1px solid #e5e7eb;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-secondary" onclick="document.getElementById('create-doc-modal').remove()">取消</button>
+        <button class="btn btn-primary" onclick="submitCreateDoc()">创建</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+async function submitCreateDoc() {
+  const titleEl = document.getElementById('new-doc-title');
+  const typeEl = document.getElementById('new-doc-type');
+  const title = titleEl.value.trim();
+  
+  if (!title) {
+    showToast('请输入标题', 'warning');
+    return;
+  }
+  if (title.length > 200) {
+    showToast('标题不能超过200字', 'warning');
+    return;
+  }
 
   try {
     const result = window.DB
-      ? await window.DB.createDocument({ title: title.trim(), type: 'note', status: 'draft' })
+      ? await window.DB.createDocument({ title, type: typeEl.value || 'note', status: 'draft' })
       : { success: true };
     if (result.success) {
       showToast('文档创建成功', 'success');
@@ -206,6 +260,8 @@ async function createDoc() {
     console.error('创建文档失败:', error);
     showToast('创建文档失败', 'error');
   }
+  
+  document.getElementById('create-doc-modal').remove();
 }
 
 /* ================================================================
@@ -424,7 +480,7 @@ async function deleteDocConfirm(docId) {
    ================================================================ */
 
 async function loadScraps() {
-  const list = document.getElementById('scrap-list');
+  const list = document.getElementById('scrapList');
   if (!list) return;
 
   try {
@@ -446,13 +502,13 @@ async function loadScraps() {
     list.innerHTML = scraps.map(scrap => {
       const isRaw = scrap.status === 'raw';
       const isConverted = scrap.status === 'converted';
-      const isIgnored = scrap.status === 'ignored';
+      const isProcessing = scrap.status === 'processing';
       let statusBadge = '';
       if (isConverted) statusBadge = '<span class="badge badge-success" style="font-size:10px;">已转化</span>';
-      if (isIgnored) statusBadge = '<span class="badge badge-secondary" style="font-size:10px;">已忽略</span>';
+      if (isProcessing) statusBadge = '<span class="badge badge-secondary" style="font-size:10px;">已忽略</span>';
 
       return `
-        <div class="scrap-item" style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; ${isConverted || isIgnored ? 'opacity:0.6;' : ''}">
+        <div class="scrap-item" style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; ${isConverted || isProcessing ? 'opacity:0.6;' : ''}">
           <div style="display: flex; align-items: flex-start; gap: 8px;">
             <span style="color: #f59e0b; font-size: 16px;">💡</span>
             <div style="flex: 1; min-width: 0;">
@@ -659,7 +715,7 @@ async function aiReviewDoc(docId) {
    ================================================================ */
 
 document.addEventListener('DOMContentLoaded', function () {
-  if (document.getElementById('doc-list') || document.getElementById('scrap-list')) {
+  if (document.getElementById('docGrid') || document.getElementById('scrapList')) {
     initOutputPage();
   }
 });
@@ -671,6 +727,7 @@ document.addEventListener('DOMContentLoaded', function () {
 window.initOutputPage = initOutputPage;
 window.switchDocTab = switchDocTab;
 window.createDoc = createDoc;
+window.submitCreateDoc = submitCreateDoc;
 window.openDocEditor = openDocEditor;
 window.closeDocEditor = closeDocEditor;
 window.manualSaveDoc = manualSaveDoc;

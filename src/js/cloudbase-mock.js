@@ -286,13 +286,11 @@
     }
   }
 
-  // 模拟 window.cloudbase
-  window.cloudbase = {
-    init: (config) => {
-      console.log('Mock CloudBase initialized with config:', config);
-      return new MockApp();
-    }
-  };
+  // 检查真实 CloudBase SDK 是否已正确加载
+  if (!window.cloudbase || typeof window.cloudbase.init !== 'function') {
+    throw new Error('[CloudBase] ❌ 真实 CloudBase SDK 未正确加载！请检查网络连接或 CDN 是否可用。本项目禁止使用模拟数据。');
+  }
+  console.log('[CloudBase] ✅ 真实 CloudBase SDK 已加载');
 
   // 模拟 CONFIG
   if (!window.CONFIG) {

@@ -278,9 +278,7 @@ function initAiChatPage() {
   console.log('Initializing AI chat page...');
 }
 
-function initReviewPage() {
-  console.log('Initializing review page...');
-}
+
 
 function initOutputPage() {
   console.log('Initializing output page...');

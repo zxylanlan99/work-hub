@@ -1627,9 +1627,9 @@ function _patchGlobalFunctions() {
     _renderGoalCards(filter);
   };
 
-  // 覆盖页面入口（plan.html 内联脚本会调用 initPlanPage）
+  // 覆盖页面入口（framework.js 会调用 initPlanPage）
   window.initPlanPage = function () {
-    // 由 initLearningPage 接管，此处为空
+    initLearningPage();
   };
 
   // 覆盖数据操作函数

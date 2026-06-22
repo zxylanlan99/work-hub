@@ -54,6 +54,37 @@ function formatDate(date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function truncateText(text, maxLength) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+/**
+ * 渲染 Markdown 内容（AI 回复使用）
+ * 配置 marked.js 以支持安全的 Markdown 渲染
+ */
+function renderMarkdown(content) {
+  if (!content) return '';
+  if (typeof window.marked !== 'function') {
+    // marked.js 未加载时降级为纯文本
+    return escapeHtml(content);
+  }
+  try {
+    // 配置 marked 选项
+    window.marked.setOptions({
+      breaks: true,        // 换行符转换为 <br>
+      gfm: true,            // GitHub 风味 Markdown
+      headerIds: false,    // 禁用标题 ID（防 XSS）
+      mangle: false        // 禁用标题 mangle（防 XSS）
+    });
+    return window.marked.parse(content);
+  } catch (e) {
+    console.error('Markdown 渲染失败:', e);
+    return escapeHtml(content);
+  }
+}
+
 /* ================================================================
    主入口 - initAIChatPage
    ================================================================ */
@@ -202,12 +233,14 @@ async function loadChats() {
 
     list.innerHTML = chats.map(chat => {
       const isActive = chatState.currentChatId === chat._id;
+      const firstMessage = chat.firstMessage || chat.lastMessage || chat.title || '';
+      const displayTitle = truncateText(firstMessage, 30) || '未命名对话';
       return `
         <div style="padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 8px; ${isActive ? 'background: #e0e7ff;' : ''}"
-             onclick="selectChat('${chat._id}', '${escapeHtml(chat.title || '未命名对话')}')"
+             onclick="selectChat('${chat._id}', '${escapeHtml(displayTitle)}')"
              id="chat-${chat._id}">
           <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 500; margin-bottom: 4px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(chat.title || '未命名对话')}</div>
+            <div style="font-weight: 500; margin-bottom: 4px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(displayTitle)}</div>
             <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteChatConfirm('${chat._id}')" title="删除对话" style="color: #ef4444; flex-shrink: 0; margin-left: 4px;">🗑</button>
           </div>
           <div style="font-size: 12px; color: #6b7280;">${escapeHtml((chat.lastMessage || '暂无消息').substring(0, 30))}</div>
@@ -283,6 +316,7 @@ async function loadMessages(chatId) {
 
     container.innerHTML = messages.map(msg => {
       const isUser = msg.role === 'user';
+      const msgContent = isUser ? escapeHtml(msg.content) : renderMarkdown(msg.content);
       return `
         <div style="display: flex; margin-bottom: 16px; ${isUser ? 'justify-content: flex-end' : ''}">
           <div style="max-width: 70%;">
@@ -291,7 +325,7 @@ async function loadMessages(chatId) {
                         padding: 12px 16px;
                         border-radius: ${isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px'};
                         word-break: break-word;">
-              ${escapeHtml(msg.content)}
+              ${msgContent}
             </div>
             <div style="font-size: 12px; color: #6b7280; margin-top: 4px; display: flex; align-items: center; gap: 8px; ${isUser ? 'justify-content: flex-end' : ''}">
               <span>${isUser ? '我' : 'AI'} · ${formatTime(msg.createdAt)}</span>
@@ -373,11 +407,12 @@ async function sendMessage() {
     // 显示AI回复
     if (result.success && result.data && result.data.reply) {
       if (container) {
+        const aiContent = renderMarkdown(result.data.reply);
         container.innerHTML += `
           <div style="display: flex; margin-bottom: 16px;">
             <div style="max-width: 70%;">
               <div style="background: #f3f4f6; color: #1f2937; padding: 12px 16px; border-radius: 16px 16px 16px 4px; word-break: break-word;">
-                ${escapeHtml(result.data.reply)}
+                ${aiContent}
               </div>
               <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">AI · 刚刚</div>
             </div>
@@ -505,16 +540,12 @@ async function startCompareMode() {
   showToast('正在对比多个模型...', 'info');
 
   try {
+    if (!window.DB) {
+      showToast('数据库服务未初始化', 'error');
+      return;
+    }
     const models = ['mimo', 'deepseek'];
-    const result = window.DB
-      ? await window.DB.aiCompare(models, content.trim())
-      : {
-          success: true,
-          data: [
-            { content: '[MiMo] 模拟回复: ' + content },
-            { content: '[DeepSeek] 模拟回复: ' + content }
-          ]
-        };
+    const result = await window.DB.aiCompare(models, content.trim());
 
     if (result.success && result.data) {
       const replies = result.data.map((r, i) => ({

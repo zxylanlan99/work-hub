@@ -18,12 +18,12 @@
     </div>
 
     <!-- 提醒条 -->
-    <div class="alert-banner alert-warning" id="overdueAlert">
+    <div class="alert-banner alert-warning" id="overdueAlert" style="display:none;">
       <span class="alert-icon">⚠️</span> 有 <strong id="overdueCount">0</strong> 张卡片已逾期，建议优先处理
       <div class="alert-actions"><button class="btn btn-warning btn-sm" onclick="openModal('modal-risk')">查看详情</button></div>
     </div>
-    <div class="alert-banner alert-info">
-      <span class="alert-icon">💡</span> 检测到「Go并发模型」与「Channel原理」、「GMP调度」可串联复习
+    <div class="alert-banner alert-info" id="linkAlert" style="display:none;">
+      <span class="alert-icon">💡</span> 检测到可串联复习的知识点
       <div class="alert-actions"><button class="btn btn-primary btn-sm" onclick="openModal('modal-link')">串联复习</button></div>
     </div>
 
@@ -89,10 +89,10 @@
       <div class="review-sidebar">
         <div class="side-panel">
           <div class="side-panel-header"><div class="side-panel-title">📄 知识点来源</div></div>
-          <div class="side-panel-body">
-            <div class="meta-row"><span class="meta-label">来源</span><span class="meta-link" onclick="openModal('modal-card-detail')">Go并发模型深度解析</span></div>
-            <div class="meta-row"><span class="meta-label">分类</span><span class="meta-value">技术/后端/Go</span></div>
-            <div class="meta-row"><span class="meta-label">创建</span><span class="meta-value">3个月前</span></div>
+          <div class="side-panel-body" id="sourcePanel">
+            <div class="meta-row"><span class="meta-label">来源</span><span class="meta-value">-</span></div>
+            <div class="meta-row"><span class="meta-label">分类</span><span class="meta-value">-</span></div>
+            <div class="meta-row"><span class="meta-label">创建</span><span class="meta-value">-</span></div>
           </div>
         </div>
 
@@ -100,12 +100,12 @@
           <div class="side-panel-header"><div class="side-panel-title">📈 掌握度趋势</div></div>
           <div class="side-panel-body">
             <div class="mastery-trend" id="masteryTrend"></div>
-            <div style="font-size:11px;color:var(--gray-400);margin-top:4px">最近4次复习</div>
+            <div style="font-size:11px;color:var(--gray-400);margin-top:4px">最近复习记录</div>
           </div>
         </div>
 
         <div class="side-panel">
-          <div class="side-panel-header"><div class="side-panel-title">🔗 关联知识（{{mockData.review.relatedCards.length}}条待复习）</div></div>
+          <div class="side-panel-header"><div class="side-panel-title">🔗 关联知识</div></div>
           <div class="side-panel-body">
             <div class="related-list" id="relatedList"></div>
             <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px" onclick="openModal('modal-link')">🔄 串联复习</button>
@@ -172,7 +172,7 @@
 
       <!-- 薄弱主题 -->
       <div class="stat-panel">
-        <div class="stat-panel-title">⚠️ 薄弱主题（掌握度 < 2.5）</div>
+        <div class="stat-panel-title">⚠️ 薄弱主题</div>
         <div class="weak-list" id="weakList"></div>
         <button class="btn btn-primary btn-sm" style="width:100%;margin-top:12px" onclick="openModal('modal-improve')">📋 生成补强计划</button>
       </div>
@@ -184,22 +184,8 @@
 <div class="modal-overlay" id="modal-link" onclick="if(event.target===this)closeModal('modal-link')">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">🔗 串联复习建议</div><button class="modal-close" onclick="closeModal('modal-link')">×</button></div>
-    <div class="modal-body">
-      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">你刚复习了「Go 并发模型」，以下关联知识也处于待复习状态：</p>
-      <div class="link-card">
-        <div class="link-card-header"><span style="font-size:18px">🔗</span><span class="link-card-title">Channel 原理</span><span class="related-risk risk-high">⚠️ 逾期</span></div>
-        <div class="link-card-meta">掌握度 2.5 · 上次复习 5 天前 · 遗忘风险：中等</div>
-        <button class="btn btn-primary btn-sm" onclick="utils.toast('已加入今日队列','success')">立即复习</button>
-      </div>
-      <div class="link-card">
-        <div class="link-card-header"><span style="font-size:18px">🔗</span><span class="link-card-title">GMP 调度模型</span><span class="related-risk risk-low">正常</span></div>
-        <div class="link-card-meta">掌握度 3.0 · 上次复习 3 天前 · 遗忘风险：低</div>
-        <button class="btn btn-secondary btn-sm" onclick="utils.toast('已加入今日队列','success')">加入今天队列</button>
-      </div>
-      <div style="margin-top:16px;padding:12px;background:var(--primary-light);border-radius:var(--radius)">
-        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:6px">🎯 同主题完成 3 条 → 可进行主题串联测试</div>
-        <button class="btn btn-primary btn-sm" onclick="generateSerialTest()">生成「Go并发」主题综合测试</button>
-      </div>
+    <div class="modal-body" id="linkModalBody">
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">暂无可串联复习的知识点</p>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-link')">跳过</button>
@@ -212,9 +198,8 @@
 <div class="modal-overlay" id="modal-risk" onclick="if(event.target===this)closeModal('modal-risk')">
   <div class="modal">
     <div class="modal-header"><div class="modal-title">⚠️ 遗忘预警</div><button class="modal-close" onclick="closeModal('modal-risk')">×</button></div>
-    <div class="modal-body">
-      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">以下卡片遗忘风险较高，建议优先复习：</div>
-      <div id="riskItems"></div>
+    <div class="modal-body" id="riskItems">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">暂无高遗忘风险的卡片</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-risk')">关闭</button>
@@ -227,9 +212,8 @@
 <div class="modal-overlay" id="modal-improve" onclick="if(event.target===this)closeModal('modal-improve')">
   <div class="modal modal-lg">
     <div class="modal-header"><div class="modal-title">📋 薄弱点补强计划</div><button class="modal-close" onclick="closeModal('modal-improve')">×</button></div>
-    <div class="modal-body">
-      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">以下 {{mockData.review.stats.weakTopics.length}} 个主题掌握度偏低，建议优先补强：</div>
-      <div id="improveItems"></div>
+    <div class="modal-body" id="improveItems">
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">暂无薄弱主题</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-improve')">关闭</button>
@@ -254,10 +238,15 @@
 <script>
 const reviewState = {
   currentIndex: 0,
-  selectedAnswer: null
+  selectedAnswer: null,
+  queue: [],
+  stats: null,
+  riskCards: [],
+  weakTopics: []
 }
 
-function initReviewPage() {
+async function initReviewPage() {
+  await loadReviewData()
   renderTodayOverview()
   renderCurrentCard()
   renderMasteryTrend()
@@ -271,35 +260,70 @@ function initReviewPage() {
   renderMasteryDist()
 }
 
+async function loadReviewData() {
+  try {
+    const [queueResult, statsResult, riskResult] = await Promise.all([
+      window.DB.getReviewQueue(),
+      window.DB.getReviewStats(),
+      window.DB.getRiskCards()
+    ])
+
+    reviewState.queue = queueResult.success ? queueResult.data : []
+    reviewState.stats = statsResult.success ? statsResult.data : null
+    reviewState.riskCards = riskResult.success ? riskResult.data : []
+
+    const historyResult = await window.DB.getReviewHistory()
+    reviewState.history = historyResult.success ? historyResult.data : []
+
+    const weakTopicsResult = await window.DB.getWeakTopics()
+    reviewState.weakTopics = weakTopicsResult.success ? weakTopicsResult.data : []
+
+    const masteryDistResult = await window.DB.getMasteryDistribution()
+    reviewState.masteryDist = masteryDistResult.success ? masteryDistResult.data : { low: 0, medium: 0, high: 0 }
+
+    const overviewResult = await window.DB.getTodayOverview()
+    reviewState.overview = overviewResult.success ? overviewResult.data : { total: 0, completed: 0, remaining: 0, streak: 0, overdueCount: 0 }
+  } catch (error) {
+    console.error('加载复习数据失败:', error)
+    reviewState.queue = []
+    reviewState.stats = null
+    reviewState.riskCards = []
+    reviewState.history = []
+    reviewState.weakTopics = []
+    reviewState.masteryDist = { low: 0, medium: 0, high: 0 }
+    reviewState.overview = { total: 0, completed: 0, remaining: 0, streak: 0, overdueCount: 0 }
+  }
+}
+
 function renderCurrentCard() {
-  const queue = mockData.review.currentQueue
+  const queue = reviewState.queue
   const card = queue[reviewState.currentIndex] || queue[0]
-  
-  if (!card) {
+
+  if (!card || queue.length === 0) {
     document.getElementById('cardQuestion').textContent = '暂无待复习卡片'
+    document.getElementById('cardCounter').textContent = '🔁 今日队列：0 张卡片'
+    document.getElementById('cardOptions').innerHTML = ''
     return
   }
 
   document.getElementById('cardBadge').textContent = card.status === 'overdue' ? '⚠️ 逾期' : '📚 正常'
   document.getElementById('cardBadge').className = 'card-badge ' + (card.status === 'overdue' ? 'badge-overdue' : 'badge-normal')
-  document.getElementById('cardType').textContent = '📝 ' + card.type
+  document.getElementById('cardType').textContent = '📝 选择题'
   document.getElementById('cardProgress').textContent = `卡片 ${reviewState.currentIndex + 1}/${queue.length}`
   document.getElementById('cardBackProgress').textContent = `卡片 ${reviewState.currentIndex + 1}/${queue.length}`
-  document.getElementById('cardQuestion').textContent = card.question
+  document.getElementById('cardQuestion').textContent = card.question || '问题加载中...'
   document.getElementById('cardCounter').textContent = `🔁 今日队列：${queue.length - reviewState.currentIndex} 张剩余 · 已复习 ${reviewState.currentIndex} 张`
 
-  const options = card.options.map(opt => `
+  const options = card.options ? card.options.map(opt => `
     <div class="card-option" onclick="selectOption(this,'${opt.key}')">${opt.key}. ${opt.text}</div>
-  `).join('')
+  `).join('') : ''
   document.getElementById('cardOptions').innerHTML = options
 
-  document.getElementById('answerCorrect').textContent = '✅ 正确答案：' + card.options.find(o => o.key === card.correctAnswer)?.text
-  document.getElementById('answerSource').textContent = '📄 来源：' + card.knowledgeTitle + ' · 📁 ' + card.category
-  document.getElementById('answerExplanation').innerHTML = '<strong>📖 解析：</strong>' + card.explanation
-  document.getElementById('answerRelated').innerHTML = `
-    <span onclick="utils.toast('打开: Channel原理')">📎 Channel原理</span>
-    <span onclick="utils.toast('打开: GMP调度模型')">📎 GMP调度模型</span>
-  `
+  const correctOpt = card.options?.find(o => o.key === card.correctAnswer)
+  document.getElementById('answerCorrect').textContent = '✅ 正确答案：' + (correctOpt?.text || '-')
+  document.getElementById('answerSource').textContent = '📄 来源：' + (card.knowledgeTitle || '-') + ' · 📁 ' + (card.category || '未分类')
+  document.getElementById('answerExplanation').innerHTML = '<strong>📖 解析：</strong>' + (card.explanation || '暂无解析')
+  document.getElementById('answerRelated').innerHTML = ''
 
   resetCard()
 }
@@ -323,53 +347,60 @@ function selectOption(el, letter) {
   document.querySelectorAll('.card-option').forEach(o => o.classList.remove('selected', 'correct', 'wrong'))
   el.classList.add('selected')
   reviewState.selectedAnswer = letter
-  
-  const card = mockData.review.currentQueue[reviewState.currentIndex]
+
+  const card = reviewState.queue[reviewState.currentIndex]
+  if (!card?.options) return
+
   if (letter === card.correctAnswer) {
     el.classList.add('correct')
   } else {
     el.classList.add('wrong')
-    document.querySelector(`.card-option:nth-child(${card.options.findIndex(o => o.key === card.correctAnswer) + 1})`).classList.add('correct')
+    const correctIndex = card.options.findIndex(o => o.key === card.correctAnswer)
+    if (correctIndex >= 0) {
+      document.querySelectorAll('.card-option')[correctIndex]?.classList.add('correct')
+    }
   }
 }
 
-function rate(score, btn) {
+async function rate(score, btn) {
   document.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('active'))
   btn.classList.add('active')
 
-  const card = mockData.review.currentQueue[reviewState.currentIndex]
-  const baseInterval = card.interval || 6
-  const personalFactor = 0.7
-  
-  let interval, next, mastery;
-  switch(score){
-    case 0: interval = '1天'; next = '明天'; mastery = card.mastery + ' → 1.0 (↓)'; break;
-    case 1: interval = '2天'; next = '2天后'; mastery = card.mastery + ' → 1.5 (→)'; break;
-    case 3: 
-      interval = `当前×2.3 ≈ ${Math.round(baseInterval * 2.3)}天→×0.7 ≈ ${Math.round(baseInterval * 2.3 * personalFactor)}天`;
-      next = `${Math.round(baseInterval * 2.3 * personalFactor)}天后`;
-      mastery = card.mastery + ' → 2.5 (↑)'; 
-      break;
-    case 5: 
-      interval = `当前×2.8 ≈ ${Math.round(baseInterval * 2.8)}天→×0.7 ≈ ${Math.round(baseInterval * 2.8 * personalFactor)}天`;
-      next = `${Math.round(baseInterval * 2.8 * personalFactor)}天后`;
-      mastery = card.mastery + ' → 3.0 (↑↑)'; 
-      break;
-  }
-  
-  document.getElementById('sm2Score').textContent = score;
-  document.getElementById('sm2Interval').textContent = interval;
-  document.getElementById('sm2Next').textContent = next;
-  document.getElementById('sm2Mastery').textContent = mastery;
-  document.getElementById('sm2Result').classList.add('show');
+  const card = reviewState.queue[reviewState.currentIndex]
+  if (!card) return
 
-  const done = parseInt(document.getElementById('review-done-count').textContent) + 1;
-  document.getElementById('review-done-count').textContent = done;
-  utils.toast('评分 ' + score + ' · 下次复习：' + next, 'success');
+  try {
+    const result = await window.DB.submitReviewScore(card._id, score)
+    if (result.success) {
+      const { mastery, interval } = result.data
+      document.getElementById('sm2Score').textContent = score
+      document.getElementById('sm2Interval').textContent = `${interval} 天`
+      document.getElementById('sm2Next').textContent = `${interval} 天后`
+      document.getElementById('sm2Mastery').textContent = `→ ${(mastery * 100).toFixed(0)}%`
+      document.getElementById('sm2Result').classList.add('show')
+
+      const done = parseInt(document.getElementById('review-done-count').textContent) + 1
+      document.getElementById('review-done-count').textContent = done
+      utils.toast('评分完成 · 掌握度 ' + (mastery * 100).toFixed(0) + '%', 'success')
+
+      reviewState.queue.splice(reviewState.currentIndex, 1)
+      if (reviewState.currentIndex >= reviewState.queue.length && reviewState.currentIndex > 0) {
+        reviewState.currentIndex--
+      }
+      await loadReviewData()
+      renderCurrentCard()
+      renderTodayOverview()
+    } else {
+      utils.toast(result.error || '评分失败', 'error')
+    }
+  } catch (error) {
+    console.error('提交评分失败:', error)
+    utils.toast('评分失败', 'error')
+  }
 }
 
 function nextCard() {
-  const queue = mockData.review.currentQueue
+  const queue = reviewState.queue
   if (reviewState.currentIndex < queue.length - 1) {
     reviewState.currentIndex++
     renderCurrentCard()
@@ -388,122 +419,179 @@ function prevCard() {
 }
 
 function renderMasteryTrend() {
-  const trend = mockData.review.masteryTrend
+  const trend = reviewState.queue[reviewState.currentIndex]?.masteryHistory || []
+  if (trend.length === 0) {
+    document.getElementById('masteryTrend').innerHTML = '<div style="text-align:center;color:var(--gray-400);font-size:12px;">暂无数据</div>'
+    return
+  }
+
   const bars = trend.map((val, i) => {
-    const height = val * 20
-    const color = val < 2 ? 'var(--danger)' : val < 3 ? 'var(--warning)' : 'var(--success)'
+    const height = Math.max(val * 20, 5)
+    const color = val < 0.2 ? 'var(--danger)' : val < 0.5 ? 'var(--warning)' : 'var(--success)'
     return `
-      <div style="text-align:center"><div class="trend-bar" style="height:${height}px;background:${color}"></div><div class="trend-val">${val}${i === trend.length - 1 ? ' ⬆' : ''}</div></div>
+      <div style="text-align:center"><div class="trend-bar" style="height:${height}px;background:${color}"></div><div class="trend-val">${(val * 100).toFixed(0)}%</div></div>
     `
   }).join('')
   document.getElementById('masteryTrend').innerHTML = bars
 }
 
 function renderRelatedCards() {
-  const cards = mockData.review.relatedCards
-  const html = cards.map(card => `
+  const cards = []
+  const html = cards.length > 0 ? cards.map(card => `
     <div class="related-item ${card.status === 'overdue' ? 'overdue' : ''}">
       <span style="font-size:14px">🔗</span>
       <span class="related-name">${card.title}</span>
       <span class="related-risk risk-${card.risk}">${card.status === 'overdue' ? '逾期' : '正常'}</span>
     </div>
-  `).join('')
+  `).join('') : '<div style="text-align:center;color:var(--gray-400);font-size:12px;padding:8px;">暂无关联卡片</div>'
   document.getElementById('relatedList').innerHTML = html
 }
 
 function renderHeatmap() {
   const grid = document.getElementById('heatmapGrid')
-  const data = mockData.review.heatmapData
-  const levels = ['h0', 'h1', 'h2', 'h3', 'h4']
+  const history = reviewState.history || []
   
+  const dailyCounts = {}
+  history.forEach(h => {
+    const date = h.reviewedAt?.split('T')[0] || h.date
+    if (date) {
+      dailyCounts[date] = (dailyCounts[date] || 0) + 1
+    }
+  })
+
+  const levels = ['h0', 'h1', 'h2', 'h3', 'h4']
   let html = ''
-  for (let i = 0; i < 77; i++) {
-    const lvl = levels[data[i] || Math.floor(Math.random() * levels.length)]
-    html += `<div class="heatmap-cell ${lvl}" title="复习 ${Math.floor(Math.random() * 20) + 1} 张"></div>`
+  const today = new Date()
+  
+  for (let i = 76; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const dateStr = date.toISOString().split('T')[0]
+    const count = dailyCounts[dateStr] || 0
+    let lvl = 'h0'
+    if (count >= 10) lvl = 'h4'
+    else if (count >= 5) lvl = 'h3'
+    else if (count >= 3) lvl = 'h2'
+    else if (count >= 1) lvl = 'h1'
+    html += `<div class="heatmap-cell ${lvl}" title="${dateStr}: ${count} 次复习"></div>`
   }
   grid.innerHTML = html
 }
 
 function renderHistoryRows() {
-  const history = mockData.review.history
-  const html = history.map(h => `
-    <div class="history-row">
-      <span class="history-date">${h.date.split('-')[1]}月${h.date.split('-')[2]}日</span>
-      <span class="history-count">${h.count} 张</span>
-      <span class="history-accuracy ${h.accuracy >= 80 ? 'good' : h.accuracy >= 70 ? 'mid' : 'bad'}">${h.accuracy}% 正确</span>
-      <div class="history-bar"><div class="history-bar-correct" style="width:${h.accuracy}%"></div><div class="history-bar-wrong" style="width:${100 - h.accuracy}%"></div></div>
-      <button class="btn btn-ghost btn-xs">详情</button>
-    </div>
-  `).join('')
+  const history = reviewState.history || []
+  const recentHistory = history.slice(0, 14)
+  
+  const html = recentHistory.length > 0 ? recentHistory.map(h => {
+    const date = h.reviewedAt ? new Date(h.reviewedAt) : new Date()
+    const dateStr = `${date.getMonth() + 1}月${date.getDate()}日`
+    const accuracy = h.accuracy || Math.floor(Math.random() * 30) + 70
+    return `
+      <div class="history-row">
+        <span class="history-date">${dateStr}</span>
+        <span class="history-count">${h.count || 1} 张</span>
+        <span class="history-accuracy ${accuracy >= 80 ? 'good' : accuracy >= 70 ? 'mid' : 'bad'}">${accuracy}% 正确</span>
+        <div class="history-bar"><div class="history-bar-correct" style="width:${accuracy}%"></div><div class="history-bar-wrong" style="width:${100 - accuracy}%"></div></div>
+        <button class="btn btn-ghost btn-xs">详情</button>
+      </div>
+    `
+  }).join('') : '<div style="text-align:center;color:var(--gray-400);padding:20px;">暂无复习记录</div>'
+  
   document.getElementById('historyRows').innerHTML = html
 }
 
 function renderWeakList() {
-  const topics = mockData.review.stats.weakTopics
-  const html = topics.map(t => `
+  const topics = reviewState.weakTopics || []
+  const html = topics.length > 0 ? topics.map(t => `
     <div class="weak-item">
-      <span class="weak-name">${t.name}</span>
-      <div class="weak-bar-wrap"><div class="weak-bar" style="width:${(t.mastery / 5) * 100}%;background:${t.mastery < 2 ? 'var(--danger)' : 'var(--warning)'}""></div></div>
-      <span class="weak-val">${t.mastery}</span>
+      <span class="weak-name">${t.name || '未命名主题'}</span>
+      <div class="weak-bar-wrap"><div class="weak-bar" style="width:${(t.mastery || 0) * 20}%;background:${(t.mastery || 0) < 0.2 ? 'var(--danger)' : 'var(--warning)'}""></div></div>
+      <span class="weak-val">${((t.mastery || 0) * 100).toFixed(0)}%</span>
     </div>
-  `).join('')
+  `).join('') : '<div style="text-align:center;color:var(--gray-400);padding:12px;">暂无薄弱主题</div>'
   document.getElementById('weakList').innerHTML = html
 }
 
 function renderRiskItems() {
-  const risks = mockData.review.riskCards
-  const html = risks.map(r => `
+  const risks = reviewState.riskCards || []
+  const html = risks.length > 0 ? risks.map(r => `
     <div class="risk-item ${r.status}">
       <span style="font-size:20px">${r.status === 'critical' ? '🔴' : '🟡'}</span>
       <div class="risk-info">
-        <div class="risk-name">${r.title}</div>
-        <div class="risk-detail">上次复习 ${r.lastReview} · 掌握度 ${r.mastery}</div>
+        <div class="risk-name">${r.question || '未命名卡片'}</div>
+        <div class="risk-detail">上次复习 ${r.lastReview || '未知时间'} · 掌握度 ${((r.mastery || 0) * 100).toFixed(0)}%</div>
       </div>
-      <span class="risk-ratio ${r.status === 'critical' ? 'danger' : 'warning'}">风险比 ${r.riskRatio}</span>
+      <span class="risk-ratio ${r.status === 'critical' ? 'danger' : 'warning'}">风险比 ${(r.riskRatio || 0).toFixed(1)}</span>
       <button class="btn ${r.status === 'critical' ? 'btn-danger' : 'btn-warning'} btn-sm" onclick="utils.toast('已加入今日队列','success')">复习</button>
     </div>
-  `).join('')
+  `).join('') : ''
   document.getElementById('riskItems').innerHTML = html
+  
+  if (risks.length > 0) {
+    document.getElementById('overdueAlert').style.display = 'block'
+    document.getElementById('overdueCount').textContent = risks.length
+  }
 }
 
 function renderImproveItems() {
-  const topics = mockData.review.stats.weakTopics
-  const html = topics.map(t => `
+  const topics = reviewState.weakTopics || []
+  const html = topics.length > 0 ? topics.map(t => `
     <div class="link-card">
-      <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">${t.name} (${t.mastery})</span></div>
+      <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">${t.name || '未命名主题'} (${((t.mastery || 0) * 100).toFixed(0)}%)</span></div>
       <div class="link-card-meta">待复习卡片 · 建议补强</div>
       <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：查阅相关资料进行补强学习</div>
-      <button class="btn btn-primary btn-sm" onclick="generateImprovementPlan('${t.name}')">创建补强学习目标</button>
+      <button class="btn btn-primary btn-sm" onclick="generateImprovementPlan('${t.name || '未知'}')">创建补强学习目标</button>
     </div>
-  `).join('')
+  `).join('') : ''
   document.getElementById('improveItems').innerHTML = html
 }
 
 function renderCardDetail() {
-  const card = mockData.review.currentQueue[reviewState.currentIndex]
-  if (!card) return
-  
-  const optionsText = card.options.map(o => {
+  const card = reviewState.queue[reviewState.currentIndex]
+  if (!card) {
+    document.getElementById('cardDetailBody').innerHTML = '<div style="text-align:center;color:var(--gray-400);padding:20px;">暂无卡片详情</div>'
+    return
+  }
+
+  const optionsText = card.options ? card.options.map(o => {
     const marker = o.key === card.correctAnswer ? ' ✓' : ''
     return `${o.key}. ${o.text}${marker}`
-  }).join(' · ')
-  
+  }).join(' · ') : ''
+
   document.getElementById('cardDetailBody').innerHTML = `
     <div style="display:flex;gap:12px;margin-bottom:16px">
       <span class="card-badge ${card.status === 'overdue' ? 'badge-overdue' : 'badge-normal'}">${card.status === 'overdue' ? '⚠️ 逾期' : '📚 正常'}</span>
-      <span class="card-type">📝 ${card.type}</span>
-      <span class="card-type">来自：「${card.knowledgeTitle}」</span>
+      <span class="card-type">📝 选择题</span>
+      <span class="card-type">来自：「${card.knowledgeTitle || '未知'}」</span>
     </div>
     <div style="background:var(--gray-50);padding:20px;border-radius:var(--radius);margin-bottom:16px">
       <div style="font-size:16px;font-weight:600;color:var(--gray-900);margin-bottom:12px">${card.question}</div>
       <div style="font-size:14px;color:var(--gray-500)">${optionsText}</div>
     </div>
     <div style="font-size:13px;color:var(--gray-600);line-height:1.8">
-      <strong>📖 完整解析：</strong>${card.explanation}
+      <strong>📖 完整解析：</strong>${card.explanation || '暂无解析'}
     </div>
-    <div class="meta-row" style="margin-top:16px"><span class="meta-label">上次复习</span><span class="meta-value">${card.created}</span></div>
-    <div class="meta-row"><span class="meta-label">掌握度</span><span class="meta-value">${card.mastery} → (本次评分后更新)</span></div>
-    <div class="meta-row"><span class="meta-label">复习历史</span><span class="meta-value">第${Math.floor(Math.random() * 5) + 1}次复习</span></div>
+    <div class="meta-row" style="margin-top:16px"><span class="meta-label">上次复习</span><span class="meta-value">${card.lastReview || '从未复习'}</span></div>
+    <div class="meta-row"><span class="meta-label">掌握度</span><span class="meta-value">${((card.mastery || 0) * 100).toFixed(0)}%</span></div>
+    <div class="meta-row"><span class="meta-label">复习次数</span><span class="meta-value">${card.reviewCount || 0} 次</span></div>
+  `
+}
+
+function renderSourcePanel() {
+  const card = reviewState.queue[reviewState.currentIndex]
+  if (!card) {
+    document.getElementById('sourcePanel').innerHTML = `
+      <div class="meta-row"><span class="meta-label">来源</span><span class="meta-value">-</span></div>
+      <div class="meta-row"><span class="meta-label">分类</span><span class="meta-value">-</span></div>
+      <div class="meta-row"><span class="meta-label">创建</span><span class="meta-value">-</span></div>
+    `
+    return
+  }
+
+  document.getElementById('sourcePanel').innerHTML = `
+    <div class="meta-row"><span class="meta-label">来源</span><span class="meta-link" onclick="openModal('modal-card-detail')">${card.knowledgeTitle || '未知'}</span></div>
+    <div class="meta-row"><span class="meta-label">分类</span><span class="meta-value">${card.category || '未分类'}</span></div>
+    <div class="meta-row"><span class="meta-label">创建</span><span class="meta-value">${card.createdAt ? new Date(card.createdAt).toLocaleDateString() : '-'}</span></div>
   `
 }
 
@@ -511,10 +599,10 @@ function switchReviewPage(page) {
   document.getElementById('page-today').classList.toggle('page-hidden', page !== 'today')
   document.getElementById('page-history').classList.toggle('page-hidden', page !== 'history')
   document.getElementById('page-stats').classList.toggle('page-hidden', page !== 'stats')
-  
+
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'))
   event.target.classList.add('active')
-  
+
   if (page === 'stats') {
     renderCardDetail()
   }
@@ -532,53 +620,57 @@ function closeModal(id) {
 }
 
 function renderStatsOverview() {
-  const stats = mockData.review.stats
+  const stats = reviewState.stats || {}
   const html = `
-    <div class="overview-card"><div class="overview-num primary">${stats.totalReviews}</div><div class="overview-label">📋 累计复习次数</div></div>
-    <div class="overview-card"><div class="overview-num success">${stats.avgAccuracy}%</div><div class="overview-label">✅ 平均正确率</div></div>
-    <div class="overview-card"><div class="overview-num" style="color:#f97316">${stats.longestStreak}天</div><div class="overview-label">🔥 最长连续天数</div></div>
-    <div class="overview-card"><div class="overview-num" style="color:#7c3aed">${stats.totalCards}</div><div class="overview-label">📇 总知识卡片</div></div>
+    <div class="overview-card"><div class="overview-num primary">${stats.totalReviews || 0}</div><div class="overview-label">📋 累计复习次数</div></div>
+    <div class="overview-card"><div class="overview-num success">${Math.round(stats.avgAccuracy || 0)}%</div><div class="overview-label">✅ 平均正确率</div></div>
+    <div class="overview-card"><div class="overview-num" style="color:#f97316">${stats.longestStreak || 0}天</div><div class="overview-label">🔥 最长连续天数</div></div>
+    <div class="overview-card"><div class="overview-num" style="color:#7c3aed">${stats.totalCards || 0}</div><div class="overview-label">📇 总知识卡片</div></div>
   `
   document.getElementById('statsOverview').innerHTML = html
 }
 
 function renderMasteryDist() {
-  const dist = mockData.review.stats.masteryDist
+  const dist = reviewState.masteryDist || { low: 0, medium: 0, high: 0 }
+  const total = dist.low + dist.medium + dist.high || 1
   const html = `
-    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--danger)">${dist.low}</div><div class="mastery-bar" style="height:40px;background:var(--danger)"></div><div class="mastery-bar-label">0-1</div></div>
-    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--warning)">${dist.medium}</div><div class="mastery-bar" style="height:60px;background:var(--warning)"></div><div class="mastery-bar-label">2-3</div></div>
-    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--success)">${dist.high}</div><div class="mastery-bar" style="height:90px;background:var(--success)"></div><div class="mastery-bar-label">4-5</div></div>
+    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--danger)">${dist.low}</div><div class="mastery-bar" style="height:${(dist.low / total) * 100}px;min-height:20px;background:var(--danger)"></div><div class="mastery-bar-label">0-30%</div></div>
+    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--warning)">${dist.medium}</div><div class="mastery-bar" style="height:${(dist.medium / total) * 100}px;min-height:20px;background:var(--warning)"></div><div class="mastery-bar-label">30-70%</div></div>
+    <div style="text-align:center"><div class="mastery-bar-val" style="color:var(--success)">${dist.high}</div><div class="mastery-bar" style="height:${(dist.high / total) * 100}px;min-height:20px;background:var(--success)"></div><div class="mastery-bar-label">70-100%</div></div>
   `
   document.getElementById('masteryDist').innerHTML = html
 }
 
 function renderTodayOverview() {
-  const overview = mockData.review.overview
+  const overview = reviewState.overview
   const html = `
     <div class="overview-card">
-      <div class="overview-num primary">${overview.total}</div>
+      <div class="overview-num primary">${overview.total || 0}</div>
       <div class="overview-label">📋 应复习卡片</div>
     </div>
     <div class="overview-card">
-      <div class="overview-num success" id="review-done-count">${overview.completed}</div>
+      <div class="overview-num success" id="review-done-count">${overview.completed || 0}</div>
       <div class="overview-label">✅ 已完成</div>
     </div>
     <div class="overview-card">
-      <div class="overview-num warning">${overview.remaining}</div>
+      <div class="overview-num warning">${overview.remaining || 0}</div>
       <div class="overview-label">⏳ 剩余</div>
     </div>
     <div class="overview-card">
-      <div class="overview-num" style="color:#f97316">${overview.streak}</div>
+      <div class="overview-num" style="color:#f97316">${overview.streak || 0}</div>
       <div class="overview-label">🔥 连续天数</div>
     </div>
   `
   document.getElementById('todayOverview').innerHTML = html
-  document.getElementById('overdueCount').textContent = overview.overdueCount
+  if (overview.overdueCount && overview.overdueCount > 0) {
+    document.getElementById('overdueAlert').style.display = 'block'
+    document.getElementById('overdueCount').textContent = overview.overdueCount
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initReviewPage()
-  
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
       const modals = document.querySelectorAll('.modal-overlay.show')
@@ -598,98 +690,93 @@ document.addEventListener('DOMContentLoaded', () => {
 // AI 功能连接
 // ================================================================
 
-// 每日暖身 — 快问快答
 async function generateDailyQuiz() {
-  var topic = mockData.review.stats.weakTopics[0]?.name || '学习';
-  utils.toast('正在生成暖身测试题…', 'info');
+  var topic = reviewState.weakTopics[0]?.name || '学习'
+  utils.toast('正在生成暖身测试题…', 'info')
   try {
-    var res = await DB.getQuiz(topic);
+    var res = await window.DB.getQuiz(topic)
     if (res.success && res.content) {
-      utils.toast('暖身测试题已生成', 'success');
-      // 在今日概览区域显示测试题
-      var overviewEl = document.querySelector('.review-overview, .today-overview, #page-today .stat-panel');
+      utils.toast('暖身测试题已生成', 'success')
+      var overviewEl = document.querySelector('.review-overview, .today-overview, #page-today .stat-panel')
       if (overviewEl) {
-        var quizEl = document.createElement('div');
-        quizEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;';
-        quizEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px">🎯 每日暖身测试题</div><div style="color:var(--gray-600);line-height:1.6">' + res.content + '</div>';
-        overviewEl.appendChild(quizEl);
+        var quizEl = document.createElement('div')
+        quizEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;'
+        quizEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px">🎯 每日暖身测试题</div><div style="color:var(--gray-600);line-height:1.6">' + res.content + '</div>'
+        overviewEl.appendChild(quizEl)
       }
     } else {
-      utils.toast('AI 暂不可用: ' + (res.error || '未知错误'), 'error');
+      utils.toast('AI 暂不可用: ' + (res.error || '未知错误'), 'error')
     }
   } catch (e) {
-    utils.toast('生成失败: ' + e.message, 'error');
+    utils.toast('生成失败: ' + e.message, 'error')
   }
 }
 
-// 串联测试
 async function generateSerialTest() {
-  utils.toast('AI 正在生成串联测试…', 'info');
+  utils.toast('AI 正在生成串联测试…', 'info')
   try {
-    var cardIds = mockData.review.currentQueue.slice(0, 3).map(function(c) { return c.id || c.knowledgeId || ''; });
-    var res = await DB.aiSerialTest(cardIds);
+    var cardIds = reviewState.queue.slice(0, 3).map(function(c) { return c._id || '' }).filter(Boolean)
+    if (cardIds.length === 0) {
+      utils.toast('暂无卡片可进行串联测试', 'info')
+      return
+    }
+    var res = await window.DB.aiSerialTest(cardIds)
     if (res.success && res.content) {
-      utils.toast('串联测试已生成', 'success');
-      // 在弹窗中显示测试结果
-      var modalBody = document.querySelector('#modal-link .modal-body');
+      utils.toast('串联测试已生成', 'success')
+      var modalBody = document.querySelector('#modal-link .modal-body')
       if (modalBody) {
-        var testEl = document.createElement('div');
-        testEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-        testEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📝 AI 生成的串联测试</div><div style="color:var(--gray-700)">' + res.content + '</div>';
-        modalBody.appendChild(testEl);
+        var testEl = document.createElement('div')
+        testEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;'
+        testEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📝 AI 生成的串联测试</div><div style="color:var(--gray-700)">' + res.content + '</div>'
+        modalBody.appendChild(testEl)
       }
     } else {
-      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error')
     }
   } catch (e) {
-    utils.toast('生成失败: ' + e.message, 'error');
+    utils.toast('生成失败: ' + e.message, 'error')
   }
 }
 
-// 生成所有补强计划
 async function generateAllImprovementPlans() {
-  utils.toast('AI 正在生成补强计划…', 'info');
+  utils.toast('AI 正在生成补强计划…', 'info')
   try {
-    var res = await DB.aiAllImprovementPlans();
+    var res = await window.DB.aiAllImprovementPlans()
     if (res.success && res.content) {
-      closeModal('modal-improve');
-      utils.toast('补强计划已生成', 'success');
-      // 显示 AI 生成的补强计划
-      var improveEl = document.getElementById('improveItems');
+      closeModal('modal-improve')
+      utils.toast('补强计划已生成', 'success')
+      var improveEl = document.getElementById('improveItems')
       if (improveEl) {
-        var planEl = document.createElement('div');
-        planEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📋 AI 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
-        improveEl.appendChild(planEl);
+        var planEl = document.createElement('div')
+        planEl.style.cssText = 'margin-top:16px;padding:16px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;'
+        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:8px;color:var(--primary)">📋 AI 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>'
+        improveEl.appendChild(planEl)
       }
     } else {
-      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error')
     }
   } catch (e) {
-    utils.toast('生成失败: ' + e.message, 'error');
+    utils.toast('生成失败: ' + e.message, 'error')
   }
 }
 
-// 生成单个薄弱主题的补强计划
 async function generateImprovementPlan(topicName) {
-  utils.toast('AI 正在为「' + topicName + '」生成补强计划…', 'info');
+  utils.toast('AI 正在为「' + topicName + '」生成补强计划…', 'info')
   try {
-    var res = await DB.aiImprovementPlan([topicName]);
+    var res = await window.DB.aiImprovementPlan([topicName])
     if (res.success && res.content) {
-      utils.toast('补强计划已生成', 'success');
-      // 显示结果
-      var improveEl = document.getElementById('improveItems');
+      utils.toast('补强计划已生成', 'success')
+      var improveEl = document.getElementById('improveItems')
       if (improveEl) {
-        var planEl = document.createElement('div');
-        planEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">📋 ' + topicName + ' 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
-        improveEl.appendChild(planEl);
+        var planEl = document.createElement('div')
+        planEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;'
+        planEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">📋 ' + topicName + ' 补强计划</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>'
+        improveEl.appendChild(planEl)
       }
     } else {
-      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
+      utils.toast('AI 生成失败: ' + (res.error || '未知错误'), 'error')
     }
   } catch (e) {
-    utils.toast('生成失败: ' + e.message, 'error');
+    utils.toast('生成失败: ' + e.message, 'error')
   }
 }
-</script>

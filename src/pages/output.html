@@ -4,19 +4,19 @@
     <!-- 概览统计 -->
     <div class="overview-grid">
       <div class="overview-card">
-        <div class="overview-num warning" id="stat-drafts">3</div>
+        <div class="overview-num warning" id="stat-drafts">-</div>
         <div class="overview-label">📝 草稿</div>
       </div>
       <div class="overview-card">
-        <div class="overview-num success" id="stat-published">5</div>
+        <div class="overview-num success" id="stat-published">-</div>
         <div class="overview-label">✅ 已发布</div>
       </div>
       <div class="overview-card">
-        <div class="overview-num primary" id="stat-words">28,500</div>
+        <div class="overview-num primary" id="stat-words">-</div>
         <div class="overview-label">📊 总字数</div>
       </div>
       <div class="overview-card">
-        <div class="overview-num purple" id="stat-utilization">62%</div>
+        <div class="overview-num purple" id="stat-utilization">-</div>
         <div class="overview-label">♻️ 素材利用率</div>
       </div>
     </div>
@@ -25,9 +25,9 @@
       <!-- 左侧：文档列表 -->
       <div class="output-main">
         <div class="sub-tabs">
-          <div class="sub-tab active" onclick="filterDocs(this, 'all')">全部<span class="count-pill" id="filter-all">8</span></div>
-          <div class="sub-tab" onclick="filterDocs(this, 'draft')">📝 草稿<span class="count-pill" id="filter-draft">3</span></div>
-          <div class="sub-tab" onclick="filterDocs(this, 'published')">✅ 已发布<span class="count-pill" id="filter-published">5</span></div>
+          <div class="sub-tab active" onclick="filterDocs(this, 'all')">全部<span class="count-pill" id="filter-all">-</span></div>
+          <div class="sub-tab" onclick="filterDocs(this, 'draft')">📝 草稿<span class="count-pill" id="filter-draft">-</span></div>
+          <div class="sub-tab" onclick="filterDocs(this, 'published')">✅ 已发布<span class="count-pill" id="filter-published">-</span></div>
         </div>
 
         <div class="doc-grid" id="docGrid">
@@ -39,7 +39,7 @@
       <div class="scrap-panel">
         <div class="scrap-header">
           <div class="scrap-title">💡 灵感碎片</div>
-          <span style="font-size:12px;color:var(--gray-400)" id="scrap-count">7条</span>
+          <span style="font-size:12px;color:var(--gray-400)" id="scrap-count">-条</span>
         </div>
         <div class="scrap-list" id="scrapList">
           <!-- 碎片列表将通过JS渲染 -->
@@ -158,12 +158,8 @@
       <div class="form-group">
         <label class="form-label">关联知识（可选）</label>
         <select class="form-select" id="new-doc-knowledge" multiple style="min-height:80px">
-          <option>微服务设计模式</option>
-          <option>API Gateway 对比</option>
-          <option>Go 并发模型</option>
-          <option>分布式系统原理</option>
         </select>
-        <div class="form-hint" style="font-size:11.5px;color:var(--gray-400);margin-top:4px">AI 推荐: 微服务设计模式、API Gateway 对比（基于标题语义）</div>
+        <div class="form-hint" style="font-size:11.5px;color:var(--gray-400);margin-top:4px" id="knowledge-hint">输入标题后 AI 将推荐关联知识</div>
       </div>
       <div style="background:var(--primary-light);padding:14px;border-radius:var(--radius);margin-top:8px">
         <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px">🤖 AI 组装素材生成初稿</div>
@@ -173,7 +169,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-new-output')">取消</button>
-      <button class="btn btn-primary" onclick="createNewDoc()">手动创建</button>
+      <button class="btn btn-primary" onclick="createDoc()">手动创建</button>
     </div>
   </div>
 </div>
@@ -188,21 +184,19 @@
     <div class="modal-body">
       <div class="review-score">
         <div class="review-stars" id="review-stars">⭐⭐⭐⭐</div>
-        <div class="review-score-num" id="review-score">8.2</div>
+        <div class="review-score-num" id="review-score">-</div>
         <div class="review-score-label">综合评分 / 10</div>
       </div>
       <div style="margin-top:16px">
-        <div class="review-dim-row"><span class="review-dim-name">结构清晰度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-structure" style="width:85%;background:var(--success)"></div></div><span class="review-dim-val">8.5</span></div>
-        <div class="review-dim-row"><span class="review-dim-name">内容深度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-depth" style="width:78%;background:var(--info)"></div></div><span class="review-dim-val">7.8</span></div>
-        <div class="review-dim-row"><span class="review-dim-name">可读性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-readability" style="width:82%;background:var(--success)"></div></div><span class="review-dim-val">8.2</span></div>
-        <div class="review-dim-row"><span class="review-dim-name">引用准确性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-accuracy" style="width:80%;background:var(--success)"></div></div><span class="review-dim-val">8.0</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">结构清晰度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-structure" style="width:0%"></div></div><span class="review-dim-val">-</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">内容深度</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-depth" style="width:0%"></div></div><span class="review-dim-val">-</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">可读性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-readability" style="width:0%"></div></div><span class="review-dim-val">-</span></div>
+        <div class="review-dim-row"><span class="review-dim-name">引用准确性</span><div class="review-dim-bar"><div class="review-dim-fill" id="dim-accuracy" style="width:0%"></div></div><span class="review-dim-val">-</span></div>
       </div>
       <div class="review-suggestions" style="margin-top:14px">
         <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:8px">💡 改进建议</div>
         <div id="review-suggestions">
-          <div class="review-sug"><span class="review-sug-num">1.</span> 第3段可补充具体的 QPS 对比数据来支撑"性能提升"的观点</div>
-          <div class="review-sug"><span class="review-sug-num">2.</span> 建议在"踩坑记录"后增加一个"经验教训"总结段落</div>
-          <div class="review-sug"><span class="review-sug-num">3.</span> 引用外部来源时建议标注版本号（如 Istio v1.18）</div>
+          <div style="color:var(--gray-400);text-align:center;padding:10px;">点击评审按钮获取 AI 评审结果</div>
         </div>
       </div>
     </div>
@@ -246,22 +240,17 @@
       <button class="modal-close" onclick="closeModal('modal-practice')">×</button>
     </div>
     <div class="modal-body">
-      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px">将「微服务架构」知识匹配到实践场景：</div>
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:14px" id="practice-title">选择要关联的知识与项目</div>
       <div style="margin-bottom:16px">
         <div class="form-label">📁 关联项目</div>
         <select class="form-select" id="practice-project">
-          <option>StudyMind 个人学习助手</option>
-          <option>团队微服务迁移项目</option>
-          <option>个人博客网站</option>
         </select>
       </div>
       <div style="margin-bottom:14px">
         <div class="form-label">💡 可应用场景</div>
-        <div class="checklist-item"><div class="checklist-cb done" onclick="toggleCheck(this)">✓</div><span class="checklist-text">后端服务拆分方案设计（参考 DDD 限界上下文）</span></div>
-        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">API Gateway 选型（Kong vs APISIX）</span></div>
-        <div class="checklist-item"><div class="checklist-cb done" onclick="toggleCheck(this)">✓</div><span class="checklist-text">分布式追踪基础设施搭建（OpenTelemetry）</span></div>
-        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">服务间通信协议选型（gRPC vs HTTP）</span></div>
-        <div class="checklist-item"><div class="checklist-cb" onclick="toggleCheck(this)"></div><span class="checklist-text">配置服务发现（Consul / Nacos）</span></div>
+        <div id="practice-scenarios">
+          <div style="text-align:center;color:var(--gray-400);padding:20px;">暂无可用场景</div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -280,14 +269,8 @@
     </div>
     <div class="modal-body">
       <div class="material-item material-detail" id="material-detail">
-        <div class="material-info">
-          <div class="material-title" style="font-size:14px">《微服务设计模式》</div>
-          <div class="material-tags">服务发现 · 熔断器 · API Gateway · 分布式追踪</div>
-          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">12,500字 · 📁 技术/后端 · 相关度 92%</div>
-          <div style="background:var(--gray-100);padding:8px;border-radius:4px;margin-top:6px;font-size:12px;color:var(--gray-600)">
-            > 微服务架构的核心设计模式包括：API Gateway、服务发现、断路器…<br>
-            > 本文结合 Spring Cloud 和 Kubernetes 生态…
-          </div>
+        <div class="material-info" id="material-info">
+          <div style="text-align:center;color:var(--gray-400);padding:20px;">选择素材后查看详情</div>
         </div>
       </div>
       <div style="display:flex;gap:10px;margin-top:12px">
@@ -302,26 +285,29 @@
 </div>
 
 <script>
-// 当前编辑的文档ID
 let currentDocId = null;
 let saveTimer = null;
 let selectedOutputType = 'article';
 
-// 初始化页面
-function initOutputPage() {
-  loadDocList('all');
-  loadScrapList();
-  loadStats();
+async function initOutputPage() {
+  try {
+    await loadDocList('all');
+    await loadScrapList();
+    await loadStats();
+  } catch (error) {
+    console.error('知识沉淀页面初始化失败:', error);
+  }
 }
 
-// 加载文档列表
-function loadDocList(status) {
-  const mockData = window.mockData.output.docs;
-  let filtered = mockData;
-  if (status !== 'all') {
-    filtered = mockData.filter(doc => doc.status === status);
+async function loadDocList(status) {
+  try {
+    const result = window.DB ? await window.DB.getDocuments(status) : { success: true, data: [] };
+    const docs = result.success ? result.data : [];
+    renderDocGrid(docs);
+  } catch (error) {
+    console.error('加载文档列表失败:', error);
+    renderDocGrid([]);
   }
-  renderDocGrid(filtered);
 }
 
 // 渲染文档网格
@@ -388,66 +374,81 @@ function getTypeIcon(type) {
   return icons[type] || '📄';
 }
 
-// 加载碎片列表
-function loadScrapList() {
-  const scraps = window.mockData.output.scraps;
+async function loadScrapList() {
   const list = document.getElementById('scrapList');
   list.innerHTML = '';
   
-  scraps.forEach(scrap => {
-    const item = document.createElement('div');
-    item.className = 'scrap-item';
-    item.innerHTML = `
-      <div class="scrap-text">${scrap.content}</div>
-      <div class="scrap-meta">
-        <span class="scrap-suggest">💡 可用于: ${scrap.suggestedType}</span>
-        <span>📅 ${scrap.createdAt}</span>
-      </div>
-      <div class="scrap-actions">
-        <button class="btn btn-primary btn-xs" onclick="expandScrap('${scrap._id}')">展开写作</button>
-        <button class="btn btn-ghost btn-xs" onclick="ignoreScrap('${scrap._id}')">忽略</button>
-      </div>
-    `;
-    list.appendChild(item);
-  });
-  
-  document.getElementById('scrap-count').textContent = `${scraps.length}条`;
+  try {
+    const result = window.DB ? await window.DB.getScraps(20) : { success: true, data: [] };
+    const scraps = result.success ? result.data : [];
+    
+    scraps.forEach(scrap => {
+      const item = document.createElement('div');
+      item.className = 'scrap-item';
+      const dateStr = scrap.createdAt ? new Date(scrap.createdAt).toLocaleDateString() : '';
+      item.innerHTML = `
+        <div class="scrap-text">${scrap.content}</div>
+        <div class="scrap-meta">
+          <span>📅 ${dateStr}</span>
+        </div>
+        <div class="scrap-actions">
+          <button class="btn btn-primary btn-xs" onclick="expandScrapToDoc('${scrap._id}')">展开写作</button>
+          <button class="btn btn-ghost btn-xs" onclick="ignoreScrapItem('${scrap._id}')">忽略</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+    
+    document.getElementById('scrap-count').textContent = `${scraps.length}条`;
+  } catch (error) {
+    console.error('加载碎片列表失败:', error);
+  }
 }
 
-// 加载统计数据
-function loadStats() {
-  const stats = window.mockData.output.stats;
-  document.getElementById('stat-drafts').textContent = stats.draftCount;
-  document.getElementById('stat-published').textContent = stats.publishedCount;
-  document.getElementById('stat-words').textContent = stats.totalWords.toLocaleString();
-  document.getElementById('stat-utilization').textContent = `${stats.materialUtilization}%`;
-  
-  document.getElementById('filter-all').textContent = stats.draftCount + stats.publishedCount;
-  document.getElementById('filter-draft').textContent = stats.draftCount;
-  document.getElementById('filter-published').textContent = stats.publishedCount;
+async function loadStats() {
+  try {
+    const result = window.DB ? await window.DB.getOutputStats() : { success: true, data: {} };
+    const stats = result.success ? result.data : {};
+    
+    document.getElementById('stat-drafts').textContent = stats.draftCount || 0;
+    document.getElementById('stat-published').textContent = stats.publishedCount || 0;
+    document.getElementById('stat-words').textContent = (stats.totalWords || 0).toLocaleString();
+    document.getElementById('stat-utilization').textContent = `${stats.materialUtilization || 0}%`;
+    
+    document.getElementById('filter-all').textContent = (stats.draftCount || 0) + (stats.publishedCount || 0);
+    document.getElementById('filter-draft').textContent = stats.draftCount || 0;
+    document.getElementById('filter-published').textContent = stats.publishedCount || 0;
+  } catch (error) {
+    console.error('加载统计数据失败:', error);
+  }
 }
 
-// 加载素材推荐
-function loadMaterials() {
-  const materials = window.mockData.output.materials;
+async function loadMaterials() {
   const list = document.getElementById('materialList');
   list.innerHTML = '';
   
-  materials.forEach(m => {
-    const item = document.createElement('div');
-    item.className = 'material-item';
-    item.innerHTML = `
-      <div class="material-info">
-        <div class="material-title">${m.title}</div>
-        <div class="material-tags">${m.tags.join(' · ')}</div>
-        <div class="material-score">相关度 ${m.relevance}%</div>
-      </div>
-      <div class="material-actions">
-        <button class="btn btn-xs material-ref-btn" style="background:var(--primary-light);color:var(--primary)" onclick="openMaterialDetail('${m.id}')">引用</button>
-      </div>
-    `;
-    list.appendChild(item);
-  });
+  try {
+    const result = window.DB ? await window.DB.aiRecommendMaterials(currentDocId) : { success: true, data: [] };
+    const materials = result.success && result.data ? result.data : [];
+    
+    materials.forEach(m => {
+      const item = document.createElement('div');
+      item.className = 'material-item';
+      item.innerHTML = `
+        <div class="material-info">
+          <div class="material-title">${m.title || '未命名素材'}</div>
+          <div class="material-tags">${m.tags ? m.tags.join(' · ') : ''}</div>
+          <div class="material-score">相关度 ${m.relevance || 0}%</div>
+        </div>
+        <div class="material-actions">
+          <button class="btn btn-xs material-ref-btn" style="background:var(--primary-light);color:var(--primary)" onclick="openMaterialDetail('${m.id || m._id}')">引用</button>
+        </div>
+      `;
+      list.appendChild(item);
+    });
+  } catch (error) {
+    console.error('加载素材推荐失败:', error);
+  }
 }
 
 // 筛选文档
@@ -457,17 +458,21 @@ function filterDocs(el, status) {
   loadDocList(status);
 }
 
-// 打开编辑器
-function openEditor(docId = null) {
+async function openEditor(docId = null) {
   currentDocId = docId;
   
   if (docId) {
-    const doc = window.mockData.output.docs.find(d => d._id === docId);
-    if (doc) {
-      document.getElementById('editor-title').textContent = doc.title;
-      document.getElementById('editorText').value = doc.content || '';
-      document.getElementById('doc-type').textContent = getTypeIcon(doc.type) + ' ' + getTypeLabel(doc.type);
-      document.getElementById('doc-status').textContent = doc.status === 'published' ? '✅ 已发布' : '📝 草稿';
+    try {
+      const result = window.DB ? await window.DB.getDocumentContent(docId) : { success: false };
+      if (result.success && result.data) {
+        const doc = Array.isArray(result.data) ? result.data[0] : result.data;
+        document.getElementById('editor-title').textContent = doc.title || '未命名文档';
+        document.getElementById('editorText').value = doc.content || '';
+        document.getElementById('doc-type').textContent = getTypeIcon(doc.type) + ' ' + getTypeLabel(doc.type);
+        document.getElementById('doc-status').textContent = doc.status === 'published' ? '✅ 已发布' : '📝 草稿';
+      }
+    } catch (error) {
+      console.error('加载文档失败:', error);
     }
   } else {
     document.getElementById('editor-title').textContent = '新建文档';
@@ -476,7 +481,7 @@ function openEditor(docId = null) {
     document.getElementById('doc-status').textContent = '📝 草稿';
   }
   
-  loadMaterials();
+  await loadMaterials();
   updatePreview();
   
   document.getElementById('page-list').classList.add('page-hidden');
@@ -541,7 +546,6 @@ function insertMarkdown(before, after) {
   updatePreview();
 }
 
-// 保存文档（防抖）
 function scheduleSave() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
@@ -549,10 +553,31 @@ function scheduleSave() {
   }, 2000);
 }
 
-// 保存文档
-function saveDoc() {
+async function saveDoc() {
   const content = document.getElementById('editorText').value;
-  window.toast('草稿已保存', 'success');
+  const title = document.getElementById('editor-title').textContent;
+  
+  try {
+    if (currentDocId) {
+      const result = window.DB ? await window.DB.saveDocument(currentDocId, { title, content }) : { success: true };
+      if (result.success) {
+        window.toast('草稿已保存', 'success');
+      } else {
+        window.toast('保存失败', 'error');
+      }
+    } else {
+      const result = window.DB ? await window.DB.createDocument({ title, content, type: selectedOutputType, status: 'draft' }) : { success: true };
+      if (result.success) {
+        currentDocId = result.data?._id;
+        window.toast('文档已创建', 'success');
+      } else {
+        window.toast('创建失败', 'error');
+      }
+    }
+  } catch (error) {
+    console.error('保存文档失败:', error);
+    window.toast('保存失败', 'error');
+  }
 }
 
 // 选择输出类型
@@ -562,18 +587,34 @@ function selectOutputType(el) {
   selectedOutputType = el.dataset.type;
 }
 
-// 创建新文档
-function createNewDoc() {
+async function createNewDoc() {
   const title = document.getElementById('new-doc-title').value;
   if (!title.trim()) {
     window.toast('请输入标题', 'warning');
     return;
   }
-  closeModal('modal-new-output');
-  document.getElementById('editor-title').textContent = title;
-  document.getElementById('doc-type').textContent = getTypeIcon(selectedOutputType) + ' ' + getTypeLabel(selectedOutputType);
-  openEditor();
-  window.toast('文档已创建', 'success');
+  
+  try {
+    const result = window.DB ? await window.DB.createDocument({ title: title.trim(), type: selectedOutputType, status: 'draft' }) : { success: true };
+    if (result.success) {
+      closeModal('modal-new-output');
+      document.getElementById('editor-title').textContent = title;
+      document.getElementById('doc-type').textContent = getTypeIcon(selectedOutputType) + ' ' + getTypeLabel(selectedOutputType);
+      if (result.data?._id) {
+        await openEditor(result.data._id);
+      } else {
+        await openEditor();
+      }
+      window.toast('文档已创建', 'success');
+      await loadStats();
+      await loadDocList('all');
+    } else {
+      window.toast('创建失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('创建文档失败:', error);
+    window.toast('创建失败', 'error');
+  }
 }
 
 // 生成初稿
@@ -617,41 +658,69 @@ async function generateDraft() {
   }
 }
 
-// 展开写作
-function expandScrap(scrapId) {
-  const scrap = window.mockData.output.scraps.find(s => s._id === scrapId);
-  if (scrap) {
-    closeModal('modal-scrap');
-    document.getElementById('editor-title').textContent = scrap.content.replace(/[""]/g, '');
-    document.getElementById('editorText').value = `# ${scrap.content}\n\n## 详细展开\n\n`;
-    openEditor();
-    window.toast('已基于灵感创建文档', 'success');
+async function expandScrap(scrapId) {
+  try {
+    const result = window.DB ? await window.DB.getScraps(100) : { success: true, data: [] };
+    const scraps = result.success ? result.data : [];
+    const scrap = scraps.find(s => s._id === scrapId);
+    
+    if (scrap) {
+      closeModal('modal-scrap');
+      const title = scrap.content.replace(/[""]/g, '').substring(0, 50);
+      document.getElementById('editor-title').textContent = title;
+      document.getElementById('editorText').value = `# ${scrap.content}\n\n## 详细展开\n\n`;
+      await openEditor();
+      await window.DB.expandScrapToDoc(scrapId, title);
+      window.toast('已基于灵感创建文档', 'success');
+      await loadScrapList();
+    }
+  } catch (error) {
+    console.error('展开碎片失败:', error);
+    window.toast('操作失败', 'error');
   }
 }
 
-// 忽略碎片
-function ignoreScrap(scrapId) {
-  window.toast('已忽略此灵感', 'info');
-  loadScrapList();
+async function ignoreScrap(scrapId) {
+  try {
+    const result = window.DB ? await window.DB.ignoreScrap(scrapId) : { success: true };
+    if (result.success) {
+      window.toast('已忽略此灵感', 'info');
+      await loadScrapList();
+    } else {
+      window.toast('操作失败', 'error');
+    }
+  } catch (error) {
+    console.error('忽略碎片失败:', error);
+    window.toast('操作失败', 'error');
+  }
 }
 
-// 显示快速灵感弹窗
 function showQuickScrap() {
   document.getElementById('scrap-input').value = '';
   document.getElementById('scrap-preview').textContent = '输入内容后将自动识别分类并推荐关联知识…';
   openModal('modal-scrap');
 }
 
-// 保存碎片
-function saveScrap() {
+async function saveScrap() {
   const content = document.getElementById('scrap-input').value;
   if (!content.trim()) {
     window.toast('请输入内容', 'warning');
     return;
   }
-  closeModal('modal-scrap');
-  window.toast('灵感已保存', 'success');
-  loadScrapList();
+  
+  try {
+    const result = window.DB ? await window.DB.createScrap(content.trim()) : { success: true };
+    if (result.success) {
+      closeModal('modal-scrap');
+      window.toast('灵感已保存', 'success');
+      await loadScrapList();
+    } else {
+      window.toast('保存失败', 'error');
+    }
+  } catch (error) {
+    console.error('保存碎片失败:', error);
+    window.toast('保存失败', 'error');
+  }
 }
 
 // AI操作
@@ -727,22 +796,63 @@ function optimizeDoc() {
   window.toast('已一键优化文档', 'success');
 }
 
-// 发布文档
-function publishDoc() {
-  closeModal('modal-review');
-  document.getElementById('doc-status').textContent = '✅ 已发布';
-  window.toast('已发布并生成复习卡片', 'success');
+async function publishDoc() {
+  if (!currentDocId) {
+    window.toast('请先保存文档', 'warning');
+    return;
+  }
+  
+  try {
+    const result = window.DB ? await window.DB.publishDocument(currentDocId) : { success: true };
+    if (result.success) {
+      closeModal('modal-review');
+      document.getElementById('doc-status').textContent = '✅ 已发布';
+      window.toast('已发布并生成复习卡片', 'success');
+      await loadStats();
+      await loadDocList('all');
+    } else {
+      window.toast('发布失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('发布文档失败:', error);
+    window.toast('发布失败', 'error');
+  }
 }
 
-// 打开素材详情
-function openMaterialDetail(materialId) {
-  openModal('modal-material');
+let selectedMaterial = null;
+
+async function openMaterialDetail(materialId) {
+  try {
+    const result = window.DB ? await window.DB.getKnowledgeItem(materialId) : { success: false };
+    if (result.success && result.data) {
+      const material = Array.isArray(result.data) ? result.data[0] : result.data;
+      selectedMaterial = material;
+      const infoEl = document.getElementById('material-info');
+      if (infoEl) {
+        infoEl.innerHTML = `
+          <div class="material-title" style="font-size:14px">${material.title || '未命名素材'}</div>
+          <div class="material-tags">${material.tags ? material.tags.join(' · ') : ''}</div>
+          <div style="font-size:12px;color:var(--gray-500);margin-top:4px">${material.wordCount || 0}字 · ${material.category || '未分类'} · 相关度 ${material.relevance || 0}%</div>
+          <div style="background:var(--gray-100);padding:8px;border-radius:4px;margin-top:6px;font-size:12px;color:var(--gray-600)">
+            > ${material.summary || material.excerpt || '暂无摘要'}
+          </div>
+        `;
+      }
+    }
+    openModal('modal-material');
+  } catch (error) {
+    console.error('加载素材详情失败:', error);
+    openModal('modal-material');
+  }
 }
 
-// 引用选段
 function insertQuote() {
   const textarea = document.getElementById('editorText');
-  textarea.value += '\n\n> 引用自《微服务设计模式》：微服务架构的核心设计模式包括服务发现、断路器等。\n\n';
+  if (selectedMaterial) {
+    textarea.value += `\n\n> 引用自《${selectedMaterial.title || '未命名素材'}》：${selectedMaterial.excerpt || '暂无摘要'}\n\n`;
+  } else {
+    textarea.value += '\n\n> 引用内容\n\n';
+  }
   textarea.focus();
   textarea.scrollTop = textarea.scrollHeight;
   updatePreview();
@@ -750,10 +860,13 @@ function insertQuote() {
   window.toast('已引用选段', 'success');
 }
 
-// 引用摘要
 function insertSummary() {
   const textarea = document.getElementById('editorText');
-  textarea.value += '\n\n**参考资料：** 《微服务设计模式》\n\n本文介绍了微服务架构的核心设计模式，包括API Gateway、服务发现、断路器等关键组件，结合Spring Cloud和Kubernetes生态进行了详细阐述。\n\n';
+  if (selectedMaterial) {
+    textarea.value += `\n\n**参考资料：** 《${selectedMaterial.title || '未命名素材'}》\n\n${selectedMaterial.summary || selectedMaterial.excerpt || '暂无摘要'}\n\n`;
+  } else {
+    textarea.value += '\n\n**参考资料：** \n\n';
+  }
   textarea.focus();
   textarea.scrollTop = textarea.scrollHeight;
   updatePreview();
@@ -773,9 +886,61 @@ function generatePracticePlan() {
   window.toast('实践计划已关联到学习计划', 'success');
 }
 
-// 弹窗操作
-function openModal(id) {
+async function openModal(id) {
+  if (id === 'modal-review') {
+    await loadReviewResult();
+  }
   document.getElementById(id).classList.add('show');
+}
+
+async function loadReviewResult() {
+  const content = document.getElementById('editorText')?.value;
+  if (!content || !content.trim()) return;
+
+  try {
+    const result = window.DB ? await window.DB.aiReview(currentDocId) : { success: false };
+    if (result.success && result.data) {
+      const review = result.data;
+      
+      document.getElementById('review-score').textContent = review.score || '-';
+      document.getElementById('review-stars').textContent = '⭐'.repeat(Math.round(review.score / 2)) + '☆'.repeat(Math.max(0, 5 - Math.round(review.score / 2)));
+      
+      if (review.dimensions) {
+        document.getElementById('dim-structure').style.width = `${(review.dimensions.structure || 0) * 10}%`;
+        document.getElementById('dim-structure').style.background = getScoreColor(review.dimensions.structure);
+        document.getElementById('dim-structure').nextElementSibling.textContent = review.dimensions.structure || '-';
+        
+        document.getElementById('dim-depth').style.width = `${(review.dimensions.depth || 0) * 10}%`;
+        document.getElementById('dim-depth').style.background = getScoreColor(review.dimensions.depth);
+        document.getElementById('dim-depth').nextElementSibling.textContent = review.dimensions.depth || '-';
+        
+        document.getElementById('dim-readability').style.width = `${(review.dimensions.readability || 0) * 10}%`;
+        document.getElementById('dim-readability').style.background = getScoreColor(review.dimensions.readability);
+        document.getElementById('dim-readability').nextElementSibling.textContent = review.dimensions.readability || '-';
+        
+        document.getElementById('dim-accuracy').style.width = `${(review.dimensions.accuracy || 0) * 10}%`;
+        document.getElementById('dim-accuracy').style.background = getScoreColor(review.dimensions.accuracy);
+        document.getElementById('dim-accuracy').nextElementSibling.textContent = review.dimensions.accuracy || '-';
+      }
+      
+      if (review.suggestions && review.suggestions.length > 0) {
+        const suggestionsHtml = review.suggestions.map((s, i) => `
+          <div class="review-sug"><span class="review-sug-num">${i + 1}.</span> ${s}</div>
+        `).join('');
+        document.getElementById('review-suggestions').innerHTML = suggestionsHtml;
+      }
+    }
+  } catch (error) {
+    console.error('加载评审结果失败:', error);
+  }
+}
+
+function getScoreColor(score) {
+  if (!score) return 'var(--gray-300)';
+  if (score >= 8) return 'var(--success)';
+  if (score >= 6) return 'var(--info)';
+  if (score >= 4) return 'var(--warning)';
+  return 'var(--danger)';
 }
 
 function closeModal(id) {

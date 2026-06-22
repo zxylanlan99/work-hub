@@ -958,6 +958,96 @@ const DB = {
     return this._aiProxy({ action: 'all-improvement-plans' });
   },
 
+  /** 获取今日概览 */
+  async getTodayOverview() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const endToday = new Date();
+    endToday.setHours(23, 59, 59, 999);
+
+    const [totalResult, completedResult, overdueResult, streakResult] = await Promise.all([
+      this._count('review_cards', { nextReview: this._lte(endToday) }),
+      this._count('review_history', { reviewedAt: this._between(today, endToday) }),
+      this._count('review_cards', { nextReview: this._lt(today) }),
+      this.getReviewStreak()
+    ]);
+
+    return {
+      success: true,
+      data: {
+        total: totalResult,
+        completed: completedResult,
+        remaining: Math.max(0, totalResult - completedResult),
+        streak: streakResult,
+        overdueCount: overdueResult
+      }
+    };
+  },
+
+  /** 获取复习连续天数 */
+  async getReviewStreak() {
+    try {
+      const history = await this._exec(
+        this._collection('review_history').orderBy('reviewedAt', 'desc').limit(31).get()
+      );
+      const dates = new Set();
+      history.data.forEach(h => {
+        const date = new Date(h.reviewedAt);
+        dates.add(date.toDateString());
+      });
+
+      let streak = 0;
+      const today = new Date();
+      for (let i = 0; i < 365; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(checkDate.getDate() - i);
+        if (dates.has(checkDate.toDateString())) {
+          streak++;
+        } else if (i > 0) {
+          break;
+        }
+      }
+      return streak;
+    } catch {
+      return 0;
+    }
+  },
+
+  /** 获取薄弱主题 */
+  async getWeakTopics(threshold = 0.5) {
+    const cards = await this._exec(
+      this._collection('review_cards').where({ mastery: this._lt(threshold) }).get()
+    );
+
+    const topics = {};
+    cards.data.forEach(card => {
+      const cat = card.category || '未分类';
+      if (!topics[cat]) {
+        topics[cat] = { total: 0, sumMastery: 0 };
+      }
+      topics[cat].total++;
+      topics[cat].sumMastery += card.mastery || 0;
+    });
+
+    const result = Object.entries(topics).map(([name, data]) => ({
+      name,
+      mastery: data.total > 0 ? data.sumMastery / data.total : 0,
+      count: data.total
+    })).sort((a, b) => a.mastery - b.mastery);
+
+    return { success: true, data: result };
+  },
+
+  /** 获取掌握度分布 */
+  async getMasteryDistribution() {
+    const [low, medium, high] = await Promise.all([
+      this._count('review_cards', { mastery: this._lt(0.3) }),
+      this._count('review_cards', { mastery: this._between(0.3, 0.7) }),
+      this._count('review_cards', { mastery: this._gte(0.7) })
+    ]);
+    return { success: true, data: { low, medium, high } };
+  },
+
   /**
    * AI-020: 生成复习计划练习题
    * @param {Object} options - { cardIds, questionTypeRatio, difficulty, count }
@@ -2245,8 +2335,19 @@ const DB = {
   /** DB-R-031: 文档列表 */
   async getDocuments(status, page = 1, pageSize = 20) {
     const where = {};
-    if (status) where.status = status;
-    return this._paginate('output_docs', where, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
+    if (status && status !== 'all') where.status = status;
+    const result = await this._paginate('output_docs', where, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
+    
+    if (result.success && result.data) {
+      result.data = result.data.map(doc => ({
+        ...doc,
+        excerpt: (doc.content || '').substring(0, 120) + ((doc.content || '').length > 120 ? '...' : ''),
+        materialCount: doc.knowledgeIds?.length || 0,
+        progress: doc.status === 'draft' ? Math.min(100, Math.round(((doc.wordCount || doc.content?.length || 0) / 1000) * 100)) : undefined
+      }));
+    }
+    
+    return result;
   },
 
   /** DB-R-032: 文档内容 */
@@ -2334,7 +2435,7 @@ const DB = {
   /** DB-U-038: 忽略碎片 */
   async ignoreScrap(scrapId) {
     return this._exec(
-      this._collection('scraps').doc(scrapId).update({ status: 'ignored', updatedAt: new Date() })
+      this._collection('scraps').doc(scrapId).update({ status: 'processing', updatedAt: new Date() })
     );
   },
 
@@ -2365,11 +2466,35 @@ const DB = {
 
   /** AGG-020: 输出统计 */
   async getOutputStats() {
-    const [docCount, scrapCount] = await Promise.all([
-      this._count('output_docs', {}),
-      this._count('scraps', {})
+    const [draftResult, publishedResult, scrapResult, docsResult] = await Promise.all([
+      this._count('output_docs', { status: 'draft' }),
+      this._count('output_docs', { status: 'published' }),
+      this._count('scraps', {}),
+      this._exec(this._collection('output_docs').get())
     ]);
-    return { success: true, data: { docCount, scrapCount } };
+    
+    const draftCount = draftResult.data || 0;
+    const publishedCount = publishedResult.data || 0;
+    const scrapCount = scrapResult.data || 0;
+    
+    let totalWords = 0;
+    if (docsResult.success && docsResult.data) {
+      docsResult.data.forEach(doc => {
+        totalWords += doc.wordCount || doc.content?.length || 0;
+      });
+    }
+    
+    return { 
+      success: true, 
+      data: { 
+        docCount: draftCount + publishedCount, 
+        scrapCount,
+        draftCount,
+        publishedCount,
+        totalWords,
+        materialUtilization: 0
+      } 
+    };
   },
 
   /* ================================================================

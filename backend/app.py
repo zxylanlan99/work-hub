@@ -40,10 +40,18 @@ logger = logging.getLogger(__name__)
 # ── FastAPI 应用 ──────────────────────────────────────────
 app = FastAPI(title="StudyMind 知识库后端", version="1.0.0")
 
-# CORS — 允许前端跨域调用
+# CORS — 允许前端跨域调用（生产环境限制具体域名）
+ALLOWED_ORIGINS = [
+    "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com",  # 腾讯云部署
+    "http://localhost:8771",  # 本地开发
+    "http://localhost:8765",  # 本地开发备选
+    "http://127.0.0.1:8765",
+    "http://127.0.0.1:8771",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -51,6 +51,7 @@ async function loadStatistics() {
     const statReview = document.getElementById('stat-review');
     const statNews = document.getElementById('stat-news');
     const statOutput = document.getElementById('stat-output');
+    const reviewBadge = document.getElementById('review-badge');
 
     if (statGoals) {
       statGoals.textContent = planStats.success ? (planStats.data.active || 0) : 0;
@@ -62,10 +63,20 @@ async function loadStatistics() {
       statNews.textContent = newsStats.success ? (newsStats.data.unread || 0) : 0;
     }
     if (statOutput) {
-      statOutput.textContent = outputStats.success ? (outputStats.data.drafts || 0) : 0;
+      statOutput.textContent = outputStats.success ? (outputStats.data.draftCount || 0) : 0;
     }
 
-    /* B3: 更新四宫格副文本 */
+    if (reviewBadge && reviewStats.success) {
+      const overdue = reviewStats.data.overdue || 0;
+      if (overdue > 0) {
+        reviewBadge.textContent = `⚠ 逾期${overdue}`;
+        reviewBadge.className = 'quick-card-badge qbadge-warn';
+      } else {
+        reviewBadge.textContent = '待复习';
+        reviewBadge.className = 'quick-card-badge';
+      }
+    }
+
     const quickCards = document.querySelectorAll('.quick-card');
     if (quickCards[0]) {
       const active = planStats.success ? (planStats.data.active || 0) : 0;
@@ -73,7 +84,10 @@ async function loadStatistics() {
     }
     if (quickCards[1]) {
       const due = reviewStats.success ? (reviewStats.data.dueToday || 0) : 0;
-      quickCards[1].querySelector('.quick-card-sub').textContent = `${due}张卡片待复习`;
+      const overdue = reviewStats.success ? (reviewStats.data.overdue || 0) : 0;
+      quickCards[1].querySelector('.quick-card-sub').textContent = overdue > 0 
+        ? `${due}张卡片待复习 · ${overdue}张已逾期` 
+        : `${due}张卡片待复习`;
     }
     if (quickCards[2]) {
       const unread = newsStats.success ? (newsStats.data.unread || 0) : 0;
@@ -200,38 +214,12 @@ async function loadQuiz() {
         };
       }
     } catch (err) {
-      console.log('AI quiz 获取失败，使用 mock 数据:', err);
+      console.log('AI quiz 获取失败:', err);
     }
 
-    // Mock 数据兜底
     if (!quizData || !quizData.question) {
-      const questions = [
-        {
-          question: 'SM-2 算法中，当你对一张卡片的记忆评分是 4 分时（满分 5 分），下次复习间隔会如何变化？',
-          options: ['间隔不变', '间隔增加 50%', '间隔翻倍', '间隔增加 20%'],
-          answer: '间隔翻倍',
-          explanation: 'SM-2 算法中，评分 4 分表示记得很好，间隔会翻倍。'
-        },
-        {
-          question: '在学习计划中，什么是里程碑（Milestone）？',
-          options: ['一个学习目标', '目标的重要节点', '每日任务', '复习卡片'],
-          answer: '目标的重要节点',
-          explanation: '里程碑是学习目标的重要节点，帮助将大目标分解为可管理的部分。'
-        },
-        {
-          question: '以下哪个不是有效的学习方法？',
-          options: ['间隔重复', '主动回忆', '被动阅读', '实践应用'],
-          answer: '被动阅读',
-          explanation: '被动阅读是最无效的学习方法之一，主动参与才能更好地记住知识。'
-        }
-      ];
-      const q = questions[Math.floor(Math.random() * questions.length)];
-      quizData = {
-        question: q.question,
-        options: q.options,
-        answer: q.answer,
-        explanation: q.explanation
-      };
+      quizContainer.style.display = 'none';
+      return;
     }
 
     // 渲染问题
@@ -318,37 +306,70 @@ function skipWarmup() {
 async function loadResume() {
   try {
     const result = await DB.getLastBreakpoint();
-    if (!result.success || !result.data) return;
-
-    const { goals, reviewCards, chats } = result.data;
-    const topicEl = document.querySelector('.resume-topic');
-    const metaEl = document.querySelector('.resume-meta');
-
-    if (topicEl && goals && goals.length > 0) {
-      const lastGoal = goals[0];
-      topicEl.innerHTML = `<strong>上次学习：</strong>${escapeHtml(lastGoal.title || '未知主题')}`;
+    if (!result.success || !result.data) {
+      document.getElementById('resumePanel').style.display = 'none';
+      return;
     }
 
-    if (metaEl) {
-      const parts = [];
-      if (goals && goals.length > 0) {
-        const lastGoal = goals[0];
-        if (lastGoal.updatedAt) {
-          parts.push(`⏱ ${formatDate(lastGoal.updatedAt)}`);
-        }
-        if (lastGoal.weeklyHours) {
-          parts.push(`📖 ${lastGoal.weeklyHours}`);
-        }
-      }
-      if (chats && chats.length > 0 && chats[0].updatedAt) {
-        parts.push(`💬 最近对话 ${formatDate(chats[0].updatedAt)}`);
-      }
-      if (parts.length > 0) {
-        metaEl.innerHTML = parts.map(p => `<span>${p}</span>`).join('');
-      }
+    const { goals, reviewCards, chats } = result.data;
+    const topicContentEl = document.getElementById('resume-topic-content');
+    const timeEl = document.getElementById('resume-time');
+    const durationEl = document.getElementById('resume-duration');
+    const progressEl = document.getElementById('resume-progress');
+
+    if (topicContentEl && goals && goals.length > 0) {
+      const lastGoal = goals[0];
+      topicContentEl.textContent = lastGoal.title || '未知主题';
+    }
+
+    if (timeEl && goals && goals.length > 0 && goals[0].updatedAt) {
+      timeEl.textContent = `⏱ ${formatDate(goals[0].updatedAt)}`;
+    } else {
+      timeEl.style.display = 'none';
+    }
+
+    if (durationEl && goals && goals.length > 0 && goals[0].weeklyHours) {
+      durationEl.textContent = `📖 预计剩余约 ${goals[0].weeklyHours} 小时`;
+    } else {
+      durationEl.style.display = 'none';
+    }
+
+    if (progressEl) {
+      progressEl.textContent = '📊 继续学习';
     }
   } catch (error) {
     console.error('加载智能续接失败:', error);
+    document.getElementById('resumePanel').style.display = 'none';
+  }
+}
+
+async function generateContextSummary() {
+  try {
+    const result = await DB.getLastBreakpoint();
+    if (result.success && result.data && result.data.goals && result.data.goals.length > 0) {
+      const goal = result.data.goals[0];
+      toast(`上下文摘要：${goal.title} - 点击继续学习`, 'info');
+    } else {
+      toast('暂无学习记录', 'info');
+    }
+  } catch (error) {
+    console.error('生成上下文摘要失败:', error);
+    toast('生成失败', 'error');
+  }
+}
+
+async function showRelatedKnowledge() {
+  try {
+    const result = await DB.getLastBreakpoint();
+    if (result.success && result.data && result.data.goals && result.data.goals.length > 0) {
+      const goal = result.data.goals[0];
+      toast(`关联知识点：${goal.title || '暂无'}`, 'info');
+    } else {
+      toast('暂无关联知识点', 'info');
+    }
+  } catch (error) {
+    console.error('获取关联知识点失败:', error);
+    toast('获取失败', 'error');
   }
 }
 
@@ -411,18 +432,34 @@ async function loadWeeklyTrend() {
       }
     }
 
-    // 更新趋势面板
-    const panels = document.querySelectorAll('.trend-panel');
-    if (panels.length >= 2) {
-      // 第一个面板：复习完成率
-      const valEl = panels[0].querySelector('.trend-value');
-      const barEl = panels[0].querySelector('.trend-bar-fill');
-      if (valEl) valEl.textContent = `${completionRate}%`;
-      if (barEl) barEl.style.width = `${completionRate}%`;
+    const completionEl = document.getElementById('trend-completion');
+    const completionBar = document.getElementById('trend-completion-bar');
+    const completionChange = document.getElementById('trend-completion-change');
+    const streakEl = document.getElementById('trend-streak');
+    const streakChange = document.getElementById('trend-streak-change');
 
-      // 第二个面板：连续天数
-      const valEl2 = panels[1].querySelector('.trend-value');
-      if (valEl2) valEl2.textContent = `${streak} 天`;
+    if (completionEl) completionEl.textContent = `${completionRate}%`;
+    if (completionBar) completionBar.style.width = `${completionRate}%`;
+    if (completionChange) {
+      completionChange.textContent = streak >= 5 ? '↑ 保持良好' : '↔ 继续加油';
+      completionChange.className = `trend-change ${streak >= 5 ? 'trend-up' : 'trend-neutral'}`;
+    }
+
+    if (streakEl) streakEl.textContent = `${streak} 天`;
+    if (streakChange) {
+      if (streak >= 7) {
+        streakChange.textContent = '🔥 创近30天新高';
+        streakChange.className = 'trend-change trend-up';
+      } else if (streak >= 3) {
+        streakChange.textContent = '↗ 保持势头';
+        streakChange.className = 'trend-change trend-up';
+      } else if (streak === 0) {
+        streakChange.textContent = '💪 开始学习吧';
+        streakChange.className = 'trend-change trend-neutral';
+      } else {
+        streakChange.textContent = '↔ 继续保持';
+        streakChange.className = 'trend-change trend-neutral';
+      }
     }
   } catch (error) {
     console.error('加载本周趋势失败:', error);

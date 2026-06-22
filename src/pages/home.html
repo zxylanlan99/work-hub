@@ -17,18 +17,19 @@
       <div class="warmup-sections">
         <div class="warmup-section">
           <div class="warmup-section-label">📝 昨日回顾</div>
-          <div class="warmup-yesterday">你学习了<strong>「服务发现」</strong>概念，掌握了 Consul 的基本注册机制，并完成了 <strong>Go 并发模型</strong>的复习。</div>
+          <div class="warmup-yesterday" id="yesterday-summary">加载中...</div>
         </div>
-        <div class="warmup-section">
+        <div class="warmup-section" id="quizContainer">
           <div class="warmup-section-label">❓ 快问快答</div>
-          <div class="warmup-quiz-q">Go 语言的并发模型基于什么理论？</div>
-          <div class="warmup-quiz-a" onclick="revealAnswer(this)">💡 点击查看答案</div>
+          <div class="warmup-quiz-q" id="quiz-question">加载中...</div>
+          <div id="quiz-options"></div>
+          <button id="quiz-answer-btn" style="display:none;margin-top:10px" class="btn btn-secondary btn-sm" onclick="showQuizAnswer()">查看答案</button>
         </div>
       </div>
     </div>
     <div class="warmup-right">
       <button class="warmup-continue" onclick="navigateTo('plan')">继续上次学习 →</button>
-      <button class="warmup-skip" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
+      <button class="warmup-skip" id="skip-warmup" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
     </div>
   </div>
 </div>
@@ -46,17 +47,17 @@
       <div class="quick-card-icon qc-plan">🎯</div>
       <span class="quick-card-badge qbadge-active">进行中</span>
     </div>
-    <div class="quick-card-num">2</div>
+    <div class="quick-card-num" id="stat-goals">0</div>
     <div class="quick-card-sub">个学习目标进行中</div>
     <div class="quick-card-link">查看详情 →</div>
   </div>
   <div class="quick-card" onclick="navigateTo('review')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-review">🔁</div>
-      <span class="quick-card-badge qbadge-warn">⚠ 逾期</span>
+      <span class="quick-card-badge" id="review-badge">待复习</span>
     </div>
-    <div class="quick-card-num">9</div>
-    <div class="quick-card-sub">张卡片待复习 · 3张已逾期</div>
+    <div class="quick-card-num" id="stat-review">0</div>
+    <div class="quick-card-sub">张卡片待复习</div>
     <div class="quick-card-link">开始复习 →</div>
   </div>
   <div class="quick-card" onclick="navigateTo('news')">
@@ -64,7 +65,7 @@
       <div class="quick-card-icon qc-news">📡</div>
       <span class="quick-card-badge qbadge-info">🤖 AI推荐</span>
     </div>
-    <div class="quick-card-num">2</div>
+    <div class="quick-card-num" id="stat-news">0</div>
     <div class="quick-card-sub">条AI推荐资讯待处理</div>
     <div class="quick-card-link">查看推荐 →</div>
   </div>
@@ -73,7 +74,7 @@
       <div class="quick-card-icon qc-output">✍️</div>
       <span class="quick-card-badge qbadge-edit">编辑中</span>
     </div>
-    <div class="quick-card-num">3</div>
+    <div class="quick-card-num" id="stat-output">0</div>
     <div class="quick-card-sub">篇草稿待完成</div>
     <div class="quick-card-link">继续写作 →</div>
   </div>
@@ -85,23 +86,23 @@
   调用方式: 多集合聚合查询（goals + tasks）
   数据用途: 获取上次学习主题、时间、进度
 -->
-<div class="panel resume">
+<div class="panel resume" id="resumePanel">
   <div class="panel-body">
     <div class="panel-header">
       <div class="panel-title">📖 智能续接</div>
     </div>
     <div class="resume-info">
-      <div class="resume-topic"><strong>上次学习：</strong>Go 语言并发模型深度解析 &gt; 二、GMP 调度模型</div>
-      <div class="resume-meta">
-        <span>⏱ 昨天 22:30</span>
-        <span>📖 预计剩余约 25 分钟</span>
-        <span>📊 阅读进度 65%</span>
+      <div class="resume-topic" id="resume-topic"><strong>上次学习：</strong><span id="resume-topic-content">暂无学习记录</span></div>
+      <div class="resume-meta" id="resume-meta">
+        <span id="resume-time">-</span>
+        <span id="resume-duration">-</span>
+        <span id="resume-progress">-</span>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="navigateTo('plan')">回到上次位置 →</button>
+    <button class="btn btn-primary btn-block" onclick="navigateTo('plan')">开始学习 →</button>
     <div class="resume-buttons">
-      <button class="btn btn-ghost btn-sm" onclick="toast('已生成上下文摘要')">查看上下文摘要</button>
-      <button class="btn btn-ghost btn-sm" onclick="toast('已关联: Channel 原理、GMP 调度')">关联知识点 (2)</button>
+      <button class="btn btn-ghost btn-sm" onclick="generateContextSummary()">查看上下文摘要</button>
+      <button class="btn btn-ghost btn-sm" onclick="showRelatedKnowledge()">关联知识点</button>
     </div>
   </div>
 </div>
@@ -141,26 +142,18 @@
   <div class="trend-panel">
     <span class="trend-icon">📈</span>
     <div class="trend-info">
-      <div class="trend-value">72%</div>
+      <div class="trend-value" id="trend-completion">-</div>
       <div class="trend-label">本周复习完成率</div>
-      <span class="trend-change trend-up">↑ 较上周 +8%</span>
+      <span class="trend-change" id="trend-completion-change">-</span>
     </div>
-    <div class="trend-bar-wrap"><div class="trend-bar-fill" style="width:72%"></div></div>
+    <div class="trend-bar-wrap"><div class="trend-bar-fill" id="trend-completion-bar"></div></div>
   </div>
   <div class="trend-panel">
     <span class="trend-icon">🔥</span>
     <div class="trend-info">
-      <div class="trend-value">7 天</div>
+      <div class="trend-value" id="trend-streak">-</div>
       <div class="trend-label">连续学习天数</div>
-      <span class="trend-change trend-up">↑ 创近30天新高</span>
+      <span class="trend-change" id="trend-streak-change">-</span>
     </div>
   </div>
 </div>
-
-<script>
-function revealAnswer(el) {
-  el.textContent = 'CSP（通信顺序进程）';
-  el.classList.add('revealed');
-  toast('回答正确！', 'success');
-}
-</script>

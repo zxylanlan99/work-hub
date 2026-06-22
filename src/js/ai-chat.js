@@ -11,7 +11,8 @@
 const chatState = {
   currentChatId: null,
   currentPage: 1,
-  pageSize: 20
+  pageSize: 20,
+  selectedKnowledgeIds: []
 };
 
 /* ================================================================
@@ -77,10 +78,82 @@ function bindEvents() {
   const newBtn = document.getElementById('new-chat-btn');
   const sendBtn = document.getElementById('send-btn');
   const msgInput = document.getElementById('message-input');
+  const knowledgeBtn = document.getElementById('select-knowledge-btn');
 
   if (newBtn) newBtn.addEventListener('click', createNewChat);
   if (sendBtn) sendBtn.addEventListener('click', sendMessage);
   if (msgInput) msgInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+  if (knowledgeBtn) knowledgeBtn.addEventListener('click', toggleKnowledgeSelector);
+
+  _renderKnowledgeSelector();
+}
+
+/* ================================================================
+   资料引用选择器 — AI-012-KB
+   ================================================================ */
+
+async function toggleKnowledgeSelector() {
+  const panel = document.getElementById('knowledge-selector-panel');
+  if (!panel) return;
+
+  if (panel.style.display === 'none' || !panel.style.display) {
+    await _loadKnowledgeItemsForSelector();
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+async function _loadKnowledgeItemsForSelector() {
+  const panel = document.getElementById('knowledge-selector-panel');
+  if (!panel) return;
+
+  panel.innerHTML = '<div style="padding:8px;color:#6b7280;font-size:13px;">加载资料中…</div>';
+
+  try {
+    const result = window.DB
+      ? await window.DB._exec(window.DB._collection('knowledge_items').where({ isDeleted: false }).limit(50).get())
+      : { success: true, data: [] };
+    const items = result.data || [];
+
+    if (items.length === 0) {
+      panel.innerHTML = '<div style="padding:8px;color:#9ca3af;font-size:13px;">暂无可用资料</div>';
+      return;
+    }
+
+    panel.innerHTML = items.map(item => {
+      const isSelected = chatState.selectedKnowledgeIds.indexOf(item._id) !== -1;
+      return `<label style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;${isSelected ? 'background:#e0e7ff;' : ''}">
+        <input type="checkbox" value="${item._id}" ${isSelected ? 'checked' : ''} onchange="_toggleKnowledgeItem('${item._id}', this.checked)" style="margin-top:2px;">
+        <div style="font-size:13px;">
+          <div style="font-weight:500;">${escapeHtml(item.title || '未命名')}</div>
+          <div style="color:#9ca3af;font-size:11px;">${escapeHtml((item.summary || '').substring(0, 60))}</div>
+        </div>
+      </label>`;
+    }).join('');
+  } catch (error) {
+    console.error('加载资料失败:', error);
+    panel.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:13px;">加载资料失败</div>';
+  }
+}
+
+function _toggleKnowledgeItem(itemId, checked) {
+  const idx = chatState.selectedKnowledgeIds.indexOf(itemId);
+  if (checked && idx === -1) {
+    chatState.selectedKnowledgeIds.push(itemId);
+  } else if (!checked && idx !== -1) {
+    chatState.selectedKnowledgeIds.splice(idx, 1);
+  }
+  _renderKnowledgeSelector();
+}
+
+function _renderKnowledgeSelector() {
+  const badge = document.getElementById('knowledge-selected-count');
+  if (badge) {
+    const count = chatState.selectedKnowledgeIds.length;
+    badge.textContent = count > 0 ? String(count) : '';
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
 }
 
 /* ================================================================
@@ -252,12 +325,18 @@ async function sendMessage() {
 
   if (input) input.value = '';
 
+  // 构建引用资料提示标签
+  const knowledgeTags = chatState.selectedKnowledgeIds.length > 0
+    ? `<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">已引用 ${chatState.selectedKnowledgeIds.length} 条资料</div>`
+    : '';
+
   // 先显示用户消息
   const container = document.getElementById('chat-messages');
   if (container) {
     container.innerHTML += `
       <div style="display: flex; margin-bottom: 16px; justify-content: flex-end;">
         <div style="max-width: 70%;">
+          ${knowledgeTags}
           <div style="background: #6366f1; color: white; padding: 12px 16px; border-radius: 16px 16px 4px 16px; word-break: break-word;">
             ${escapeHtml(content)}
           </div>
@@ -276,9 +355,16 @@ async function sendMessage() {
     const modelSelect = document.getElementById('model-select');
     const model = modelSelect ? modelSelect.value : 'mimo';
 
+    const hasKnowledge = chatState.selectedKnowledgeIds && chatState.selectedKnowledgeIds.length > 0;
     const result = window.DB
-      ? await window.DB.sendMessageAndReply(chatState.currentChatId, content, model)
+      ? (hasKnowledge
+          ? await window.DB.sendMessageWithKnowledge(chatState.currentChatId, content, chatState.selectedKnowledgeIds, model)
+          : await window.DB.sendMessageAndReply(chatState.currentChatId, content, model))
       : { success: true, data: { reply: '这是一个模拟的AI回复。实际部署后将连接真实AI服务。' } };
+
+    // 发送后清空已选资料
+    chatState.selectedKnowledgeIds = [];
+    _renderKnowledgeSelector();
 
     // 移除typing indicator
     const typing = document.getElementById('typing-indicator');
@@ -498,6 +584,8 @@ window.toggleStarMessage = toggleStarMessage;
 window.messageToKnowledge = messageToKnowledge;
 window.startCompareMode = startCompareMode;
 window.adoptCompareAnswer = adoptCompareAnswer;
+window.toggleKnowledgeSelector = toggleKnowledgeSelector;
+window._toggleKnowledgeItem = _toggleKnowledgeItem;
 
 /* 兼容旧 plan.html 中 callAI 函数 */
 if (typeof window.callAI === 'undefined') {

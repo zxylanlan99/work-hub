@@ -37,3 +37,11 @@ cloudbaserc.json
 .workbuddy/
 .playwright-cli/
 deliverables/
+
+# Backend (Python)
+backend/.venv/
+backend/uploads/
+backend/chroma_data/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc

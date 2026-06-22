@@ -33,6 +33,7 @@
   <div class="news-action-bar">
     <input class="news-search-box" placeholder="搜索资讯标题或内容..." id="newsSearchInput" oninput="filterNewsCards()">
     <button class="btn btn-secondary btn-sm" onclick="toggleNewsBatchMode()" id="newsBatchBtn">☑ 批量操作</button>
+    <button class="btn btn-secondary btn-sm" onclick="openNewsModal('newsSourceModal')">🤖 AI 推荐信息源</button>
     <button class="btn btn-primary btn-sm" onclick="openNewsModal('newsManualModal')">+ 手动录入</button>
     <span style="font-size:12px;color:var(--gray-400);margin-left:auto;">💡 点击资讯卡片查看评分详情</span>
   </div>
@@ -65,88 +66,31 @@
   <div id="newsHistoryContent"></div>
 </div>
 
-<!-- ========== 统计概览 ========== -->
+<!-- ========== 统计概览 — 动态渲染 ========== -->
 <div class="news-page-section" id="newsSectionStats">
-  <div class="news-stat-cards">
+  <div class="news-stat-cards" id="newsOverviewStats">
     <div class="news-stat-card">
       <div class="stat-label">本月处理总量</div>
-      <div class="stat-value" style="color:var(--primary)">86</div>
-      <div class="stat-change up">↑ 12% vs 上月</div>
+      <div class="stat-value" style="color:var(--primary)" id="newsOverviewTotal">—</div>
+      <div class="stat-change">加载中...</div>
     </div>
     <div class="news-stat-card">
       <div class="stat-label">入库转化率</div>
-      <div class="stat-value" style="color:var(--success)">58%</div>
-      <div class="stat-change up">↑ 5% vs 上月</div>
+      <div class="stat-value" style="color:var(--success)" id="newsOverviewRate">—</div>
+      <div class="stat-change">加载中...</div>
     </div>
     <div class="news-stat-card">
       <div class="stat-label">平均评分</div>
-      <div class="stat-value" style="color:var(--info)">72</div>
-      <div class="stat-change">目标 70 分</div>
+      <div class="stat-value" style="color:var(--info)" id="newsOverviewAvgScore">—</div>
+      <div class="stat-change">加载中...</div>
     </div>
     <div class="news-stat-card">
       <div class="stat-label">已转化输出</div>
-      <div class="stat-value" style="color:#d97706">20%</div>
-      <div class="stat-change down">↓ 目标 30%</div>
+      <div class="stat-value" style="color:#d97706" id="newsOverviewConverted">—</div>
+      <div class="stat-change">加载中...</div>
     </div>
   </div>
-
-  <div class="chart-row">
-    <div class="chart-box">
-      <div class="chart-title">📊 近7天处理趋势</div>
-      <svg viewBox="0 0 400 160" style="width:100%;height:auto;">
-        <polyline points="10,120 70,100 130,80 190,90 250,50 310,60 370,30" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round"/>
-        <polygon points="10,120 70,100 130,80 190,90 250,50 310,60 370,30 370,160 10,160" fill="url(#newsGrad1)" opacity="0.15"/>
-        <defs><linearGradient id="newsGrad1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--primary)"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
-        <text x="10" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/10</text>
-        <text x="70" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/11</text>
-        <text x="130" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/12</text>
-        <text x="190" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/13</text>
-        <text x="250" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/14</text>
-        <text x="310" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">6/15</text>
-        <text x="370" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">今天</text>
-      </svg>
-    </div>
-    <div class="chart-box">
-      <div class="chart-title">📈 近30天入库趋势</div>
-      <svg viewBox="0 0 400 160" style="width:100%;height:auto;">
-        <rect x="10" y="120" width="10" height="40" fill="var(--primary)" rx="2" opacity="0.45"/>
-        <rect x="25" y="100" width="10" height="60" fill="var(--primary)" rx="2" opacity="0.55"/>
-        <rect x="40" y="130" width="10" height="30" fill="var(--primary)" rx="2" opacity="0.35"/>
-        <rect x="55" y="95" width="10" height="65" fill="var(--primary)" rx="2" opacity="0.6"/>
-        <rect x="70" y="110" width="10" height="50" fill="var(--primary)" rx="2" opacity="0.5"/>
-        <rect x="85" y="80" width="10" height="80" fill="var(--primary)" rx="2" opacity="0.7"/>
-        <rect x="100" y="90" width="10" height="70" fill="var(--primary)" rx="2" opacity="0.65"/>
-        <rect x="115" y="105" width="10" height="55" fill="var(--primary)" rx="2" opacity="0.55"/>
-        <text x="200" y="150" fill="var(--gray-400)" font-size="10" text-anchor="middle">第1周 → 第5周</text>
-      </svg>
-    </div>
-  </div>
-
-  <div class="chart-row">
-    <div class="chart-box">
-      <div class="chart-title">🔝 推荐来源 TOP5</div>
-      <div style="padding:8px 0">
-        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">infoq.cn <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:85%;height:100%;background:var(--primary);border-radius:3px"></div></div> 85%</div>
-        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">csdn.net <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:72%;height:100%;background:var(--info);border-radius:3px"></div></div> 72%</div>
-        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">juejin.cn <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:65%;height:100%;background:var(--success);border-radius:3px"></div></div> 65%</div>
-        <div style="display:flex;align-items:center;margin-bottom:8px;font-size:12px;color:var(--gray-600);">zhihu.com <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:48%;height:100%;background:#d97706;border-radius:3px"></div></div> 48%</div>
-        <div style="display:flex;align-items:center;font-size:12px;color:var(--gray-600);">其它来源 <div style="flex:1;margin:0 8px;height:6px;background:var(--gray-100);border-radius:3px"><div style="width:30%;height:100%;background:var(--gray-400);border-radius:3px"></div></div> 30%</div>
-      </div>
-    </div>
-    <div class="chart-box">
-      <div class="chart-title">🏷️ 热门AI推荐标签</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 0">
-        <span style="font-size:18px;font-weight:700;color:var(--primary);">#微服务</span>
-        <span style="font-size:15px;font-weight:600;color:var(--info);">#AI</span>
-        <span style="font-size:14px;font-weight:600;color:var(--success);">#架构</span>
-        <span style="font-size:13px;color:var(--gray-600);">#前端</span>
-        <span style="font-size:12px;color:var(--gray-500);">#TypeScript</span>
-        <span style="font-size:16px;font-weight:600;color:#d97706;">#Rust</span>
-        <span style="font-size:11px;color:var(--gray-400);">#工具</span>
-        <span style="font-size:14px;color:var(--gray-600);">#性能优化</span>
-      </div>
-    </div>
-  </div>
+  <div id="newsOverviewCharts" style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;">选择此页签后自动加载统计数据</div>
 </div>
 
 <!-- ========== 底部批量操作栏 ========== -->
@@ -156,12 +100,37 @@
     <button class="btn btn-primary btn-sm" onclick="newsBatchImport()">批量入库</button>
     <button class="btn btn-secondary btn-sm" onclick="newsBatchIgnore()">批量忽略</button>
     <button class="btn btn-secondary btn-sm" onclick="newsBatchDelay()">批量暂缓</button>
+    <button class="btn btn-danger btn-sm" onclick="newsBatchDelete()">批量删除</button>
     <button class="btn btn-ghost btn-sm" onclick="toggleNewsBatchMode()">取消</button>
   </div>
 </div>
 
 <!-- ========== 悬浮按钮 ========== -->
 <button class="news-quick-add" onclick="openNewsModal('newsManualModal')" title="手动录入">+</button>
+
+<!-- ================================================================
+  弹窗 0: AI 推荐信息源 — AI-015
+  ================================================================ -->
+<div class="modal-overlay" id="newsSourceModal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <span class="modal-title">🤖 AI 推荐信息源</span>
+      <button class="modal-close" onclick="closeNewsModal('newsSourceModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">描述你的学习方向（可选）</label>
+        <input class="form-input" id="newsSourceTopicInput" placeholder="例如：前端开发、AI工程、架构设计...">
+        <div class="form-hint" style="font-size:12px;color:var(--gray-400);margin-top:4px;">不填则根据您已有学习目标自动推荐</div>
+      </div>
+      <div id="newsSourceResult" style="min-height:60px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsSourceModal')">关闭</button>
+      <button class="btn btn-primary" id="newsSourceGenBtn" onclick="generateNewsSourceRecommend()">🤖 生成推荐</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================================================================
   弹窗 1: 手动录入 — DB-W-010
@@ -401,6 +370,7 @@ const newsState = {
   selectedIds: new Set(),
   currentPreviewId: null,
   currentImportId: null,
+  currentItems: [],           // 缓存当前渲染的 items，供全选/批量操作使用
 };
 
 /* ================================================================
@@ -443,19 +413,35 @@ async function loadNewsStats() {
   try {
     const res = window.DB ? await window.DB.getNewsOverviewStats() : null;
     if (res && res.success && res.data) {
-      document.getElementById('newsStatToday').textContent = res.data.unread || 0;
-      document.getElementById('newsStatPending').textContent = res.data.unread || 0;
-      document.getElementById('newsStatImported').textContent = res.data.imported || 0;
-      document.getElementById('newsStatIgnored').textContent = (res.data.total || 0) - (res.data.unread || 0) - (res.data.imported || 0);
+      var data = res.data;
+      // 今日处理 = 今日已读数（hasRead:true 且 updatedAt >= 今日0点）
+      var todayProcessed = data.todayProcessed || 0;
+      // 待确认 = 未读且未忽略的资讯
+      var pending = (data.unread || 0) - (data.ignored || 0);
+      if (pending < 0) pending = 0;
+      // 今日入库 = 今日 isSaved:true 的数量
+      var todaySaved = data.todaySaved || 0;
+      // 已忽略 = 全量忽略数
+      var ignoredCount = data.ignored || 0;
+
+      document.getElementById('newsStatToday').textContent = todayProcessed;
+      document.getElementById('newsStatPending').textContent = pending;
+      document.getElementById('newsStatImported').textContent = todaySaved;
+      document.getElementById('newsStatIgnored').textContent = ignoredCount;
+
+      // 更新描述文字
+      var todayChange = document.querySelector('#newsStatToday').nextElementSibling;
+      if (todayChange) todayChange.textContent = todayProcessed > 0 ? '今日已处理' : '暂无处理';
+      var importChange = document.querySelector('#newsStatImported').nextElementSibling;
+      if (importChange) importChange.textContent = todaySaved > 0 ? '今日入库' : '今日无入库';
       return;
     }
   } catch (e) { console.error('加载统计失败:', e); }
-  // 降级
-  const s = mockData.news.stats;
-  document.getElementById('newsStatToday').textContent = s.todayProcessed;
-  document.getElementById('newsStatPending').textContent = s.todayPending;
-  document.getElementById('newsStatImported').textContent = s.todayImported;
-  document.getElementById('newsStatIgnored').textContent = s.todayIgnored;
+  // DB 未连接时显示 0，不显示模拟数据
+  document.getElementById('newsStatToday').textContent = 0;
+  document.getElementById('newsStatPending').textContent = 0;
+  document.getElementById('newsStatImported').textContent = 0;
+  document.getElementById('newsStatIgnored').textContent = 0;
 }
 
 /* ================================================================
@@ -471,8 +457,11 @@ async function renderRecommendCards() {
     const res = window.DB ? await window.DB.getRecommendedNews() : null;
     if (res && res.success && res.data) { items = res.data; }
   } catch (e) { console.error('加载推荐列表失败:', e); }
-  
-  if (items.length === 0) { items = mockData.news.items; }
+
+  // 不再降级到 mockData，DB 无数据时显示空列表
+
+  // 缓存到 newsState 供全选/批量操作使用
+  newsState.currentItems = items;
 
   // 搜索过滤
   var searchQuery = window._newsSearchQuery || '';
@@ -489,13 +478,22 @@ async function renderRecommendCards() {
     items = items.filter(i => i.level === filter);
   }
 
-  // 更新子标签计数
-  const allItems = [...mockData.news.items];
-  document.getElementById('recCountAll').textContent = allItems.length;
-  document.getElementById('recCountHigh').textContent = allItems.filter(i => i.level === 'high').length;
-  document.getElementById('recCountMid').textContent = allItems.filter(i => i.level === 'mid').length;
-  document.getElementById('recCountLow').textContent = allItems.filter(i => i.level === 'low').length;
-  document.getElementById('recCountIgnored').textContent = mockData.news.ignored.length;
+  // 更新子标签计数（使用真实加载的数据，不再依赖 mockData）
+  let allItemsForCount = items;
+  // 若当前有过滤，重新拉取全量计数
+  try {
+    const resAll = window.DB ? await window.DB.getRecommendedNews() : null;
+    if (resAll && resAll.success && resAll.data && resAll.data.length > 0) {
+      allItemsForCount = resAll.data;
+    }
+  } catch (e) { /* 降级，使用已有 items */ }
+  const ignoredItems = allItemsForCount.filter(i => i.ignored || i.status === 'ignored');
+  const activeItems = allItemsForCount.filter(i => !i.ignored && i.status !== 'ignored');
+  document.getElementById('recCountAll').textContent = activeItems.length;
+  document.getElementById('recCountHigh').textContent = activeItems.filter(i => i.level === 'high').length;
+  document.getElementById('recCountMid').textContent = activeItems.filter(i => i.level === 'mid').length;
+  document.getElementById('recCountLow').textContent = activeItems.filter(i => i.level === 'low').length;
+  document.getElementById('recCountIgnored').textContent = ignoredItems.length;
 
   if (items.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无资讯</div></div>';
@@ -503,15 +501,19 @@ async function renderRecommendCards() {
   }
 
   list.innerHTML = items.map(item => {
-    if (filter === 'ignored' || item.ignored) {
+    // 统一使用 _id（DB真实主键）优先，fallback 到 item.id（mock数据）
+    const itemId = item._id || item.id;
+    const itemIdJs = "'" + String(itemId).replace(/'/g, "\\'") + "'"; // 安全嵌入 JS 字符串字面量（单引号包裹，避免与 HTML 属性双引号冲突）
+
+    if (filter === 'ignored' || item.ignored || item.status === 'ignored') {
       return `<div class="news-info-card" style="opacity:0.6">
         <div class="card-top">
           <div class="card-body">
             <div class="card-title">${escapeHtml(item.title)}</div>
-            <div class="card-meta">来源：${escapeHtml(item.source)} · ${item.time || ''} · 忽略原因：${escapeHtml(item.reason || '用户忽略')}</div>
+            <div class="card-meta">来源：${escapeHtml(item.source || item.sourceName || '')} · ${item.time || item.createdAt || ''} · 忽略原因：${escapeHtml(item.reason || '用户忽略')}</div>
             <div class="card-actions" style="opacity:1">
-              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();undoNewsIgnore(${item.id})">撤销忽略</button>
-              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();permanentDeleteNewsItem(${item.id})">永久删除</button>
+              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();undoNewsIgnore(${itemIdJs})">撤销忽略</button>
+              <button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();permanentDeleteNewsItem(${itemIdJs})">永久删除</button>
             </div>
           </div>
         </div>
@@ -520,30 +522,32 @@ async function renderRecommendCards() {
 
     const scoreClass = item.level === 'high' ? 'high' : item.level === 'mid' ? 'mid' : 'low';
     const levelLabel = item.level === 'high' ? '🔥 强烈推荐' : item.level === 'mid' ? '💡 推荐' : '📋 可选';
-    const checked = newsState.selectedIds.has(item.id) ? 'selected' : '';
-    const checkHtml = newsState.batchMode ? `<input type="checkbox" class="checkbox" ${newsState.selectedIds.has(item.id) ? 'checked' : ''} onclick="toggleNewsSelect(${item.id}, event)">` : '';
+    const itemIdStr = String(itemId);
+    const checked = newsState.selectedIds.has(itemIdStr) ? 'selected' : '';
+    const checkHtml = newsState.batchMode ? `<input type="checkbox" class="checkbox" ${newsState.selectedIds.has(itemIdStr) ? 'checked' : ''} onclick="toggleNewsSelect(${itemIdJs}, event)">` : '';
 
-    return `<div class="news-info-card ${checked}" id="newsCard${item.id}" onclick="${newsState.batchMode ? `toggleNewsSelect(${item.id}, event)` : `openNewsPreview(${item.id})`}">
+    return `<div class="news-info-card ${checked}" id="newsCard${itemId}" onclick="${newsState.batchMode ? `toggleNewsSelect(${itemIdJs}, event)` : `openNewsPreview(${itemIdJs})`}">
       <div class="card-top">
         ${checkHtml}
-        <span class="score-badge ${scoreClass}" onclick="event.stopPropagation();expandNewsScore(${item.id})">${levelLabel} ${item.score}分</span>
+        <span class="score-badge ${scoreClass}" onclick="event.stopPropagation();expandNewsScore(${itemIdJs})">${levelLabel} ${item.score || '--'}分</span>
         <div class="card-body">
           <div class="card-title">${escapeHtml(item.title)}</div>
-          <div class="card-meta">来源：${escapeHtml(item.source)} · ${item.time} · ${escapeHtml(item.matchReason || '')}</div>
-          <div class="card-summary">${escapeHtml(item.summary)}</div>
+          <div class="card-meta">来源：${escapeHtml(item.source || item.sourceName || '')} · ${item.time || item.createdAt || ''} · ${escapeHtml(item.matchReason || '')}</div>
+          <div class="card-summary">${escapeHtml(item.summary || '')}</div>
           <div class="card-tags">
             ${(item.aiTags || item.tags || []).map(t => `<span class="news-tag ai">${escapeHtml(t)}</span>`).join('')}
           </div>
-          <div class="score-detail" id="newsScoreDetail${item.id}">
+          <div class="score-detail" id="newsScoreDetail${itemId}">
             ${item.scoreDetail ? Object.entries(item.scoreDetail).map(([k, v]) => `
-              <div class="score-row"><span class="dim">${k}</span><span class="val">${v[0]}分</span></div>
-              <div style="font-size:11px;color:var(--gray-400);padding-left:4px;margin-bottom:4px">${v[1]}</div>
+              <div class="score-row"><span class="dim">${k}</span><span class="val">${Array.isArray(v) ? v[0] : v}分</span></div>
+              <div style="font-size:11px;color:var(--gray-400);padding-left:4px;margin-bottom:4px">${Array.isArray(v) ? escapeHtml(v[1]) : ''}</div>
             `).join('') : ''}
           </div>
           <div class="card-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-sm btn-primary" onclick="openNewsImportConfirm(${item.id})">确认入库</button>
-            <button class="btn btn-sm btn-secondary" onclick="ignoreNewsItem(${item.id})">忽略</button>
-            <button class="btn btn-sm btn-ghost" onclick="delayNewsItem(${item.id})">暂缓</button>
+            <button class="btn btn-sm btn-primary" onclick="openNewsImportConfirm(${itemIdJs})">确认入库</button>
+            <button class="btn btn-sm btn-secondary" onclick="ignoreNewsItem(${itemIdJs})">忽略</button>
+            <button class="btn btn-sm btn-ghost" onclick="delayNewsItem(${itemIdJs})">暂缓</button>
+            <button class="btn btn-sm btn-ghost" style="color:var(--danger)" onclick="permanentDeleteNewsItem(${itemIdJs})" title="删除">🗑 删除</button>
           </div>
         </div>
       </div>
@@ -555,74 +559,64 @@ async function renderRecommendCards() {
    历史列表渲染 — DB-R-028
    ================================================================ */
 
-function renderNewsHistory() {
+async function renderNewsHistory() {
   const container = document.getElementById('newsHistoryContent');
   const tab = newsState.historySubTab;
-  const data = mockData.news;
+
+  container.innerHTML = '<div class="spin-loading" style="text-align:center;padding:40px;"><div class="spin"></div><p>加载中...</p></div>';
+
+  var items = [];
+  try {
+    if (window.DB) {
+      var res = await window.DB.getNewsHistory();
+      if (res && res.success && res.data) items = res.data;
+    }
+  } catch (e) { console.error('加载历史失败:', e); }
 
   if (tab === 'imported') {
-    const items = data.imported;
+    items = items.filter(function(i) { return i.isSaved || i.status === 'imported'; });
     if (items.length === 0) {
       container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无已入库资讯</div></div>';
       return;
     }
-    container.innerHTML = items.map(item => `
-      <div class="news-history-item">
-        <div class="hi-icon">📄</div>
-        <div class="hi-info">
-          <div class="hi-title">${escapeHtml(item.title)}</div>
-          <div class="hi-meta">入库时间：${item.importedAt} · ${escapeHtml(item.category)} · 标签：${(item.tags || []).join(', ')}</div>
-          <div class="hi-meta">
-            ${item.hasReview ? '✅ 已生成复习卡片' : '⏳ 待生成复习卡片'} ·
-            ${item.hasOutput ? '📝 已关联输出文档' : '💡 可撰写输出'}
-          </div>
-        </div>
-        <div class="hi-actions">
-          <button class="btn btn-sm btn-secondary">查看知识</button>
-          ${item.hasOutput ? '' : '<button class="btn btn-sm btn-primary">撰写笔记</button>'}
-          <button class="btn btn-sm btn-ghost">删除</button>
-        </div>
-      </div>
-    `).join('');
+    container.innerHTML = items.map(function(item) {
+      var itemId = "'" + String(item._id || item.id || '').replace(/'/g, "\\'") + "'";
+      return '<div class="news-history-item">' +
+        '<div class="hi-icon">📄</div>' +
+        '<div class="hi-info">' +
+          '<div class="hi-title">' + escapeHtml(item.title || '无标题') + '</div>' +
+          '<div class="hi-meta">入库时间：' + (item.updatedAt || item.createdAt || '') + ' · ' + escapeHtml(item.category || '未分类') + ' · 标签：' + (item.tags || []).join(', ') + '</div>' +
+        '</div>' +
+        '<div class="hi-actions">' +
+          '<button class="btn btn-sm btn-ghost" onclick="permanentDeleteNewsItem(' + itemId + ')">删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
   } else if (tab === 'ignoredList') {
-    const items = data.ignored;
+    // 从 DB 获取被忽略的资讯（hasRead: true 且未入库）
+    items = items.filter(function(i) { return (i.hasRead || i.status === 'ignored') && !i.isSaved; });
     if (items.length === 0) {
       container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无已忽略资讯</div></div>';
       return;
     }
-    container.innerHTML = items.map(item => `
-      <div class="news-history-item" style="opacity:0.6">
-        <div class="hi-icon">🗑</div>
-        <div class="hi-info">
-          <div class="hi-title">${escapeHtml(item.title)}</div>
-          <div class="hi-meta">来源：${escapeHtml(item.source)} · ${item.time} · 忽略时间：${item.ignoredAt}</div>
-          <div class="hi-meta">忽略原因：${escapeHtml(item.reason)}</div>
-        </div>
-        <div class="hi-actions">
-          <button class="btn btn-sm btn-secondary" onclick="undoNewsIgnore(${item.id})">撤销忽略</button>
-          <button class="btn btn-sm btn-danger">永久删除</button>
-        </div>
-      </div>
-    `).join('');
+    container.innerHTML = items.map(function(item) {
+      var itemId = "'" + String(item._id || item.id || '').replace(/'/g, "\\'") + "'";
+      return '<div class="news-history-item" style="opacity:0.6">' +
+        '<div class="hi-icon">🗑</div>' +
+        '<div class="hi-info">' +
+          '<div class="hi-title">' + escapeHtml(item.title || '无标题') + '</div>' +
+          '<div class="hi-meta">来源：' + escapeHtml(item.sourceName || item.source || '') + ' · ' + (item.createdAt || '') + '</div>' +
+        '</div>' +
+        '<div class="hi-actions">' +
+          '<button class="btn btn-sm btn-secondary" onclick="undoNewsIgnore(' + itemId + ')">撤销忽略</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="permanentDeleteNewsItem(' + itemId + ')">永久删除</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
   } else if (tab === 'trash') {
-    const items = data.trash;
-    if (items.length === 0) {
-      container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">暂无回收内容</div></div>';
-      return;
-    }
-    container.innerHTML = items.map(item => `
-      <div class="news-history-item" style="opacity:0.5">
-        <div class="hi-icon">♻️</div>
-        <div class="hi-info">
-          <div class="hi-title">${escapeHtml(item.title)}</div>
-          <div class="hi-meta">删除时间：${item.deletedAt} · 将在 ${item.expireAt} 永久删除</div>
-        </div>
-        <div class="hi-actions">
-          <button class="btn btn-sm btn-secondary" onclick="restoreNewsItem(${item.id})">恢复</button>
-          <button class="btn btn-sm btn-danger">永久删除</button>
-        </div>
-      </div>
-    `).join('');
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">♻️</div><div class="empty-title">回收站功能开发中</div><div style="font-size:13px;color:var(--gray-400);margin-top:8px;">永久删除的资讯将直接从数据库移除</div></div>';
   }
 }
 
@@ -644,7 +638,8 @@ function switchNewsMainTab(tab) {
   document.getElementById('newsSectionStats').classList.toggle('active', tab === 'stats');
 
   if (tab === 'recommend') renderRecommendCards();
-  else if (tab === 'history') renderNewsHistory();
+  else if (tab === 'history') renderNewsHistory();  // async function, fire-and-forget
+  else if (tab === 'stats') loadNewsOverview();  // async function, fire-and-forget
 }
 
 function switchNewsRecTab(filter) {
@@ -664,7 +659,7 @@ function switchNewsHistoryTab(tab, evt) {
   var idx = tabMap[tab];
   if (idx !== undefined && tabs[idx]) tabs[idx].classList.add('active');
   newsState.historySubTab = tab;
-  renderNewsHistory();
+  renderNewsHistory();  // async function, fire-and-forget
 }
 
 /* ================================================================
@@ -683,12 +678,44 @@ function filterNewsCards() {
 
 function openNewsPreview(id) {
   if (newsState.batchMode) return;
-  const item = mockData.news.items.find(i => i.id === id);
-  if (!item) return;
   newsState.currentPreviewId = id;
-  document.getElementById('newsPreviewAiSummary').textContent = item.summary;
-  document.getElementById('newsPreviewContent').innerHTML = (item.content || '').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+  // 先从 currentItems 中找（内存缓存，最快）
+  var cachedItem = (newsState.currentItems || []).find(function(i) { return String(i._id || i.id) === String(id); });
+  if (cachedItem) {
+    document.getElementById('newsPreviewAiSummary').textContent = cachedItem.summary || '（无摘要）';
+    document.getElementById('newsPreviewContent').innerHTML = (cachedItem.content || cachedItem.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+  } else {
+    document.getElementById('newsPreviewAiSummary').textContent = '加载中...';
+    document.getElementById('newsPreviewContent').innerHTML = '<p style="color:var(--gray-400)">加载中...</p>';
+  }
   openNewsModal('newsPreviewModal');
+  // 异步从 DB 加载完整数据
+  (async function() {
+    try {
+      var item = null;
+      // DB.getNewsById (已新增别名，指向 getNewsPreview)
+      if (window.DB && window.DB.getNewsById) {
+        var res = await window.DB.getNewsById(id);
+        if (res && res.success && res.data && res.data.length > 0) item = res.data[0];
+      }
+      // 降级：从 currentItems 查找
+      if (!item) item = cachedItem;
+      // 最终降级：mockData（用 String 比较，兼容数字/字符串 id）
+      if (!item) item = (mockData.news.items || []).find(function(i) { return String(i.id) === String(id); });
+      if (!item) {
+        document.getElementById('newsPreviewAiSummary').textContent = '加载失败：未找到该资讯';
+        document.getElementById('newsPreviewContent').innerHTML = '<p style="color:var(--danger)">未找到该资讯数据</p>';
+        return;
+      }
+      document.getElementById('newsPreviewAiSummary').textContent = item.summary || '（无摘要）';
+      var htmlContent = (item.content || item.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+      document.getElementById('newsPreviewContent').innerHTML = htmlContent;
+    } catch (e) {
+      console.error('预览加载失败:', e);
+      document.getElementById('newsPreviewAiSummary').textContent = '加载失败';
+      document.getElementById('newsPreviewContent').innerHTML = '<p style="color:var(--danger)">加载失败: ' + escapeHtml(e.message || '') + '</p>';
+    }
+  })();
 }
 
 function expandNewsScore(id) {
@@ -701,12 +728,13 @@ function expandNewsScore(id) {
    ================================================================ */
 
 async function openNewsImportConfirm(id) {
-  const item = mockData.news.items.find(i => i.id === id);
-  if (!item) return;
+  // 从 currentItems（DB 真实数据缓存）查找
+  const sid = String(id);
+  const item = (newsState.currentItems || []).find(i => String(i._id || i.id) === sid);
+  if (!item) { showNewsToast('未找到该资讯，请刷新列表', 'warning'); return; }
   newsState.currentImportId = id != null ? id : newsState.currentPreviewId;
-  const target = mockData.news.items.find(i => i.id === newsState.currentImportId) || item;
-  document.getElementById('newsImportTitle').value = target.title;
-  document.getElementById('newsImportSummary').textContent = target.summary;
+  document.getElementById('newsImportTitle').value = item.title || '';
+  document.getElementById('newsImportSummary').textContent = item.summary || '（无摘要）';
   openNewsModal('newsImportModal');
 
   // 调用 AI 获取入库建议（分类、标签、摘要）
@@ -736,15 +764,25 @@ async function confirmNewsImport() {
   try {
     if (window.DB) {
       const res = await window.DB.importNewsToKnowledge(newsId);
-      if (!res.success) { showNewsToast('入库失败: ' + res.error, 'error'); return; }
+      if (!res || res.success === false) {
+        showNewsToast('入库失败: ' + (res && res.error ? res.error : '未知错误'), 'error');
+        return;
+      }
     }
-  } catch (e) { console.error('入库失败:', e); }
+  } catch (e) {
+    console.error('入库失败:', e);
+    showNewsToast('入库失败: ' + (e.message || '未知错误'), 'error');
+    return;
+  }
   closeNewsModal('newsImportModal');
   openNewsModal('newsSuccessModal');
   const nextReview = new Date();
   nextReview.setDate(nextReview.getDate() + 2);
   const el = document.getElementById('newsSuccessNextReview');
   if (el) el.textContent = nextReview.toISOString().split('T')[0];
+  // 入库后刷新推荐列表（已入库的会从列表消失）和统计
+  await renderRecommendCards();
+  await loadNewsStats();
 }
 
 /* ================================================================
@@ -753,8 +791,18 @@ async function confirmNewsImport() {
 
 async function ignoreNewsItem(id) {
   try {
-    if (window.DB) await window.DB.ignoreNews(id);
-  } catch (e) { console.error('忽略失败:', e); }
+    if (window.DB) {
+      var res = await window.DB.ignoreNews(id);
+      if (res && res.success === false) {
+        showNewsToast('忽略失败: ' + (res.error || '未知错误'), 'error');
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('忽略失败:', e);
+    showNewsToast('忽略失败: ' + (e.message || '未知错误'), 'error');
+    return;
+  }
   showNewsToast('已忽略', 'success');
   renderRecommendCards();
   loadNewsStats();
@@ -762,8 +810,18 @@ async function ignoreNewsItem(id) {
 
 async function undoNewsIgnore(id) {
   try {
-    if (window.DB) await window.DB.restoreNews(id);
-  } catch (e) { console.error('撤销忽略失败:', e); }
+    if (window.DB) {
+      var res = await window.DB.restoreNews(id);
+      if (res && res.success === false) {
+        showNewsToast('撤销失败: ' + (res.error || '未知错误'), 'error');
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('撤销忽略失败:', e);
+    showNewsToast('撤销失败: ' + (e.message || '未知错误'), 'error');
+    return;
+  }
   showNewsToast('已撤销忽略', 'success');
   renderRecommendCards();
   loadNewsStats();
@@ -818,8 +876,9 @@ function toggleNewsBatchMode() {
 
 function toggleNewsSelect(id, event) {
   event.stopPropagation();
-  if (newsState.selectedIds.has(id)) newsState.selectedIds.delete(id);
-  else newsState.selectedIds.add(id);
+  var sid = String(id);
+  if (newsState.selectedIds.has(sid)) newsState.selectedIds.delete(sid);
+  else newsState.selectedIds.add(sid);
   document.getElementById('newsSelectedCount').textContent = newsState.selectedIds.size;
   document.getElementById('newsBatchCount').textContent = newsState.selectedIds.size;
   renderRecommendCards();
@@ -827,7 +886,11 @@ function toggleNewsSelect(id, event) {
 
 function newsSelectAll(checked) {
   if (checked) {
-    mockData.news.items.forEach(i => {if (i.status === 'pending') newsState.selectedIds.add(i.id);});
+    (newsState.currentItems || []).forEach(i => {
+      if (i.status !== 'ignored' && !i.ignored) {
+        newsState.selectedIds.add(String(i._id || i.id));
+      }
+    });
   } else {
     newsState.selectedIds.clear();
   }
@@ -843,9 +906,9 @@ function newsSelectAll(checked) {
 function newsBatchImport() {
   if (newsState.selectedIds.size === 0) { showNewsToast('请先选择资讯', 'info'); return; }
   document.getElementById('newsBatchCountDisplay').textContent = newsState.selectedIds.size;
-  const selected = mockData.news.items.filter(i => newsState.selectedIds.has(i.id));
+  const selected = (newsState.currentItems || []).filter(i => newsState.selectedIds.has(String(i._id || i.id)));
   document.getElementById('newsBatchPreviewList').innerHTML = selected.map(i =>
-    `<div style="padding:4px 0;border-bottom:1px solid var(--gray-100)">📄 ${escapeHtml(i.title)} <span style="color:var(--gray-400)">(${i.score}分)</span></div>`
+    `<div style="padding:4px 0;border-bottom:1px solid var(--gray-100)">📄 ${escapeHtml(i.title || '')} <span style="color:var(--gray-400)">(${i.score || '--'}分)</span></div>`
   ).join('');
   openNewsModal('newsBatchImportModal');
 }
@@ -896,6 +959,34 @@ function newsBatchDelay() {
 }
 
 /* ================================================================
+   批量删除 — DB-D-008 batch
+   ================================================================ */
+
+async function newsBatchDelete() {
+  if (newsState.selectedIds.size === 0) { showNewsToast('请先选择资讯', 'info'); return; }
+  const count = newsState.selectedIds.size;
+  if (!confirm(`确认永久删除 ${count} 条资讯？此操作不可恢复！`)) return;
+  try {
+    if (window.DB) {
+      var res = await window.DB.batchDeleteNews([...newsState.selectedIds]);
+      if (res && res.success === false) {
+        showNewsToast('批量删除失败: ' + (res.error || ''), 'error');
+        return;
+      }
+    }
+  } catch (e) {
+    console.error('批量删除失败:', e);
+    showNewsToast('批量删除失败: ' + (e.message || ''), 'error');
+    return;
+  }
+  newsState.selectedIds.clear();
+  showNewsToast(`已永久删除 ${count} 条资讯`, 'success');
+  toggleNewsBatchMode();
+  await loadNewsStats();
+  await renderRecommendCards();
+}
+
+/* ================================================================
    手动录入 — DB-W-010
    ================================================================ */
 
@@ -909,20 +1000,370 @@ async function submitNewsManual() {
   const isUrlMode = window._newsEntryMode !== 'text';
   var data = {};
   if (isUrlMode) {
-    data.sourceUrl = document.getElementById('newsUrlInput').value;
-    if (!data.sourceUrl.trim()) { showNewsToast('请输入URL', 'warning'); return; }
+    data.sourceUrl = document.getElementById('newsUrlInput').value.trim();
+    if (!data.sourceUrl) { showNewsToast('请输入URL', 'warning'); return; }
+    // URL 合法性检查
+    try { new URL(data.sourceUrl); } catch(e) { showNewsToast('URL 格式不正确，请输入完整地址（含 http/https）', 'warning'); return; }
   } else {
-    data.title = document.getElementById('newsTitleInput').value;
-    data.content = document.getElementById('newsContentInput').value;
-    if (!data.title.trim()) { showNewsToast('请输入标题', 'warning'); return; }
+    data.title = document.getElementById('newsTitleInput').value.trim();
+    data.content = document.getElementById('newsContentInput').value.trim();
+    if (!data.title) { showNewsToast('请输入标题', 'warning'); return; }
+    if (!data.content) { showNewsToast('请输入内容', 'warning'); return; }
   }
-  data.sourceName = document.getElementById('newsSourceInput').value;
-  
+  data.sourceName = document.getElementById('newsSourceInput').value.trim();
+
+  // 禁用提交按钮，防止重复提交
+  const submitBtn = document.querySelector('#newsManualModal .btn-primary');
+  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '提交中...'; }
+
   try {
-    if (window.DB) await window.DB.addManualNews(data);
-  } catch (e) { console.error('录入失败:', e); }
-  closeNewsModal('newsManualModal');
-  showNewsToast('已提交到 AI 处理队列，稍后可在推荐清单中查看', 'info');
+    // 先提交到 DB 队列
+    let dbSuccess = false;
+    if (window.DB) {
+      const res = await window.DB.addManualNews(data);
+      dbSuccess = res && res.success !== false;
+    }
+
+    if (!dbSuccess && window.DB) {
+      // DB 调用明确失败
+      showNewsToast('提交失败：数据库写入失败，请检查 CloudBase 连接', 'error');
+      return;
+    }
+
+    closeNewsModal('newsManualModal');
+    // 清空表单
+    ['newsUrlInput', 'newsTitleInput', 'newsContentInput', 'newsSourceInput'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+
+    // DB 层 addManualNews 会自动异步触发 AI 五维评分
+    showNewsToast(isUrlMode ? 'URL 已提交，AI 正在评分分析…' : '已提交，AI 正在评分分析…', 'info');
+
+    // 立即刷新一次（显示刚录入的记录）
+    await renderRecommendCards();
+    await loadNewsStats();
+
+    // 5秒后再次刷新（AI 评分完成后 title/score/level 会更新）
+    setTimeout(function() {
+      renderRecommendCards();
+      loadNewsStats();
+      showNewsToast('AI 评分完成，请查看推荐清单', 'success');
+    }, 5000);
+
+  } catch (e) {
+    console.error('录入失败:', e);
+    const msg = e && e.message ? e.message : '未知错误';
+    showNewsToast(`提交失败：${msg}`, 'error');
+  } finally {
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '提交到 AI 处理队列'; }
+  }
+}
+
+/* ================================================================
+   AI 推荐信息源 — AI-015
+   ================================================================ */
+
+async function generateNewsSourceRecommend() {
+  const topicInput = document.getElementById('newsSourceTopicInput');
+  let topic = (topicInput || {}).value || '';
+  const resultEl = document.getElementById('newsSourceResult');
+  const genBtn = document.getElementById('newsSourceGenBtn');
+
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = '生成中...'; }
+  resultEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400)"><div class="spin" style="display:inline-block;width:18px;height:18px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:middle"></div>AI 正在生成推荐信息源...</div>';
+
+  try {
+    // 若用户没有填写方向，自动读取已有学习目标（PRD: "不填则根据已有学习目标自动推荐"）
+    if (!topic && window.DB) {
+      try {
+        const goalsRes = await window.DB.getGoals('active');
+        if (goalsRes && goalsRes.success && goalsRes.data && goalsRes.data.length > 0) {
+          topic = goalsRes.data.slice(0, 3).map(g => g.title).join('、');
+        }
+      } catch (e) { console.warn('读取学习目标失败，使用通用推荐:', e); }
+    }
+
+    const userMsg = topic
+      ? `你是学习资源推荐专家。用户当前的学习方向/目标是：${topic}。\n\n请推荐 6-8 个与这些方向高度相关的高质量信息源（包括博客、Newsletter、社区、YouTube频道、Twitter/X账号等，优先推荐有 RSS 订阅支持的）。\n\n每个信息源用以下格式，用 --- 分隔：\n【来源名称】\n【类型】博客/Newsletter/社区/视频频道/Twitter账号 等\n【URL】https://...\n【语言】中文/英文/双语\n【推荐理由】一句话说明价值（20字以内）`
+      : '你是学习资源推荐专家。请推荐 6-8 个面向技术开发者的综合性高质量信息源（博客、Newsletter、社区、YouTube等，优先推荐有 RSS 订阅支持的）。\n\n每个信息源用以下格式，用 --- 分隔：\n【来源名称】\n【类型】博客/Newsletter/社区/视频频道/Twitter账号 等\n【URL】https://...\n【语言】中文/英文/双语\n【推荐理由】一句话说明价值（20字以内）';
+
+    // 优先使用 AIService.callAI，失败时回退到 DB._aiProxy
+    let aiRes = null;
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      aiRes = await window.AIService.callAI({
+        action: 'chat',
+        messages: [{ role: 'user', content: userMsg }]
+      });
+    }
+
+    // AIService 不可用或调用失败，尝试 DB._aiProxy 回退
+    if ((!aiRes || !aiRes.success) && window.DB && typeof window.DB._aiProxy === 'function') {
+      console.warn('AIService 调用失败，尝试 DB._aiProxy 回退:', aiRes ? aiRes.error : 'AIService 不可用');
+      aiRes = await window.DB._aiProxy({
+        action: 'chat',
+        messages: [{ role: 'user', content: userMsg }]
+      });
+    }
+
+    if (!aiRes) throw new Error('AI 服务未初始化，请先在设置中配置 AI 模型');
+    if (!aiRes.success) throw new Error(aiRes.error || 'AI 调用失败，请检查模型配置');
+    if (!aiRes.content || aiRes.content === '(空回复)') throw new Error('AI 返回内容为空，请稍后重试');
+
+    // 解析并渲染推荐结果
+    const content = aiRes.content;
+    const blocks = content.split(/---+/).map(s => s.trim()).filter(Boolean);
+    if (blocks.length === 0) throw new Error('解析失败，内容为空');
+
+    // 将解析后的信息源存到全局，供"添加"按钮使用
+    window._newsSourceRecommendList = [];
+
+    const topicHint = topic ? `<div style="font-size:12px;color:var(--gray-400);margin-bottom:8px;">基于学习方向：${escapeHtml(topic)}</div>` : '';
+
+    resultEl.innerHTML = `
+      ${topicHint}
+      <div style="font-size:13px;font-weight:600;color:var(--gray-700);margin-bottom:10px;">✅ AI 推荐了 ${blocks.length} 个信息源</div>
+      ${blocks.map((block, idx) => {
+        const nameMatch = block.match(/【来源名称】(.+)/);
+        const typeMatch = block.match(/【类型】(.+)/);
+        const urlMatch = block.match(/【URL】(.+)/);
+        const langMatch = block.match(/【语言】(.+)/);
+        const reasonMatch = block.match(/【推荐理由】(.+)/);
+        const name = nameMatch ? nameMatch[1].trim() : '未知来源';
+        const type = typeMatch ? typeMatch[1].trim() : '';
+        const url = urlMatch ? urlMatch[1].trim() : '';
+        const lang = langMatch ? langMatch[1].trim() : '';
+        const reason = reasonMatch ? reasonMatch[1].trim() : '';
+
+        // 存储供"添加"操作使用
+        window._newsSourceRecommendList[idx] = { name, type, url, lang, reason };
+
+        return `<div style="padding:10px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);margin-bottom:8px;background:var(--gray-50);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+            <span style="font-weight:600;font-size:13px;color:var(--gray-800)">${escapeHtml(name)}</span>
+            ${type ? `<span style="font-size:11px;background:var(--primary-light);color:var(--primary);padding:1px 7px;border-radius:10px">${escapeHtml(type)}</span>` : ''}
+            ${lang ? `<span style="font-size:11px;background:var(--gray-100);color:var(--gray-500);padding:1px 7px;border-radius:10px">${escapeHtml(lang)}</span>` : ''}
+          </div>
+          ${reason ? `<div style="font-size:12px;color:var(--gray-500);margin-bottom:6px">${escapeHtml(reason)}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--primary);word-break:break-all;flex:1">${escapeHtml(url)}</a>` : '<span style="flex:1"></span>'}
+            ${url ? `<button class="btn btn-sm btn-primary" style="white-space:nowrap;flex-shrink:0" onclick="addRecommendedSourceToQueue(${idx})">+ 添加到队列</button>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="font-size:11px;color:var(--gray-400);margin-top:8px;">💡 点击"+ 添加到队列"可将信息源 URL 提交到 AI 处理队列；点击链接可在新标签页预览</div>
+    `;
+  } catch (e) {
+    console.error('AI 推荐信息源失败:', e);
+    resultEl.innerHTML = `<div style="padding:12px;background:#fef2f2;border-radius:var(--radius);color:#b91c1c;font-size:13px;">
+      ⚠️ 生成失败：${escapeHtml(e.message || '未知错误')}<br>
+      <span style="font-size:12px;color:#ef4444;margin-top:4px;display:block">请确认 AI 模型已在设置中配置，或稍后重试。</span>
+    </div>`;
+  } finally {
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = '🤖 重新生成'; }
+  }
+}
+
+/* 将推荐信息源添加到手动录入队列 — PRD 4.1 流程 */
+async function addRecommendedSourceToQueue(idx) {
+  const source = window._newsSourceRecommendList && window._newsSourceRecommendList[idx];
+  if (!source || !source.url) { showNewsToast('无效的信息源', 'warning'); return; }
+
+  const btn = event && event.target;
+  if (btn) { btn.disabled = true; btn.textContent = '添加中...'; }
+
+  try {
+    if (window.DB) {
+      await window.DB.addManualNews({
+        sourceUrl: source.url,
+        sourceName: source.name,
+        title: source.name + (source.type ? ` [${source.type}]` : ''),
+        summary: source.reason || '',
+        tags: source.type ? [source.type] : [],
+      });
+    }
+    if (btn) { btn.textContent = '✅ 已添加'; btn.style.background = 'var(--success)'; }
+    showNewsToast(`"${source.name}" 已添加到处理队列`, 'success');
+    // 静默刷新列表和统计
+    renderRecommendCards();
+    loadNewsStats();
+  } catch (e) {
+    console.error('添加信息源失败:', e);
+    if (btn) { btn.disabled = false; btn.textContent = '+ 添加到队列'; }
+    showNewsToast('添加失败：' + (e.message || '未知错误'), 'error');
+  }
+}
+window.addRecommendedSourceToQueue = addRecommendedSourceToQueue;
+
+/* ================================================================
+   统计概览 — AGG-015 / AGG-017 / AGG-018 / AGG-019
+   ================================================================ */
+
+async function loadNewsOverview() {
+  var chartsEl = document.getElementById('newsOverviewCharts');
+  if (!chartsEl) return;
+
+  // 显示加载状态
+  chartsEl.innerHTML = '<div class="spin-loading" style="text-align:center;padding:40px;"><div class="spin"></div><p>加载统计数据...</p></div>';
+  document.getElementById('newsOverviewTotal').textContent = '—';
+  document.getElementById('newsOverviewRate').textContent = '—';
+  document.getElementById('newsOverviewAvgScore').textContent = '—';
+  document.getElementById('newsOverviewConverted').textContent = '—';
+
+  try {
+    // 并行获取统计数据
+    var tasks = [];
+    var statsRes = null, trendRes = null, sourceRes = null, tagsRes = null;
+
+    if (window.DB) {
+      var promises = [
+        window.DB.getNewsStatsDetail().catch(function(e) { console.error('statsDetail failed:', e); return null; }),
+        window.DB.getNewsTrendData().catch(function(e) { console.error('trendData failed:', e); return null; }),
+        window.DB.getNewsSourceRanking().catch(function(e) { console.error('sourceRanking failed:', e); return null; }),
+        window.DB.getNewsHotTags().catch(function(e) { console.error('hotTags failed:', e); return null; })
+      ];
+      var results = await Promise.all(promises);
+      statsRes = results[0];
+      trendRes = results[1];
+      sourceRes = results[2];
+      tagsRes = results[3];
+    }
+
+    var newsItems = (statsRes && statsRes.success && statsRes.data && statsRes.data.news) || [];
+    var knowledgeItems = (statsRes && statsRes.success && statsRes.data && statsRes.data.knowledge) || [];
+    var trendItems = (trendRes && trendRes.success && trendRes.data) || (trendRes && trendRes.data) || [];
+    var sourceRanking = (sourceRes && sourceRes.success && sourceRes.data) || {};
+    var hotTags = (tagsRes && tagsRes.success && tagsRes.data) || {};
+
+    // —— 统计卡片 ——
+    // 本月处理总量：本月创建的资讯数
+    var now = new Date();
+    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    var monthCount = newsItems.filter(function(i) {
+      var d = i.createdAt ? new Date(i.createdAt) : null;
+      return d && d >= monthStart;
+    }).length;
+    document.getElementById('newsOverviewTotal').textContent = monthCount;
+    var totalChange = document.querySelector('#newsOverviewTotal').nextElementSibling;
+    if (totalChange) totalChange.textContent = monthCount > 0 ? '本月新增' : '本月暂无';
+
+    // 入库转化率：已入库 / 总数
+    var totalCount = newsItems.length;
+    var savedCount = newsItems.filter(function(i) { return i.isSaved; }).length;
+    var conversionRate = totalCount > 0 ? Math.round((savedCount / totalCount) * 100) : 0;
+    document.getElementById('newsOverviewRate').textContent = conversionRate + '%';
+    var rateChange = document.querySelector('#newsOverviewRate').nextElementSibling;
+    if (rateChange) rateChange.textContent = savedCount + '/' + totalCount + ' 已入库';
+
+    // 平均评分
+    var scoredItems = newsItems.filter(function(i) { return i.score && !isNaN(i.score); });
+    var avgScore = scoredItems.length > 0
+      ? (scoredItems.reduce(function(s, i) { return s + Number(i.score); }, 0) / scoredItems.length).toFixed(1)
+      : '—';
+    document.getElementById('newsOverviewAvgScore').textContent = avgScore;
+    var scoreChange = document.querySelector('#newsOverviewAvgScore').nextElementSibling;
+    if (scoreChange) scoreChange.textContent = scoredItems.length > 0 ? scoredItems.length + ' 条已评分' : '暂无评分';
+
+    // 已转化输出：知识条目数
+    document.getElementById('newsOverviewConverted').textContent = knowledgeItems.length;
+    var convChange = document.querySelector('#newsOverviewConverted').nextElementSibling;
+    if (convChange) convChange.textContent = knowledgeItems.length > 0 ? '知识条目' : '暂无输出';
+
+    // —— 图表区域 ——
+    if (totalCount === 0) {
+      chartsEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">暂无统计数据</div><div class="empty-desc">开始使用资讯功能后，统计数据将在此展示</div></div>';
+      return;
+    }
+
+    // 构建趋势数据（按日期分组，最近14天）
+    var trendData = {};
+    var today = new Date();
+    for (var d = 13; d >= 0; d--) {
+      var date = new Date(today);
+      date.setDate(date.getDate() - d);
+      var key = (date.getMonth() + 1) + '/' + date.getDate();
+      trendData[key] = { total: 0, saved: 0 };
+    }
+    // 使用 trendItems（最近100条）填充
+    var itemsForTrend = trendItems.length > 0 ? trendItems : newsItems;
+    itemsForTrend.forEach(function(item) {
+      var itemDate = item.createdAt ? new Date(item.createdAt) : null;
+      if (!itemDate) return;
+      var key = (itemDate.getMonth() + 1) + '/' + itemDate.getDate();
+      if (trendData[key]) {
+        trendData[key].total++;
+        if (item.isSaved) trendData[key].saved++;
+      }
+    });
+
+    var trendKeys = Object.keys(trendData);
+    var maxTotal = Math.max.apply(null, trendKeys.map(function(k) { return trendData[k].total; }));
+    if (maxTotal === 0) maxTotal = 1;
+
+    // 来源排行 TOP5
+    var sourceEntries = Object.entries(sourceRanking).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 5);
+    var maxSourceCount = sourceEntries.length > 0 ? sourceEntries[0][1] : 1;
+
+    // 热门标签 TOP8
+    var tagEntries = Object.entries(hotTags).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 8);
+
+    chartsEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+
+        <!-- 趋势图 -->
+        <div style="background:var(--bg-card);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px;">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:12px;">📈 近14天趋势</div>
+          <div style="display:flex;align-items:flex-end;gap:4px;height:120px;border-bottom:1px solid var(--gray-100);padding-bottom:4px;">
+            ${trendKeys.map(function(k) {
+              var h = Math.round((trendData[k].total / maxTotal) * 100);
+              var savedH = Math.round((trendData[k].saved / maxTotal) * 100);
+              return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;" title="' + k + ': ' + trendData[k].total + '条（入库' + trendData[k].saved + '）">' +
+                '<div style="width:80%;background:var(--success);border-radius:2px 2px 0 0;height:' + savedH + '%;min-height:' + (trendData[k].saved > 0 ? '3px' : '0') + ';" title="入库 ' + trendData[k].saved + '"></div>' +
+                '<div style="width:80%;background:var(--primary);border-radius:0 0 2px 2px;height:' + Math.max(h - savedH, 0) + '%;min-height:' + (trendData[k].total > trendData[k].saved ? '3px' : '0') + ';" title="总 ' + trendData[k].total + '"></div>' +
+              '</div>';
+            }).join('')}
+          </div>
+          <div style="display:flex;gap:12px;font-size:11px;color:var(--gray-400);margin-top:6px;">
+            <span><span style="display:inline-block;width:8px;height:8px;background:var(--primary);border-radius:2px;margin-right:4px;"></span>总数</span>
+            <span><span style="display:inline-block;width:8px;height:8px;background:var(--success);border-radius:2px;margin-right:4px;"></span>入库</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray-400);margin-top:4px;">
+            <span>${trendKeys[0]}</span>
+            <span>${trendKeys[trendKeys.length - 1]}</span>
+          </div>
+        </div>
+
+        <!-- 来源排行 -->
+        <div style="background:var(--bg-card);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px;">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:12px;">🏆 来源 TOP5</div>
+          ${sourceEntries.length > 0 ? sourceEntries.map(function(entry) {
+            var pct = Math.round((entry[1] / maxSourceCount) * 100);
+            return '<div style="margin-bottom:8px;">' +
+              '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">' +
+                '<span style="color:var(--gray-600);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px;">' + escapeHtml(entry[0]) + '</span>' +
+                '<span style="color:var(--gray-400);flex-shrink:0;margin-left:8px;">' + entry[1] + ' 条</span>' +
+              '</div>' +
+              '<div style="height:6px;background:var(--gray-100);border-radius:3px;overflow:hidden;">' +
+                '<div style="height:100%;width:' + pct + '%;background:var(--primary);border-radius:3px;"></div>' +
+              '</div>' +
+            '</div>';
+          }).join('') : '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">暂无来源数据</div>'}
+        </div>
+
+        <!-- 热门标签 -->
+        <div style="background:var(--bg-card);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px;grid-column:1/-1;">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:12px;">🏷️ 热门标签</div>
+          ${tagEntries.length > 0 ? '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + tagEntries.map(function(entry) {
+            return '<span style="font-size:12px;background:var(--primary-light);color:var(--primary);padding:4px 10px;border-radius:12px;">' + escapeHtml(entry[0]) + ' <span style="opacity:0.7;">(' + entry[1] + ')</span></span>';
+          }).join('') + '</div>' : '<div style="font-size:13px;color:var(--gray-400);text-align:center;padding:20px 0;">暂无标签数据</div>'}
+        </div>
+
+      </div>
+    `;
+  } catch (e) {
+    console.error('加载统计概览失败:', e);
+    chartsEl.innerHTML = '<div class="empty-state"><div class="empty-title">加载失败</div><div class="empty-desc">' + escapeHtml(e.message || '请检查数据库连接') + '</div></div>';
+  }
 }
 
 /* ================================================================
@@ -967,6 +1408,7 @@ window.openNewsImportConfirm = openNewsImportConfirm;
 window.confirmNewsImport = confirmNewsImport;
 window.confirmNewsBatchImport = confirmNewsBatchImport;
 window.submitNewsManual = submitNewsManual;
+window.generateNewsSourceRecommend = generateNewsSourceRecommend;
 window.filterNewsCards = filterNewsCards;
 window.expandNewsScore = expandNewsScore;
 window.toggleNewsSelect = toggleNewsSelect;
@@ -974,12 +1416,14 @@ window.newsSelectAll = newsSelectAll;
 window.newsBatchImport = newsBatchImport;
 window.newsBatchIgnore = newsBatchIgnore;
 window.newsBatchDelay = newsBatchDelay;
+window.newsBatchDelete = newsBatchDelete;
 window.openNewsModal = openNewsModal;
 window.closeNewsModal = closeNewsModal;
 window.showNewsToast = showNewsToast;
 window.permanentDeleteNewsItem = permanentDeleteNewsItem;
 window.restoreNewsItem = restoreNewsItem;
 window.toggleNewsEntryMode = toggleNewsEntryMode;
+window.loadNewsOverview = loadNewsOverview;
 
 /* ================================================================
    自动启动（SPA 模式由 framework.js 调用 window.initNewsPage）

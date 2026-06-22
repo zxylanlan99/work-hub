@@ -307,6 +307,84 @@ async function generateCards() {
   }
 }
 
+/**
+ * AI-020: 生成复习练习题
+ * 默认使用当前队列中的卡片，生成选择题、填空题、问答题
+ */
+async function generateReviewExercises() {
+  try {
+    showToast('AI 正在生成练习题…', 'info');
+    const queueResult = await window.DB.getReviewQueue();
+    const cards = queueResult.success ? queueResult.data : [];
+    const cardIds = cards.slice(0, 10).map(c => c._id);
+
+    const result = await window.DB.generateReviewExercises({
+      cardIds: cardIds,
+      questionTypeRatio: { choice: 0.5, fill: 0.3, qa: 0.2 },
+      difficulty: 'mixed',
+      count: 5
+    });
+
+    if (!result.success || !result.data || !result.data.exercises) {
+      showToast(result.error || '生成练习题失败', 'error');
+      return;
+    }
+
+    _showExercisesModal(result.data.exercises);
+  } catch (error) {
+    console.error('生成练习题失败:', error);
+    showToast('生成练习题失败', 'error');
+  }
+}
+
+/** 显示练习题弹窗 */
+function _showExercisesModal(exercises) {
+  const existing = document.getElementById('review-exercises-modal');
+  if (existing) existing.remove();
+
+  let html = '<div style="max-height:420px;overflow:auto;">';
+  exercises.forEach((ex, i) => {
+    html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px;margin-bottom:12px;">';
+    html += '<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">第 ' + (i + 1) + ' 题 · ' + _typeLabel(ex.type) + ' · 难度 ' + (ex.difficulty || 'medium') + '</div>';
+    html += '<div style="font-weight:600;margin-bottom:8px;">' + escapeHtml(ex.question) + '</div>';
+    if (ex.options && ex.options.length > 0) {
+      html += '<ul style="margin:0 0 8px 0;padding-left:18px;font-size:13px;">';
+      ex.options.forEach(opt => {
+        html += '<li>' + escapeHtml(opt.key + '. ' + opt.text) + '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '<div style="font-size:13px;color:#16a34a;">答案：' + escapeHtml(ex.answer) + '</div>';
+    if (ex.explanation) {
+      html += '<div style="font-size:12px;color:#6b7280;margin-top:6px;">解析：' + escapeHtml(ex.explanation) + '</div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.id = 'review-exercises-modal';
+  overlay.innerHTML = `
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">AI 生成的复习练习题</div>
+        <span class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('show')">&times;</span>
+      </div>
+      <div class="modal-body">${html}</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').classList.remove('show')">关闭</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function _typeLabel(type) {
+  const map = { choice: '选择题', fill: '填空题', qa: '问答题' };
+  return map[type] || type;
+}
+
 /* ================================================================
    五、工具与入口
    ================================================================ */
@@ -352,6 +430,12 @@ async function initReviewPage() {
     // 移除旧事件避免重复绑定
     generateBtn.removeEventListener('click', generateCards);
     generateBtn.addEventListener('click', generateCards);
+  }
+
+  const exercisesBtn = document.getElementById('generate-exercises-btn');
+  if (exercisesBtn) {
+    exercisesBtn.removeEventListener('click', generateReviewExercises);
+    exercisesBtn.addEventListener('click', generateReviewExercises);
   }
 
   // 5. ESC 键关闭复习弹窗

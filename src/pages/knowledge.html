@@ -7,42 +7,7 @@
     </div>
     <input type="text" class="cat-search" placeholder="搜索分类..." id="cat-search-input" oninput="filterCategories()">
     <div class="cat-tree" id="cat-tree">
-      <div class="cat-item active" onclick="selectCategory(null)">
-        <span class="cat-icon">📁</span><span class="cat-name">全部条目</span><span class="cat-count">28</span>
-      </div>
-      <div class="cat-item" onclick="selectCategory('tech')">
-        <span class="cat-toggle" onclick="toggleCategory('tech', event)">▶</span>
-        <span class="cat-icon">💻</span><span class="cat-name">技术</span><span class="cat-count">12</span>
-      </div>
-      <div id="cat-tech" class="cat-children cat-hidden">
-        <div class="cat-item" onclick="selectCategory('backend')">
-          <span class="cat-toggle" onclick="toggleCategory('backend', event)">▶</span>
-          <span class="cat-icon">🔧</span><span class="cat-name">后端</span><span class="cat-count">5</span>
-        </div>
-        <div id="cat-backend" class="cat-children cat-hidden">
-          <div class="cat-item" onclick="selectCategory('golang')"><span class="cat-icon">🐹</span><span class="cat-name">Go 语言</span><span class="cat-count">2</span></div>
-          <div class="cat-item" onclick="selectCategory('database')"><span class="cat-icon">🗄️</span><span class="cat-name">数据库</span><span class="cat-count">3</span></div>
-        </div>
-        <div class="cat-item" onclick="selectCategory('frontend')">
-          <span class="cat-toggle" onclick="toggleCategory('frontend', event)">▶</span>
-          <span class="cat-icon">🎨</span><span class="cat-name">前端</span><span class="cat-count">4</span>
-        </div>
-        <div id="cat-frontend" class="cat-children cat-hidden">
-          <div class="cat-item" onclick="selectCategory('react')"><span class="cat-icon">⚛️</span><span class="cat-name">React</span><span class="cat-count">2</span></div>
-          <div class="cat-item" onclick="selectCategory('css')"><span class="cat-icon">🎨</span><span class="cat-name">CSS/Tailwind</span><span class="cat-count">2</span></div>
-        </div>
-        <div class="cat-item" onclick="selectCategory('aiml')"><span class="cat-icon">🤖</span><span class="cat-name">AI/ML</span><span class="cat-count">3</span></div>
-      </div>
-      <div class="cat-item" onclick="selectCategory('product')">
-        <span class="cat-toggle" onclick="toggleCategory('product', event)">▶</span>
-        <span class="cat-icon">📦</span><span class="cat-name">产品</span><span class="cat-count">8</span>
-      </div>
-      <div id="cat-product" class="cat-children cat-hidden">
-        <div class="cat-item" onclick="selectCategory('prod-mgmt')"><span class="cat-icon">📋</span><span class="cat-name">产品管理</span><span class="cat-count">5</span></div>
-        <div class="cat-item" onclick="selectCategory('ux')"><span class="cat-icon">✏️</span><span class="cat-name">交互设计</span><span class="cat-count">3</span></div>
-      </div>
-      <div class="cat-item" onclick="selectCategory('writing')"><span class="cat-icon">✍️</span><span class="cat-name">写作</span><span class="cat-count">3</span></div>
-      <div class="cat-item" onclick="selectCategory('uncategorized')"><span class="cat-icon">📄</span><span class="cat-name">未分类</span><span class="cat-count">2</span></div>
+      <div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px;">加载中...</div>
     </div>
     <div class="cat-add" onclick="openModal('modal-new-category')"><span>＋</span> 新建分类</div>
   </div>
@@ -57,6 +22,7 @@
       </div>
       <div class="list-controls">
         <input type="text" class="search-bar" placeholder="搜索知识库..." id="kb-search-input" onkeydown="if(event.key==='Enter')searchKnowledge()">
+        <button class="btn btn-primary btn-sm" onclick="openModal('modal-upload')" style="white-space:nowrap">📤 上传资料</button>
         <select class="filter-select" id="kb-source-filter">
           <option value="">全部来源</option>
           <option value="manual">手动录入</option>
@@ -73,10 +39,10 @@
     </div>
 
     <!-- 过期提醒栏 -->
-    <div class="expiry-banner" id="expiry-banner">
+    <div class="expiry-banner" id="expiry-banner" style="display:none">
       <div class="expiry-info">
         <span style="font-size:18px">⚠️</span>
-        <span class="expiry-text"><strong>3 条知识</strong> 可能已过时，建议检查更新或归档</span>
+        <span class="expiry-text" id="expiry-banner-text"></span>
       </div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-sm" style="background:var(--warning);color:#fff" onclick="openModal('modal-expiry')">查看</button>
@@ -116,14 +82,8 @@
     <div class="detail-back" onclick="backToList()">
       <span>←</span> 返回
     </div>
-    <div class="breadcrumb">
+    <div class="breadcrumb" id="detail-breadcrumb">
       <a onclick="backToList()">知识库</a>
-      <span class="breadcrumb-sep">/</span>
-      <a>技术</a>
-      <span class="breadcrumb-sep">/</span>
-      <a>后端</a>
-      <span class="breadcrumb-sep">/</span>
-      <span style="color:var(--gray-800);font-weight:500">Go 语言</span>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="openEditModal()">编辑</button>
     <button class="btn btn-primary btn-sm">分享</button>
@@ -134,41 +94,31 @@
         <div class="detail-progress-fill" id="read-progress-fill"></div>
       </div>
       <div class="detail-content" id="detail-content" onscroll="updateReadProgress()">
-        <div class="detail-toc">
+        <div class="detail-toc" id="detail-toc" style="display:none">
           <div class="toc-label">目录</div>
-          <div class="toc-list">
-            <button class="toc-link active" onclick="scrollToSection('sec1', this)">核心概念</button>
-            <button class="toc-link" onclick="scrollToSection('sec2', this)">GMP 调度模型</button>
-            <button class="toc-link" onclick="scrollToSection('sec3', this)">Channel 原理</button>
-            <button class="toc-link" onclick="scrollToSection('sec4', this)">实战案例</button>
-          </div>
+          <div class="toc-list" id="toc-list"></div>
         </div>
         <article class="article" id="article-content">
-          <!-- 动态渲染 -->
+          <div style="text-align:center;padding:40px;color:var(--gray-400);">加载中...</div>
         </article>
       </div>
     </div>
-    <div class="detail-sidebar">
+    <div class="detail-sidebar" id="detail-sidebar">
       <div class="side-panel">
         <div class="side-panel-header"><div class="side-panel-title">📋 元数据</div></div>
-        <div class="side-panel-body">
-          <div class="side-meta-row"><span class="side-meta-label">分类</span><span class="side-meta-value">技术/后端/Go</span></div>
-          <div class="side-meta-row"><span class="side-meta-label">创建</span><span class="side-meta-value">3个月前</span></div>
-          <div class="side-meta-row"><span class="side-meta-label">更新</span><span class="side-meta-value">1周前</span></div>
-          <div class="side-meta-row"><span class="side-meta-label">来源</span><span class="side-link" onclick="utils.toast('打开外部链接')">github.com/golang/go</span></div>
-          <div class="side-meta-row"><span class="side-meta-label">大小</span><span class="side-meta-value">12,500 字</span></div>
-          <div class="side-meta-row"><span class="side-meta-label">阅读进度</span><span class="side-meta-value" id="read-progress-text">0%</span></div>
+        <div class="side-panel-body" id="detail-meta-body">
+          <div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">加载中...</div>
         </div>
       </div>
 
-      <div class="side-panel">
+      <div class="side-panel" id="detail-expiry-panel" style="display:none">
         <div class="side-panel-header"><div class="side-panel-title">⚠️ 过期提醒</div></div>
         <div class="side-panel-body">
           <div class="expiry-alert" id="side-expiry-alert">
-            <div class="expiry-alert-text">技术类知识已超 1 年，可能已过时</div>
+            <div class="expiry-alert-text" id="side-expiry-text"></div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="markUpdated()">标记已更新</button>
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('side-expiry-alert').style.display='none'">忽略</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('detail-expiry-panel').style.display='none'">忽略</button>
             </div>
           </div>
         </div>
@@ -177,11 +127,8 @@
       <div class="side-panel">
         <div class="side-panel-header"><div class="side-panel-title">🏷️ 标签</div></div>
         <div class="side-panel-body">
-          <div class="kc-tags" style="margin-bottom:0">
-            <span class="kc-tag">Golang</span>
-            <span class="kc-tag">并发</span>
-            <span class="kc-tag">后端</span>
-            <span class="kc-tag">GMP</span>
+          <div class="kc-tags" id="detail-tags" style="margin-bottom:0">
+            <span style="color:var(--gray-400);font-size:13px;">加载中...</span>
           </div>
         </div>
       </div>
@@ -189,10 +136,8 @@
       <div class="side-panel">
         <div class="side-panel-header"><div class="side-panel-title">📎 关联知识</div></div>
         <div class="side-panel-body">
-          <div class="related-list">
-            <div class="related-item" onclick="utils.toast('打开: Channel 原理')"><span>🔗</span><span class="related-title">Channel 原理详解</span><span class="related-score">92%</span></div>
-            <div class="related-item" onclick="utils.toast('打开: Go 内存模型')"><span>🔗</span><span class="related-title">Go 内存模型</span><span class="related-score">85%</span></div>
-            <div class="related-item" onclick="utils.toast('打开: Goroutine 调度')"><span>🔗</span><span class="related-title">Goroutine 调度器</span><span class="related-score">78%</span></div>
+          <div class="related-list" id="detail-related">
+            <span style="color:var(--gray-400);font-size:13px;">暂无关联知识</span>
           </div>
         </div>
       </div>
@@ -229,12 +174,8 @@
         <label class="form-label">分类 <span class="req">*</span></label>
         <select class="form-select" id="entry-category">
           <option value="">请选择分类...</option>
-          <option value="tech/backend/golang">技术/后端/Go 语言</option>
-          <option value="tech/frontend/react">技术/前端/React</option>
-          <option value="product/prod-mgmt">产品/产品管理</option>
-          <option value="writing">写作</option>
         </select>
-        <div class="form-hint">AI 推荐: 技术/后端/Go（基于内容自动识别）</div>
+        <div class="form-hint" id="entry-category-hint" style="display:none"></div>
       </div>
       <div class="form-group">
         <label class="form-label">内容（Markdown）<span class="req">*</span></label>
@@ -250,11 +191,9 @@
       <div class="form-group">
         <label class="form-label">标签</label>
         <div class="tag-input-wrap" id="entry-tags-wrap">
-          <span class="tag-chip">Golang <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span></span>
-          <span class="tag-chip">并发 <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span></span>
           <input type="text" class="tag-input" placeholder="输入标签后回车..." onkeydown="addTag(event)">
         </div>
-        <div class="form-hint">AI 推荐标签: Golang, 并发, 后端</div>
+        <div class="form-hint" id="entry-tags-hint" style="display:none"></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="form-group">
@@ -291,8 +230,8 @@
     </div>
     <div class="modal-body">
       <div class="import-source">
-        <div class="import-source-title">LLM 推理优化技术综述</div>
-        <div class="import-source-url">arxiv.org/abs/2401.xxx</div>
+        <div class="import-source-title" id="import-source-title">—</div>
+        <div class="import-source-url" id="import-source-url"></div>
       </div>
       <div class="ai-badge-group">
         <span class="ai-badge-tag ai-badge-bot">🤖 AI推荐</span>
@@ -301,27 +240,23 @@
       </div>
       <div class="form-group">
         <label class="form-label">标题 <span class="req">*</span></label>
-        <input type="text" class="form-input" id="import-title" value="LLM 推理优化技术综述">
+        <input type="text" class="form-input" id="import-title" value="">
       </div>
       <div class="form-group">
         <label class="form-label">分类 <span class="req">*</span></label>
         <select class="form-select" id="import-category">
-          <option value="tech/aiml">技术/AI/ML</option>
-          <option value="tech/backend">技术/后端</option>
-          <option value="product">产品</option>
+          <option value="">请选择分类...</option>
         </select>
       </div>
       <div class="form-group">
         <label class="form-label">标签</label>
         <div class="tag-input-wrap" id="import-tags-wrap">
-          <span class="tag-chip">LLM <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span></span>
-          <span class="tag-chip">推理优化 <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span></span>
           <input type="text" class="tag-input" placeholder="输入标签后回车..." onkeydown="addTag(event)">
         </div>
       </div>
       <div class="form-group">
         <label class="form-label">摘要</label>
-        <textarea class="form-textarea" id="import-summary" style="min-height:60px">大语言模型推理阶段的优化技术：KV Cache、Continuous Batching、Speculative Decoding、量化推理等前沿方法。</textarea>
+        <textarea class="form-textarea" id="import-summary" style="min-height:60px"></textarea>
       </div>
       <div class="form-group">
         <label class="form-label">存储级别</label>
@@ -361,9 +296,6 @@
         <label class="form-label">父分类</label>
         <select class="form-select" id="cat-parent">
           <option value="">无（一级分类）</option>
-          <option value="tech">技术</option>
-          <option value="product">产品</option>
-          <option value="writing">写作</option>
         </select>
       </div>
       <div class="form-group">
@@ -389,59 +321,11 @@
 <div class="modal-overlay" id="modal-health" onclick="if(event.target===this)closeModal('modal-health')">
   <div class="modal modal-lg" style="max-width:820px">
     <div class="modal-header">
-      <div class="modal-title">📋 知识体检报告 — 2026年6月</div>
+      <div class="modal-title">📋 知识体检报告</div>
       <button class="modal-close" onclick="closeModal('modal-health')">×</button>
     </div>
-    <div class="modal-body">
-      <div class="health-score">
-        <div class="health-score-num">78</div>
-        <div class="health-score-label">健康度 / 100</div>
-        <div class="health-trend">↑ 较上月 +3%</div>
-      </div>
-      <div class="health-section">
-        <div class="health-section-title">⚠️ 重复内容（2条）</div>
-        <div class="health-item">
-          <span class="health-item-icon">🔄</span>
-          <div class="health-item-content">
-            <div class="health-item-title">"Go并发模型" vs "Golang并发编程"</div>
-            <div class="health-item-desc">相似度 91%，建议合并为一条</div>
-          </div>
-          <span class="health-item-action" onclick="mergeKnowledge()">合并 →</span>
-        </div>
-      </div>
-      <div class="health-section">
-        <div class="health-section-title">📌 孤岛知识（5条）</div>
-        <div class="health-item">
-          <span class="health-item-icon">🏝️</span>
-          <div class="health-item-content">
-            <div class="health-item-title">5 条知识未被关联、未被复习</div>
-            <div class="health-item-desc">建议关联到现有学习计划或生成复习卡片</div>
-          </div>
-          <span class="health-item-action" onclick="processOrphaned()">一键处理 →</span>
-        </div>
-      </div>
-      <div class="health-section">
-        <div class="health-section-title">🔴 薄弱主题（3条）</div>
-        <div class="health-item">
-          <span class="health-item-icon">📉</span>
-          <div class="health-item-content">
-            <div class="health-item-title">3 个主题平均掌握度 < 2.5</div>
-            <div class="health-item-desc">分布式系统、Kubernetes、React Hooks</div>
-          </div>
-          <span class="health-item-action" onclick="generateImprovementPlan()">查看计划 →</span>
-        </div>
-      </div>
-      <div class="health-section">
-        <div class="health-section-title">⏰ 可能过时（4条）</div>
-        <div class="health-item">
-          <span class="health-item-icon">🕐</span>
-          <div class="health-item-content">
-            <div class="health-item-title">4 条技术类知识超过 1 年未更新</div>
-            <div class="health-item-desc">建议检查更新或归档</div>
-          </div>
-          <span class="health-item-action" onclick="closeModal('modal-health');openModal('modal-expiry')">查看详情 →</span>
-        </div>
-      </div>
+    <div class="modal-body" id="modal-health-body">
+      <div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="spin-loading"><div class="spin"></div><p>正在生成体检报告...</p></div></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-health')">关闭</button>
@@ -457,39 +341,8 @@
       <div class="modal-title">⏰ 过期知识检测</div>
       <button class="modal-close" onclick="closeModal('modal-expiry')">×</button>
     </div>
-    <div class="modal-body">
-      <div class="expiry-list">
-        <div class="expiry-item">
-          <div class="expiry-item-info">
-            <div class="expiry-item-title">React Server Components 完全指南</div>
-            <div class="expiry-item-reason">技术类，已超 1 年（14个月）未更新</div>
-          </div>
-          <div class="expiry-item-actions">
-            <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="markExpiredUpdated(1)">已更新</button>
-            <button class="btn btn-ghost btn-sm" onclick="ignoreExpiry(1)">忽略</button>
-          </div>
-        </div>
-        <div class="expiry-item">
-          <div class="expiry-item-info">
-            <div class="expiry-item-title">Node.js 18 新特性</div>
-            <div class="expiry-item-reason">技术类，已超 1 年（16个月）未更新</div>
-          </div>
-          <div class="expiry-item-actions">
-            <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="markExpiredUpdated(2)">已更新</button>
-            <button class="btn btn-ghost btn-sm" onclick="ignoreExpiry(2)">忽略</button>
-          </div>
-        </div>
-        <div class="expiry-item">
-          <div class="expiry-item-info">
-            <div class="expiry-item-title">2024年技术趋势预测</div>
-            <div class="expiry-item-reason">时效性内容，已超 1 年，建议归档</div>
-          </div>
-          <div class="expiry-item-actions">
-            <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="archiveExpired(3)">归档</button>
-            <button class="btn btn-ghost btn-sm" onclick="ignoreExpiry(3)">忽略</button>
-          </div>
-        </div>
-      </div>
+    <div class="modal-body" id="modal-expiry-body">
+      <div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="spin-loading"><div class="spin"></div><p>正在检测过期知识...</p></div></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-expiry')">关闭</button>
@@ -504,33 +357,7 @@
       <input type="text" class="search-modal-input" placeholder="搜索知识库... 语义搜索 + 关键词 | 试试 Ctrl+K" id="quick-search-input" oninput="doQuickSearch(this.value)">
     </div>
     <div class="search-results" id="search-results">
-      <div class="search-result-item" onclick="closeModal('modal-search');showKnowledgeDetail('k1')">
-        <span class="search-result-icon">📄</span>
-        <div class="search-result-info">
-          <div class="search-result-title">Go 语言并发模型深度解析</div>
-          <div class="search-result-meta">📁 技术/后端/Go · ⏱️ 3个月前</div>
-          <div class="search-result-match">匹配: goroutine, channel, GMP</div>
-        </div>
-        <span class="search-result-score">95%</span>
-      </div>
-      <div class="search-result-item" onclick="closeModal('modal-search');showKnowledgeDetail('k2')">
-        <span class="search-result-icon">📄</span>
-        <div class="search-result-info">
-          <div class="search-result-title">向量数据库选型对比</div>
-          <div class="search-result-meta">📁 技术/AI/ML · ⏱️ 2个月前</div>
-          <div class="search-result-match">匹配: 向量, 数据库, AI</div>
-        </div>
-        <span class="search-result-score">82%</span>
-      </div>
-      <div class="search-result-item" onclick="closeModal('modal-search');utils.toast('搜索: AI对话')">
-        <span class="search-result-icon">💬</span>
-        <div class="search-result-info">
-          <div class="search-result-title">AI对话: "微服务并发设计"</div>
-          <div class="search-result-meta">💬 AI对话 · ⏱️ 1周前</div>
-          <div class="search-result-match">匹配: 并发, 微服务</div>
-        </div>
-        <span class="search-result-score">76%</span>
-      </div>
+      <div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px;">输入关键词搜索知识库</div>
     </div>
     <div style="padding:10px 16px;border-top:1px solid var(--gray-100);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:12px;color:var(--gray-400)">🔍 语义搜索 + BM25 双路召回</span>
@@ -539,41 +366,40 @@
   </div>
 </div>
 
+<!-- ===== 弹窗7：上传资料 ===== -->
+<div class="modal-overlay" id="modal-upload" onclick="if(event.target===this)closeModal('modal-upload')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📤 上传资料</div>
+      <button class="modal-close" onclick="closeModal('modal-upload')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="upload-category-select">
+        <label class="form-label">选择分类（可选）</label>
+        <select class="form-select" id="upload-category">
+          <option value="">不指定分类</option>
+        </select>
+      </div>
+      <div class="upload-dropzone" id="upload-dropzone">
+        <div class="upload-dropzone-inner">
+          <div class="upload-icon">📄</div>
+          <div class="upload-hint">拖拽文件到此处，或<span class="upload-click-hint">点击选择文件</span></div>
+          <div class="upload-formats">支持 PDF / Word / PPT / Markdown / TXT</div>
+          <input type="file" id="upload-file-input" style="display:none" accept=".pdf,.docx,.doc,.pptx,.ppt,.md,.markdown,.txt" multiple>
+        </div>
+      </div>
+      <div class="upload-file-list" id="upload-file-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-upload')">关闭</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ============================================
-// 知识库页面 — 接口调用注释
+// 知识库页面 — 全部接通 DB 接口，无模拟数据
 // ============================================
-// 【DB-R-015】分类树 — getCategories()
-// 【DB-W-003】创建分类 — createCategory(data)
-// 【DB-U-011】更新分类 — updateCategory(id, data)
-// 【DB-D-002】删除分类 — deleteCategory(id)
-// 【DB-R-017】知识列表 — getKnowledgeItems(catId)
-// 【DB-R-018】知识详情 — getKnowledgeItemDetail(id)
-// 【DB-W-004】创建条目 — createKnowledgeItem(data)
-// 【DB-U-014】更新条目 — updateKnowledgeItem(id, data)
-// 【DB-D-003】软删除 — softDeleteKnowledgeItem(id)
-// 【DB-R-019】搜索知识 — searchKnowledge(keyword)
-// 【DB-R-020】AI 推荐 — getAIRecommendedItems()
-// 【DB-R-021】过期条目 — getExpiredItems()
-// 【DB-R-022】回收站 — getTrashItems()
-// 【AGG-011】条目统计 — getKnowledgeStats()
-// 【DB-U-015】恢复条目 — restoreKnowledgeItem(id)
-// 【DB-U-017】归档知识 — archiveKnowledge(id)
-// 【DB-U-018】暂缓入库 — delayKnowledge(id, days)
-// 【DB-U-019】关联知识 — linkKnowledge(id, relatedIds)
-// 【DB-R-023】导出 Markdown — exportKnowledgeMarkdown(id)
-// 【DB-U-020】批量移动 — batchMoveCategory(ids, catId)
-// 【DB-U-021】批量恢复 — batchRestoreItems(ids)
-// 【DB-D-005】批量删除 — batchSoftDeleteItems(ids)
-// 【DB-D-006】清空回收站 — emptyTrash()
-// 【DB-U-022】批量入库 — batchImportItems(ids)
-// 【DB-U-023】批量忽略 — batchIgnoreItems(ids)
-// 【AGG-012】知识体检 — getKnowledgeHealth()
-// 【AI-009】孤岛处理 — aiProcessOrphaned()
-// 【AI-010】体检报告 — aiHealthReport()
-// 【AI-011】生成卡片 — aiGenerateReviewCards(itemId)
-// 【DB-W-006】加入计划 — addToStudyPlan(data)
-// 【DB-U-024】合并条目 — mergeKnowledgeItems(ids, data)
 
 /* ================================================================
    状态管理
@@ -589,41 +415,409 @@ const kbState = {
   batchMode: false,
   selectedIds: new Set(),
   categories: [],
-  expandedCatIds: new Set()
+  categoryCounts: {},
+  expandedCatIds: new Set(),
+  itemsCache: [],
+  expiredItems: []
 };
 
 /* ================================================================
    工具函数
    ================================================================ */
 
-function showToast(msg, type = 'info') {
-  if (window.utils && window.utils.toast) {
-    window.utils.toast(msg, type);
-    return;
-  }
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerHTML = `<span class="toast-icon">${type === 'success' ? '✅' : type === 'warning' ? '⚠️' : type === 'danger' ? '❌' : 'ℹ️'}</span><span class="toast-text">${msg}</span>`;
-  toast.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 16px;border-radius:8px;background:#fff;box-shadow:var(--shadow-lg);z-index:9999;animation:toastIn 0.3s;border-left:3px solid var(--primary)';
-  document.body.appendChild(toast);
-  setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 2500);
+function showToast(msg, type) {
+  type = type || 'info';
+  if (window.utils && window.utils.toast) { window.utils.toast(msg, type); return; }
+  var t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;top:20px;right:20px;padding:12px 16px;border-radius:8px;color:#fff;z-index:9999;';
+  var colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+  t.style.background = colors[type] || colors.info;
+  document.body.appendChild(t);
+  setTimeout(function() { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(function() { t.remove(); }, 300); }, 2500);
 }
 
-function formatDate(date) {
+function kbEscapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function kbFormatDate(date) {
   if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return date;
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  var d = new Date(date);
+  if (isNaN(d.getTime())) return String(date);
+  var now = new Date();
+  var diff = now - d;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  if (diff < 2592000000) return Math.floor(diff / 86400000) + '天前';
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+function kbFormatFileSize(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  var units = ['B', 'KB', 'MB', 'GB'];
+  var i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+function kbGetFileTypeIcon(fileType) {
+  var icons = { pdf: '📕', word: '📘', ppt: '📙', markdown: '📝', txt: '📄', unknown: '📄' };
+  return icons[fileType] || icons.unknown;
+}
+
+function kbGetFileTypeLabel(fileType) {
+  var labels = { pdf: 'PDF', word: 'Word', ppt: 'PPT', markdown: 'MD', txt: 'TXT', unknown: '文件' };
+  return labels[fileType] || labels.unknown;
+}
+
+function kbGetFileTypeByName(filename) {
+  var ext = (filename || '').split('.').pop().toLowerCase();
+  var typeMap = {
+    'pdf': 'pdf', 'docx': 'word', 'doc': 'word',
+    'pptx': 'ppt', 'ppt': 'ppt',
+    'md': 'markdown', 'markdown': 'markdown',
+    'txt': 'txt'
+  };
+  return typeMap[ext] || 'unknown';
 }
 
 /* ================================================================
-   分类树操作
+   文件上传 — 拖拽 + 点击 + 解析 + 切片
    ================================================================ */
+
+function initUploadDropzone() {
+  var dropzone = document.getElementById('upload-dropzone');
+  var fileInput = document.getElementById('upload-file-input');
+  if (!dropzone || !fileInput) return;
+
+  // 点击上传
+  dropzone.addEventListener('click', function() { fileInput.click(); });
+
+  // 拖拽事件
+  dropzone.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.remove('drag-over');
+  });
+  dropzone.addEventListener('drop', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    dropzone.classList.remove('drag-over');
+    var files = e.dataTransfer.files;
+    if (files && files.length > 0) handleUploadFiles(files);
+  });
+
+  // 文件选择
+  fileInput.addEventListener('change', function() {
+    if (this.files && this.files.length > 0) handleUploadFiles(this.files);
+    this.value = '';
+  });
+
+  // 加载分类选项
+  loadUploadCategories();
+}
+
+function loadUploadCategories() {
+  var select = document.getElementById('upload-category');
+  if (!select) return;
+  select.innerHTML = '<option value="">不指定分类</option>';
+  (kbState.categories || []).forEach(function(cat) {
+    var prefix = cat.parentId ? '  └ ' : '';
+    select.innerHTML += '<option value="' + cat._id + '">' + prefix + kbEscapeHtml(cat.name) + '</option>';
+  });
+}
+
+var uploadQueue = [];
+
+async function handleUploadFiles(files) {
+  var supportedExts = ['pdf', 'docx', 'doc', 'pptx', 'ppt', 'md', 'markdown', 'txt'];
+  var validFiles = [];
+  var invalidFiles = [];
+
+  for (var i = 0; i < files.length; i++) {
+    var ext = files[i].name.split('.').pop().toLowerCase();
+    if (supportedExts.indexOf(ext) >= 0) {
+      validFiles.push(files[i]);
+    } else {
+      invalidFiles.push(files[i].name);
+    }
+  }
+
+  if (invalidFiles.length > 0) {
+    showToast('不支持的格式: ' + invalidFiles.join(', '), 'warning');
+  }
+
+  for (var j = 0; j < validFiles.length; j++) {
+    uploadQueue.push({ file: validFiles[j], status: 'pending', progress: 0, result: null });
+  }
+  renderUploadFileList();
+  processUploadQueue();
+}
+
+function renderUploadFileList() {
+  var container = document.getElementById('upload-file-list');
+  if (!container) return;
+  if (uploadQueue.length === 0) { container.innerHTML = ''; return; }
+
+  container.innerHTML = uploadQueue.map(function(item, idx) {
+    var statusHtml = '';
+    if (item.status === 'pending') {
+      statusHtml = '<span class="upload-status upload-status-pending">⏳ 等待中</span>';
+    } else if (item.status === 'uploading') {
+      statusHtml = '<span class="upload-status upload-status-uploading">📤 上传中...</span>';
+    } else if (item.status === 'processing') {
+      statusHtml = '<span class="upload-status upload-status-uploading">🔄 ' + kbEscapeHtml(item.progress || '处理中...') + '</span>';
+    } else if (item.status === 'success') {
+      statusHtml = '<span class="upload-status upload-status-success">✅ 完成（' + (item.chunkCount || 0) + '块）</span>';
+    } else if (item.status === 'failed') {
+      statusHtml = '<span class="upload-status upload-status-failed">❌ 失败：' + kbEscapeHtml(item.error || '') + '</span>';
+    }
+
+    var fileIcon = kbGetFileTypeIcon(kbGetFileTypeByName(item.file.name));
+
+    return '<div class="upload-file-item">' +
+      '<div class="upload-file-icon">' + fileIcon + '</div>' +
+      '<div class="upload-file-info">' +
+        '<div class="upload-file-name">' + kbEscapeHtml(item.file.name) + '</div>' +
+        '<div class="upload-file-meta">' + kbFormatFileSize(item.file.size) + ' · ' + kbGetFileTypeLabel(kbGetFileTypeByName(item.file.name)) + '</div>' +
+      '</div>' +
+      '<div class="upload-file-status">' + statusHtml + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function processUploadQueue() {
+  var categoryId = document.getElementById('upload-category') ? document.getElementById('upload-category').value : '';
+
+  for (var i = 0; i < uploadQueue.length; i++) {
+    if (uploadQueue[i].status !== 'pending') continue;
+    uploadQueue[i].status = 'uploading';
+    uploadQueue[i].progress = '上传中...';
+    renderUploadFileList();
+
+    try {
+      if (!window.DB) { throw new Error('DB 不可用'); }
+      // 上传到后端 — 立即返回 taskId，后台异步处理
+      var result = await window.DB.uploadKnowledgeFile(uploadQueue[i].file, categoryId);
+      if (result.success) {
+        uploadQueue[i].status = 'processing';
+        uploadQueue[i].taskId = result.data.task_id;
+        uploadQueue[i].itemId = result.data.item_id;
+        uploadQueue[i].progress = '后端处理中...';
+        showToast('⏳ ' + uploadQueue[i].file.name + ' 已提交后端处理', 'success');
+        // 开始轮询状态
+        pollUploadStatus(i);
+      } else {
+        uploadQueue[i].status = 'failed';
+        uploadQueue[i].error = result.error || '未知错误';
+        showToast('❌ ' + uploadQueue[i].file.name + ' 上传失败', 'error');
+      }
+    } catch (e) {
+      uploadQueue[i].status = 'failed';
+      uploadQueue[i].error = e.message || '未知错误';
+      showToast('❌ ' + uploadQueue[i].file.name + ' 上传失败: ' + e.message, 'error');
+    }
+    renderUploadFileList();
+  }
+}
+
+// 轮询后端处理状态
+function pollUploadStatus(queueIndex) {
+  var item = uploadQueue[queueIndex];
+  if (!item || !item.taskId) return;
+
+  var pollCount = 0;
+  var maxPolls = 120; // 最多轮询 120 次 (约 10 分钟)
+
+  var timer = setInterval(async function() {
+    pollCount++;
+    if (pollCount > maxPolls) {
+      clearInterval(timer);
+      item.status = 'failed';
+      item.error = '处理超时';
+      renderUploadFileList();
+      return;
+    }
+
+    try {
+      var statusRes = await window.DB.getUploadStatus(item.taskId);
+      if (statusRes.success && statusRes.data) {
+        var st = statusRes.data;
+        var progress = st.progress || 0;
+        var stageMap = {
+          'pending': '等待处理...',
+          'parsing': '解析文件中... ' + progress + '%',
+          'chunking': '切片中... ' + progress + '%',
+          'embedding': '向量化中... ' + progress + '%',
+          'completed': '完成',
+          'failed': '失败'
+        };
+        item.progress = stageMap[st.status] || st.status;
+
+        if (st.status === 'completed') {
+          clearInterval(timer);
+          item.status = 'success';
+          item.chunkCount = st.chunk_count || 0;
+          showToast('✅ ' + item.file.name + ' 处理完成（' + item.chunkCount + '块切片）', 'success');
+          renderUploadFileList();
+          // 在 CloudBase 同步创建 knowledge_item 记录，让列表页能展示
+          try {
+            await window.DB.createKnowledgeItem({
+              title: item.file.name.replace(/\.[^.]+$/, ''),
+              content: '(文件已上传到后端，内容存储在向量库中)',
+              summary: '来源文件: ' + item.file.name,
+              categoryId: (document.getElementById('upload-category') ? document.getElementById('upload-category').value : ''),
+              tags: [],
+              sourceUrl: '',
+              sourceType: 'upload',
+              fileType: kbGetFileTypeByName(item.file.name),
+              fileSize: item.file.size,
+              fileName: item.file.name,
+              chunkCount: item.chunkCount,
+              parseStatus: 'completed',
+              backendItemId: item.itemId,
+              level: 'public'
+            });
+          } catch (e) {
+            console.error('同步 CloudBase 记录失败:', e);
+          }
+          // 刷新列表
+          renderKnowledgeItems();
+        } else if (st.status === 'failed') {
+          clearInterval(timer);
+          item.status = 'failed';
+          item.error = st.error || '处理失败';
+          showToast('❌ ' + item.file.name + ' 处理失败: ' + item.error, 'error');
+          renderUploadFileList();
+        } else {
+          renderUploadFileList();
+        }
+      }
+    } catch (e) {
+      console.error('轮询状态失败:', e);
+    }
+  }, 5000); // 每 5 秒轮询一次
+}
+
+/* ================================================================
+   初始化 — 覆盖 knowledge.js 的 initKnowledgePage
+   ================================================================ */
+
+async function initKbPage() {
+  console.log('Initializing knowledge page (DB-backed)...');
+  try {
+    if (window.initCloudbase) await initCloudbase();
+  } catch (e) {
+    console.error('CloudBase 初始化失败:', e);
+  }
+  await loadCategoryTree();
+  await renderKnowledgeItems();
+  await loadExpiredBanner();
+  initUploadDropzone();
+}
+
+window.initKnowledgePage = initKbPage;
+
+/* ================================================================
+   分类树 — 从 DB 加载
+   ================================================================ */
+
+async function loadCategoryTree() {
+  var tree = document.getElementById('cat-tree');
+  if (!tree) return;
+  tree.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);font-size:13px;">加载中...</div>';
+  try {
+    var result = window.DB ? await window.DB.getCategories() : { success: true, data: [] };
+    var cats = (result.success ? result.data : []) || [];
+    kbState.categories = cats;
+
+    // 统计每个分类的条目数
+    var counts = {};
+    if (window.DB && cats.length > 0) {
+      try {
+        var itemsRes = await window.DB.getKnowledgeItems(null, 1, 1000);
+        var allItems = (itemsRes.success ? itemsRes.data : []) || [];
+        allItems.forEach(function(item) {
+          if (item.categoryId) {
+            counts[item.categoryId] = (counts[item.categoryId] || 0) + 1;
+          }
+        });
+      } catch (e) { console.warn('统计分类条目数失败:', e); }
+    }
+    kbState.categoryCounts = counts;
+
+    // 构建 "全部" 计数
+    var totalCount = 0;
+    Object.keys(counts).forEach(function(k) { totalCount += counts[k]; });
+
+    // 渲染树
+    var html = '<div class="cat-item active" onclick="selectCategory(null)">' +
+      '<span class="cat-icon">📁</span><span class="cat-name">全部条目</span><span class="cat-count">' + totalCount + '</span></div>';
+
+    // 构建父子关系
+    var childMap = {};
+    cats.forEach(function(c) {
+      if (c.parentId) {
+        if (!childMap[c.parentId]) childMap[c.parentId] = [];
+        childMap[c.parentId].push(c);
+      }
+    });
+
+    function renderCatNode(cat) {
+      var children = childMap[cat._id] || [];
+      var count = counts[cat._id] || 0;
+      var hasChildren = children.length > 0;
+      var html2 = '<div class="cat-item" onclick="selectCategory(\'' + cat._id + '\')">' +
+        (hasChildren ? '<span class="cat-toggle" onclick="toggleCategory(\'' + cat._id + '\', event)">▶</span>' : '') +
+        '<span class="cat-icon">📁</span><span class="cat-name">' + kbEscapeHtml(cat.name) + '</span><span class="cat-count">' + count + '</span></div>';
+      if (hasChildren) {
+        html2 += '<div id="cat-' + cat._id + '" class="cat-children cat-hidden">';
+        children.forEach(function(child) { html2 += renderCatNode(child); });
+        html2 += '</div>';
+      }
+      return html2;
+    }
+
+    // 渲染顶级分类
+    cats.filter(function(c) { return !c.parentId; }).forEach(function(cat) {
+      html += renderCatNode(cat);
+    });
+
+    // 未分类
+    var uncategorizedCount = 0;
+    if (window.DB) {
+      try {
+        var allRes = await window.DB.getKnowledgeItems(null, 1, 1000);
+        var allItems = (allRes.success ? allRes.data : []) || [];
+        uncategorizedCount = allItems.filter(function(i) { return !i.categoryId; }).length;
+      } catch (e) {}
+    }
+    html += '<div class="cat-item" onclick="selectCategory(\'uncategorized\')">' +
+      '<span class="cat-icon">📄</span><span class="cat-name">未分类</span><span class="cat-count">' + uncategorizedCount + '</span></div>';
+
+    tree.innerHTML = html;
+  } catch (e) {
+    console.error('加载分类树失败:', e);
+    tree.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">分类加载失败</div>';
+  }
+}
 
 function toggleCategory(id, e) {
   e.stopPropagation();
-  const el = document.getElementById('cat-' + id);
-  const toggle = e.currentTarget;
+  var el = document.getElementById('cat-' + id);
+  var toggle = e.currentTarget;
+  if (!el) return;
   if (el.classList.contains('cat-hidden')) {
     el.classList.remove('cat-hidden');
     toggle.classList.add('open');
@@ -634,37 +828,30 @@ function toggleCategory(id, e) {
 }
 
 function selectCategory(catId) {
-  kbState.currentCategoryId = catId;
+  kbState.currentCategoryId = (catId === 'uncategorized') ? null : catId;
   kbState.currentSubTab = 'all';
   kbState.searchKeyword = '';
-  
-  document.querySelectorAll('.cat-item').forEach(item => item.classList.remove('active'));
-  if (catId === null) {
-    document.querySelector('.cat-item:first-child').classList.add('active');
-  } else {
-    document.querySelectorAll('.cat-item').forEach(item => {
-      if (item.getAttribute('onclick')?.includes(catId)) {
-        item.classList.add('active');
-      }
-    });
-  }
-  
-  if (document.getElementById('kb-search-input')) {
-    document.getElementById('kb-search-input').value = '';
-  }
-  
-  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
-  document.querySelector('.sub-tab:first-child').classList.add('active');
-  
+
+  document.querySelectorAll('.cat-item').forEach(function(item) { item.classList.remove('active'); });
+  var clicked = event && event.currentTarget;
+  if (clicked) clicked.classList.add('active');
+
+  var searchInput = document.getElementById('kb-search-input');
+  if (searchInput) searchInput.value = '';
+
+  document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
+  var firstTab = document.querySelector('.sub-tab');
+  if (firstTab) firstTab.classList.add('active');
+
   renderKnowledgeItems();
 }
 
 function filterCategories() {
-  const query = document.getElementById('cat-search-input').value.toLowerCase();
-  const items = document.querySelectorAll('.cat-item');
-  items.forEach(item => {
-    const name = item.querySelector('.cat-name')?.textContent.toLowerCase();
-    item.style.display = name?.includes(query) || !query ? '' : 'none';
+  var query = (document.getElementById('cat-search-input').value || '').toLowerCase();
+  document.querySelectorAll('.cat-item').forEach(function(item) {
+    var name = item.querySelector('.cat-name');
+    var text = name ? name.textContent.toLowerCase() : '';
+    item.style.display = (!query || text.indexOf(query) >= 0) ? '' : 'none';
   });
 }
 
@@ -675,26 +862,16 @@ function filterCategories() {
 function switchKbTab(tab) {
   kbState.currentSubTab = tab;
   kbState.searchKeyword = '';
-  
-  document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.sub-tab').forEach(t => {
-    if (t.getAttribute('onclick')?.includes(tab)) {
-      t.classList.add('active');
-    }
+  document.querySelectorAll('.sub-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.sub-tab').forEach(function(t) {
+    if (t.getAttribute('onclick') && t.getAttribute('onclick').indexOf(tab) >= 0) t.classList.add('active');
   });
-  
-  if (document.getElementById('kb-search-input')) {
-    document.getElementById('kb-search-input').value = '';
-  }
-  
+  var searchInput = document.getElementById('kb-search-input');
+  if (searchInput) searchInput.value = '';
   clearBatchSelection();
   renderKnowledgeItems();
-  
-  // 显示/隐藏回收站操作栏
-  const trashActions = document.getElementById('trash-actions-container');
-  if (trashActions) {
-    trashActions.classList.toggle('show', tab === 'trash');
-  }
+  var trashActions = document.getElementById('trash-actions-container');
+  if (trashActions) trashActions.classList.toggle('show', tab === 'trash');
 }
 
 /* ================================================================
@@ -702,290 +879,188 @@ function switchKbTab(tab) {
    ================================================================ */
 
 function searchKnowledge() {
-  kbState.searchKeyword = document.getElementById('kb-search-input').value.trim();
+  kbState.searchKeyword = (document.getElementById('kb-search-input').value || '').trim();
   kbState.currentSubTab = 'search';
   renderKnowledgeItems();
 }
 
+var _quickSearchTimer = null;
 function doQuickSearch(q) {
-  const results = document.getElementById('search-results');
-  if (!q.trim()) {
-    results.innerHTML = `
-      <div class="search-result-item" onclick="closeModal('modal-search');showKnowledgeDetail('k1')">
-        <span class="search-result-icon">📄</span>
-        <div class="search-result-info">
-          <div class="search-result-title">Go 语言并发模型深度解析</div>
-          <div class="search-result-meta">📁 技术/后端/Go · ⏱️ 3个月前</div>
-          <div class="search-result-match">匹配: goroutine, channel, GMP</div>
-        </div>
-        <span class="search-result-score">95%</span>
-      </div>
-      <div class="search-result-item" onclick="closeModal('modal-search');showKnowledgeDetail('k2')">
-        <span class="search-result-icon">📄</span>
-        <div class="search-result-info">
-          <div class="search-result-title">向量数据库选型对比</div>
-          <div class="search-result-meta">📁 技术/AI/ML · ⏱️ 2个月前</div>
-          <div class="search-result-match">匹配: 向量, 数据库, AI</div>
-        </div>
-        <span class="search-result-score">82%</span>
-      </div>`;
+  var results = document.getElementById('search-results');
+  if (!results) return;
+  if (!q || !q.trim()) {
+    results.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px;">输入关键词搜索知识库</div>';
     return;
   }
-  results.innerHTML = `
-    <div class="search-result-item">
-      <span class="search-result-icon">📄</span>
-      <div class="search-result-info">
-        <div class="search-result-title">搜索结果: ${q}</div>
-        <div class="search-result-meta">🔍 语义搜索已激活</div>
-      </div>
-      <span class="search-result-score">--</span>
-    </div>`;
+  results.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-400);"><div class="spin"></div><p>搜索中...</p></div>';
+  if (_quickSearchTimer) clearTimeout(_quickSearchTimer);
+  _quickSearchTimer = setTimeout(async function() {
+    try {
+      if (!window.DB) { results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);">DB 不可用</div>'; return; }
+      var res = await window.DB.searchKnowledge(q.trim(), 1, 20);
+      var items = (res.success ? res.data : []) || [];
+      if (items.length === 0) {
+        results.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);font-size:13px;">未找到匹配结果</div>';
+        return;
+      }
+      results.innerHTML = items.map(function(item) {
+        return '<div class="search-result-item" onclick="closeModal(\'modal-search\');showKnowledgeDetail(\'' + item._id + '\')">' +
+          '<span class="search-result-icon">📄</span>' +
+          '<div class="search-result-info">' +
+          '<div class="search-result-title">' + kbEscapeHtml(item.title) + '</div>' +
+          '<div class="search-result-meta">📁 ' + kbEscapeHtml(item.categoryId || '未分类') + ' · ⏱️ ' + kbFormatDate(item.updatedAt) + '</div>' +
+          '</div></div>';
+      }).join('');
+    } catch (e) {
+      results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">搜索失败: ' + kbEscapeHtml(e.message) + '</div>';
+    }
+  }, 300);
 }
 
 /* ================================================================
-   渲染知识条目
+   渲染知识条目 — 全部从 DB 加载
    ================================================================ */
 
-function renderKnowledgeItems() {
-  const container = document.getElementById('kb-content-area');
+async function renderKnowledgeItems() {
+  var container = document.getElementById('kb-content-area');
   if (!container) return;
+  container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--gray-400);"><div class="spin"></div><p>加载中...</p></div>';
 
-  const mockData = window.mockData?.knowledge || { items: [], aiItems: [], trashItems: [] };
-  let items = [];
+  try {
+    var items = [];
+    var isTrash = (kbState.currentSubTab === 'trash');
+    var isAI = (kbState.currentSubTab === 'ai');
 
-  switch (kbState.currentSubTab) {
-    case 'ai':
-      items = mockData.aiItems || getMockAIItems();
-      break;
-    case 'trash':
-      items = mockData.trashItems || getMockTrashItems();
-      break;
-    case 'search':
-      items = mockData.items?.filter(item => 
-        item.title?.toLowerCase().includes(kbState.searchKeyword.toLowerCase()) ||
-        item.tags?.some(tag => tag.toLowerCase().includes(kbState.searchKeyword.toLowerCase()))
-      ) || [];
-      break;
-    default:
-      items = mockData.items || getMockItems();
-  }
-
-  if (items.length === 0) {
-    const messages = {
-      ai: { title: '暂无AI推荐', desc: 'AI会根据学习内容推荐知识条目' },
-      trash: { title: '回收站为空', desc: '删除的知识条目会出现在这里' },
-      search: { title: '未找到相关内容', desc: '请尝试其他关键词' },
-      all: { title: '暂无知识条目', desc: '点击右上角按钮创建知识条目' }
-    };
-    const msg = messages[kbState.currentSubTab] || messages.all;
-    container.innerHTML = `
-      <div class="empty-state">
-        <i class="fas fa-file-alt"></i>
-        <div class="empty-title">${msg.title}</div>
-        <div class="empty-desc">${msg.desc}</div>
-      </div>`;
-    return;
-  }
-
-  if (kbState.currentSubTab === 'ai') {
-    container.innerHTML = items.map(item => `
-      <div class="knowledge-card" style="border-left:3px solid var(--primary)">
-        <div class="kc-header">
-          <div class="cb" onclick="toggleBatchSelect('${item.id}', event)" style="margin-right:8px"></div>
-          <div style="flex:1">
-            <div class="kc-title">${item.title}</div>
-          </div>
-          <div class="kc-badges"><span class="kc-badge badge-recommend">🤖 推荐</span></div>
-        </div>
-        <div class="kc-ai-score">
-          <span class="score-text">AI评分 ${item.score}</span>
-          <div class="score-bar-mini">
-            <div class="score-fill-mini ${item.score >= 80 ? 'score-fill-high' : item.score >= 60 ? 'score-fill-mid' : 'score-fill-low'}" style="width:${item.score}%"></div>
-          </div>
-          <span class="score-toggle" onclick="toggleScoreDetail(this)">展开 ▼</span>
-        </div>
-        <div class="score-detail hidden">
-          ${item.scoreDetail?.map(d => `
-            <div class="score-row">
-              <span class="score-name">${d.name}</span>
-              <div class="score-bar">
-                <div class="score-fill" style="width:${d.value}%;background:${d.value >= 80 ? 'var(--success)' : d.value >= 60 ? 'var(--warning)' : 'var(--info)'}"></div>
-              </div>
-              <span class="score-val">${d.value}</span>
-            </div>
-          `).join('')}
-        </div>
-        <div class="kc-excerpt">${item.excerpt}</div>
-        <div class="kc-meta">
-          <span class="kc-meta-item">🔗 ${item.source}</span>
-          <span class="kc-meta-item">⏱️ ${item.updateAt}</span>
-        </div>
-        <div class="kc-footer">
-          <span class="kc-meta-item">来源: 资讯模块</span>
-          <div class="kc-actions">
-            <button class="btn btn-primary btn-xs" onclick="openModal('modal-import-confirm')">确认入库</button>
-            <button class="btn btn-secondary btn-xs" onclick="ignoreAIItem('${item.id}')">忽略</button>
-            <button class="btn btn-ghost btn-xs" onclick="delayAIItem('${item.id}')">暂缓</button>
-          </div>
-        </div>
-      </div>`).join('');
-  } else if (kbState.currentSubTab === 'trash') {
-    container.innerHTML = `
-      <div class="trash-table">
-        <div class="trash-thead">
-          <div>标题</div>
-          <div>分类</div>
-          <div>删除时间</div>
-          <div>剩余天数</div>
-          <div>操作</div>
-        </div>
-        ${items.map(item => `
-          <div class="trash-row">
-            <div class="trash-title">${item.title}</div>
-            <div class="trash-cat">${item.category}</div>
-            <div class="trash-date">${item.deletedAt}</div>
-            <div class="trash-countdown">${item.remainingDays}天</div>
-            <div>
-              <button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="restoreFromTrash('${item.id}')">恢复</button>
-              <button class="btn btn-sm" style="background:var(--danger);color:#fff;margin-left:6px" onclick="permanentDelete('${item.id}')">删除</button>
-            </div>
-          </div>`).join('')}
-      </div>`;
-  } else {
-    container.innerHTML = items.map(item => `
-      <div class="knowledge-card" onclick="showKnowledgeDetail('${item.id}')">
-        <div class="kc-header">
-          <div class="kc-title">${item.title}</div>
-          <div class="kc-badges">
-            ${item.isAI ? '<span class="kc-badge badge-ai">🤖 AI推荐</span>' : ''}
-            ${item.isExpired ? '<span class="kc-badge badge-expired">⏰ 可能过时</span>' : ''}
-          </div>
-        </div>
-        <div class="kc-excerpt">${item.excerpt || item.content?.substring(0, 150) || '暂无摘要...'}</div>
-        <div class="kc-meta">
-          <span class="kc-meta-item">📁 ${item.category}</span>
-          <span class="kc-meta-item">⏱️ ${item.updateAt}</span>
-          ${item.sourceUrl ? `<span class="kc-meta-item">🔗 ${item.sourceUrl.replace(/^https?:\/\//, '').split('/')[0]}</span>` : ''}
-        </div>
-        <div class="kc-tags">
-          ${item.tags?.map(tag => `<span class="kc-tag">${tag}</span>`).join('')}
-        </div>
-        <div class="kc-footer">
-          <span class="status-tag status-${item.status || 'public'}">${item.status === 'sensitive' ? '敏感' : item.status === 'secret' ? '机密' : '公开'}</span>
-          <div class="kc-actions">
-            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEditModal('${item.id}')">编辑</button>
-            <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();generateReviewCard('${item.id}')">复习</button>
-          </div>
-        </div>
-      </div>`).join('');
-  }
-}
-
-function getMockItems() {
-  return [
-    {
-      id: 'k1',
-      title: 'Go 语言并发模型深度解析',
-      category: '技术/后端/Go',
-      tags: ['Golang', '并发', '后端'],
-      status: 'public',
-      updateAt: '3个月前',
-      sourceUrl: 'github.com',
-      excerpt: 'Go 语言的并发模型基于 CSP（Communicating Sequential Processes）理论，通过 goroutine 和 channel 实现轻量级并发。本文深入解析 goroutine 调度器 GMP 模型...'
-    },
-    {
-      id: 'k2',
-      title: '微服务架构设计模式',
-      category: '技术/后端',
-      tags: ['微服务', '架构', '分布式'],
-      status: 'public',
-      updateAt: '5个月前',
-      sourceUrl: 'martinfowler.com',
-      excerpt: '微服务架构的核心设计模式包括：API Gateway、服务发现、断路器、配置中心、分布式追踪等...'
-    },
-    {
-      id: 'k3',
-      title: 'React Server Components 完全指南',
-      category: '技术/前端/React',
-      tags: ['React', 'RSC', '前端'],
-      status: 'public',
-      updateAt: '14个月前',
-      sourceUrl: 'react.dev',
-      excerpt: 'React Server Components (RSC) 是 React 18 引入的革命性特性，允许组件在服务器端渲染...',
-      isExpired: true
-    },
-    {
-      id: 'k4',
-      title: '产品需求文档 (PRD) 写作规范',
-      category: '产品/产品管理',
-      tags: ['PRD', '产品管理', '文档规范'],
-      status: 'sensitive',
-      updateAt: '1个月前',
-      excerpt: '一份好的 PRD 应该包含：产品背景、目标用户、功能描述、用户故事、验收标准...'
-    },
-    {
-      id: 'k5',
-      title: '向量数据库选型对比：Milvus vs Pinecone',
-      category: '技术/AI/ML',
-      tags: ['向量数据库', 'AI', '选型'],
-      status: 'public',
-      updateAt: '2个月前',
-      sourceUrl: 'pinecone.io',
-      excerpt: '向量数据库是 AI 应用的基础设施。本文从性能、易用性、生态、成本四个维度对比主流向量数据库...'
-    },
-    {
-      id: 'k6',
-      title: '技术写作方法论',
-      category: '写作',
-      tags: ['技术写作', '文档', '方法论'],
-      status: 'secret',
-      updateAt: '2周前',
-      excerpt: '技术写作的核心原则：读者导向、渐进披露、精确表达、结构清晰...',
-      isAI: true
+    if (!window.DB) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><div class="empty-title">DB 不可用</div><div class="empty-desc">请检查网络连接</div></div>';
+      return;
     }
-  ];
-}
 
-function getMockAIItems() {
-  return [
-    {
-      id: 'ai1',
-      title: 'LLM 推理优化技术综述',
-      score: 85,
-      source: 'arxiv.org',
-      updateAt: '2天前',
-      excerpt: '大语言模型推理阶段的优化技术：KV Cache、Continuous Batching、Speculative Decoding、量化推理等前沿方法的原理与实现...',
-      scoreDetail: [
-        { name: '信源可信度', value: 90 },
-        { name: '内容价值', value: 88 },
-        { name: '主题关联度', value: 82 },
-        { name: '信息新鲜度', value: 78 },
-        { name: '可转化性', value: 80 }
-      ]
-    },
-    {
-      id: 'ai2',
-      title: 'PostgreSQL 17 新特性详解',
-      score: 72,
-      source: 'postgresql.org',
-      updateAt: '1周前',
-      excerpt: 'PostgreSQL 17 正式发布，带来了增量备份、改进的查询优化器、JSON 性能提升等多项新特性...',
-      scoreDetail: [
-        { name: '信源可信度', value: 85 },
-        { name: '内容价值', value: 70 },
-        { name: '主题关联度', value: 68 },
-        { name: '信息新鲜度', value: 75 },
-        { name: '可转化性', value: 65 }
-      ]
+    if (isAI) {
+      var aiRes = await window.DB.getAIRecommendedItems();
+      items = (aiRes.success ? aiRes.data : []) || [];
+    } else if (isTrash) {
+      var trashRes = await window.DB.getTrashItems();
+      items = (trashRes.success ? trashRes.data : []) || [];
+    } else if (kbState.currentSubTab === 'search') {
+      var searchRes = await window.DB.searchKnowledge(kbState.searchKeyword, 1, 50);
+      items = (searchRes.success ? searchRes.data : []) || [];
+    } else {
+      var catId = kbState.currentCategoryId;
+      var listRes = await window.DB.getKnowledgeItems(catId, 1, 100);
+      items = (listRes.success ? listRes.data : []) || [];
+      // 如果选了"未分类"，过滤无 categoryId 的
+      if (catId === null && kbState.currentCategoryId === null && document.querySelector('.cat-item.active')) {
+        var activeCat = document.querySelector('.cat-item.active .cat-name');
+        if (activeCat && activeCat.textContent === '未分类') {
+          items = items.filter(function(i) { return !i.categoryId; });
+        }
+      }
     }
-  ];
-}
 
-function getMockTrashItems() {
-  return [
-    { id: 't1', title: '旧版 API 设计规范', category: '技术/后端', deletedAt: '3天前', remainingDays: 27 },
-    { id: 't2', title: '2024年技术趋势预测', category: '技术', deletedAt: '10天前', remainingDays: 20 }
-  ];
+    kbState.itemsCache = items;
+
+    if (items.length === 0) {
+      var messages = {
+        ai: { title: '暂无AI推荐', desc: 'AI会根据学习内容推荐知识条目' },
+        trash: { title: '回收站为空', desc: '删除的知识条目会出现在这里' },
+        search: { title: '未找到相关内容', desc: '请尝试其他关键词' },
+        all: { title: '暂无知识条目', desc: '点击右上角按钮创建知识条目' }
+      };
+      var msg = messages[kbState.currentSubTab] || messages.all;
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-file-alt"></i><div class="empty-title">' + msg.title + '</div><div class="empty-desc">' + msg.desc + '</div></div>';
+      return;
+    }
+
+    if (isAI) {
+      container.innerHTML = items.map(function(item) {
+        return '<div class="knowledge-card" style="border-left:3px solid var(--primary)">' +
+          '<div class="kc-header"><div class="cb" onclick="toggleBatchSelect(\'' + item._id + '\', event)" style="margin-right:8px"></div>' +
+          '<div style="flex:1"><div class="kc-title">' + kbEscapeHtml(item.title) + '</div></div>' +
+          '<div class="kc-badges"><span class="kc-badge badge-recommend">🤖 推荐</span></div></div>' +
+          '<div class="kc-excerpt">' + kbEscapeHtml((item.summary || item.content || '').substring(0, 150)) + '</div>' +
+          '<div class="kc-meta"><span class="kc-meta-item">🔗 ' + kbEscapeHtml(item.sourceUrl || '资讯模块') + '</span>' +
+          '<span class="kc-meta-item">⏱️ ' + kbFormatDate(item.createdAt) + '</span></div>' +
+          '<div class="kc-footer"><span class="kc-meta-item">来源: 资讯模块</span>' +
+          '<div class="kc-actions"><button class="btn btn-primary btn-xs" onclick="openImportConfirm(\'' + item._id + '\')">确认入库</button>' +
+          '<button class="btn btn-secondary btn-xs" onclick="ignoreAIItem(\'' + item._id + '\')">忽略</button></div></div></div>';
+      }).join('');
+    } else if (isTrash) {
+      container.innerHTML = '<div class="trash-table"><div class="trash-thead"><div>标题</div><div>分类</div><div>删除时间</div><div>剩余天数</div><div>操作</div></div>' +
+        items.map(function(item) {
+          var deletedDate = item.deletedAt ? new Date(item.deletedAt) : new Date();
+          var daysPassed = Math.floor((Date.now() - deletedDate.getTime()) / 86400000);
+          var remaining = Math.max(0, 30 - daysPassed);
+          return '<div class="trash-row"><div class="trash-title">' + kbEscapeHtml(item.title) + '</div>' +
+            '<div class="trash-cat">' + kbEscapeHtml(item.categoryId || '未分类') + '</div>' +
+            '<div class="trash-date">' + kbFormatDate(item.deletedAt) + '</div>' +
+            '<div class="trash-countdown">' + remaining + '天</div>' +
+            '<div><button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="restoreFromTrash(\'' + item._id + '\')">恢复</button>' +
+            '<button class="btn btn-sm" style="background:var(--danger);color:#fff;margin-left:6px" onclick="permanentDelete(\'' + item._id + '\')">删除</button></div></div>';
+        }).join('') + '</div>';
+    } else {
+      container.innerHTML = items.map(function(item) {
+        var statusBadge = item.level === 'sensitive' ? '<span class="status-tag status-sensitive">敏感</span>' :
+          item.level === 'secret' ? '<span class="status-tag status-secret">机密</span>' :
+          '<span class="status-tag status-public">公开</span>';
+
+        // 上传文件类型的卡片 — 显示文件名、类型、大小、分块数、状态
+        if (item.sourceType === 'upload') {
+          var fileIcon = kbGetFileTypeIcon(item.fileType);
+          var fileTypeLabel = kbGetFileTypeLabel(item.fileType);
+          var fileSizeStr = kbFormatFileSize(item.fileSize);
+          var parseStatusBadge = '';
+          if (item.parseStatus === 'parsing') {
+            parseStatusBadge = '<span class="kc-badge" style="background:rgba(245,158,11,0.15);color:var(--warning)">🔄 解析中</span>';
+          } else if (item.parseStatus === 'chunking') {
+            parseStatusBadge = '<span class="kc-badge" style="background:rgba(59,130,246,0.15);color:var(--primary)">⚡ 切片中</span>';
+          } else if (item.parseStatus === 'completed') {
+            parseStatusBadge = '<span class="kc-badge" style="background:rgba(16,185,129,0.15);color:var(--success)">✅ 完成</span>';
+          } else if (item.parseStatus === 'failed') {
+            parseStatusBadge = '<span class="kc-badge" style="background:rgba(239,68,68,0.15);color:var(--danger)">❌ 失败</span>';
+          }
+
+          return '<div class="knowledge-card" onclick="showKnowledgeDetail(\'' + item._id + '\')" style="border-left:3px solid var(--primary)">' +
+            '<div class="kc-header">' +
+              '<div class="kc-file-icon">' + fileIcon + '</div>' +
+              '<div style="flex:1"><div class="kc-title">' + kbEscapeHtml(item.fileName || item.title) + '</div></div>' +
+              '<div class="kc-badges">' + parseStatusBadge + '</div>' +
+            '</div>' +
+            '<div class="kc-file-meta-row">' +
+              '<span class="kc-file-meta-item">' + fileTypeLabel + '</span>' +
+              '<span class="kc-file-meta-item">📦 ' + fileSizeStr + '</span>' +
+              '<span class="kc-file-meta-item">🧩 ' + (item.chunkCount || 0) + ' 块</span>' +
+              '<span class="kc-file-meta-item">⏱️ ' + kbFormatDate(item.updatedAt) + '</span>' +
+            '</div>' +
+            '<div class="kc-excerpt">' + kbEscapeHtml((item.summary || item.content || '').substring(0, 120)) + '</div>' +
+            '<div class="kc-footer">' + statusBadge +
+            '<div class="kc-actions">' +
+              '<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEditModal(\'' + item._id + '\')">编辑</button>' +
+              '<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();deleteKnowledgeItem(\'' + item._id + '\')">🗑 删除</button>' +
+            '</div></div></div>';
+        }
+
+        // 普通知识条目卡片
+        return '<div class="knowledge-card" onclick="showKnowledgeDetail(\'' + item._id + '\')">' +
+          '<div class="kc-header"><div class="kc-title">' + kbEscapeHtml(item.title) + '</div>' +
+          '<div class="kc-badges">' + (item.sourceType === 'news' ? '<span class="kc-badge badge-ai">📰 资讯入库</span>' : '') +
+          '</div></div>' +
+          '<div class="kc-excerpt">' + kbEscapeHtml((item.summary || item.content || '').substring(0, 150)) + '</div>' +
+          '<div class="kc-meta"><span class="kc-meta-item">📁 ' + kbEscapeHtml(item.categoryId || '未分类') + '</span>' +
+          '<span class="kc-meta-item">⏱️ ' + kbFormatDate(item.updatedAt) + '</span>' +
+          (item.sourceUrl ? '<span class="kc-meta-item">🔗 ' + kbEscapeHtml(item.sourceUrl.replace(/^https?:\/\//, '').split('/')[0]) + '</span>' : '') + '</div>' +
+          '<div class="kc-tags">' + (item.tags || []).map(function(t) { return '<span class="kc-tag">' + kbEscapeHtml(t) + '</span>'; }).join('') + '</div>' +
+          '<div class="kc-footer">' + statusBadge +
+          '<div class="kc-actions"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEditModal(\'' + item._id + '\')">编辑</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();generateReviewCard(\'' + item._id + '\')">复习</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();deleteKnowledgeItem(\'' + item._id + '\')">🗑 删除</button>' +
+          '</div></div></div>';
+      }).join('');
+    }
+  } catch (e) {
+    console.error('渲染知识条目失败:', e);
+    container.innerHTML = '<div class="empty-state"><div class="empty-title">加载失败</div><div class="empty-desc">' + kbEscapeHtml(e.message || '未知错误') + '</div></div>';
+  }
 }
 
 /* ================================================================
@@ -994,64 +1069,65 @@ function getMockTrashItems() {
 
 function toggleBatchSelect(id, e) {
   e.stopPropagation();
-  const cb = e.currentTarget;
-  if (cb.classList.contains('checked')) {
-    cb.classList.remove('checked');
-    cb.textContent = '';
-    kbState.selectedIds.delete(id);
-  } else {
-    cb.classList.add('checked');
-    cb.textContent = '✓';
-    kbState.selectedIds.add(id);
-  }
+  var cb = e.currentTarget;
+  if (cb.classList.contains('checked')) { cb.classList.remove('checked'); cb.textContent = ''; kbState.selectedIds.delete(id); }
+  else { cb.classList.add('checked'); cb.textContent = '✓'; kbState.selectedIds.add(id); }
   updateBatchBar();
 }
 
 function updateBatchBar() {
-  const count = kbState.selectedIds.size;
-  document.getElementById('batch-count').textContent = count;
-  const bar = document.getElementById('kb-batch-bar');
-  if (count > 0) {
-    bar.classList.add('show');
-  } else {
-    bar.classList.remove('show');
-  }
+  var count = kbState.selectedIds.size;
+  var countEl = document.getElementById('batch-count');
+  if (countEl) countEl.textContent = count;
+  var bar = document.getElementById('kb-batch-bar');
+  if (bar) bar.classList.toggle('show', count > 0);
 }
 
 function clearBatchSelection() {
-  document.querySelectorAll('.cb.checked').forEach(cb => {
-    cb.classList.remove('checked');
-    cb.textContent = '';
-  });
+  document.querySelectorAll('.cb.checked').forEach(function(cb) { cb.classList.remove('checked'); cb.textContent = ''; });
   kbState.selectedIds.clear();
   updateBatchBar();
 }
 
-function batchImport() {
-  showToast(`已批量入库 ${kbState.selectedIds.size} 条知识`, 'success');
-  clearBatchSelection();
+async function batchImport() {
+  var ids = Array.from(kbState.selectedIds);
+  if (ids.length === 0) return;
+  try {
+    if (window.DB) { var r = await window.DB.batchImportItems(ids); if (!r.success) { showToast('批量入库失败', 'error'); return; } }
+    showToast('已批量入库 ' + ids.length + ' 条知识', 'success');
+    clearBatchSelection();
+    renderKnowledgeItems();
+  } catch (e) { showToast('批量入库失败: ' + e.message, 'error'); }
 }
 
-function batchIgnore() {
-  showToast(`已批量忽略 ${kbState.selectedIds.size} 条知识`, 'info');
-  clearBatchSelection();
+async function batchIgnore() {
+  var ids = Array.from(kbState.selectedIds);
+  if (ids.length === 0) return;
+  try {
+    if (window.DB) { var r = await window.DB.batchIgnoreItems(ids); if (!r.success) { showToast('批量忽略失败', 'error'); return; } }
+    showToast('已批量忽略 ' + ids.length + ' 条知识', 'info');
+    clearBatchSelection();
+    renderKnowledgeItems();
+  } catch (e) { showToast('批量忽略失败: ' + e.message, 'error'); }
 }
 
 /* ================================================================
-   详情页
+   详情页 — 从 DB 加载
    ================================================================ */
 
-function showKnowledgeDetail(id) {
+async function showKnowledgeDetail(id) {
   kbState.currentView = 'detail';
   kbState.currentItemId = id;
-  
+
   document.getElementById('kb-page-list').style.display = 'none';
   document.getElementById('kb-page-detail').style.display = 'flex';
-  
-  document.getElementById('read-progress-fill').style.width = '0%';
-  document.getElementById('read-progress-text').textContent = '0%';
-  
-  renderDetailContent(id);
+
+  var fill = document.getElementById('read-progress-fill');
+  if (fill) fill.style.width = '0%';
+  var progText = document.getElementById('read-progress-text');
+  if (progText) progText.textContent = '0%';
+
+  await renderDetailContent(id);
 }
 
 function backToList() {
@@ -1060,95 +1136,184 @@ function backToList() {
   document.getElementById('kb-page-list').style.display = 'flex';
 }
 
-function renderDetailContent(id) {
-  const article = document.getElementById('article-content');
-  const mockArticle = {
-    title: 'Go 语言并发模型深度解析',
-    content: `
-      <h1>Go 语言并发模型深度解析</h1>
-      <p>Go 语言的并发模型基于 CSP（Communicating Sequential Processes）理论，通过 goroutine 和 channel 实现轻量级并发。这是 Go 语言最核心的设计之一。</p>
+async function renderDetailContent(id) {
+  var article = document.getElementById('article-content');
+  var metaBody = document.getElementById('detail-meta-body');
+  var tagsEl = document.getElementById('detail-tags');
+  var relatedEl = document.getElementById('detail-related');
+  var tocEl = document.getElementById('detail-toc');
+  var breadcrumb = document.getElementById('detail-breadcrumb');
 
-      <h2 id="sec1">一、核心概念</h2>
-      <p>Go 语言的并发哲学可以用一句话概括：<strong>"不要通过共享内存来通信，而要通过通信来共享内存。"</strong></p>
-      <p>在 Go 中，我们不应该使用锁和共享变量来协调多个 goroutine，而应该使用 channel 进行数据传递和同步。这种设计大大简化了并发编程的复杂度。</p>
-      <blockquote>Goroutine 是 Go 运行时管理的轻量级线程，初始栈仅 2KB，由 GMP 调度模型管理，可以在少量 OS 线程上运行大量 goroutine。</blockquote>
+  if (article) article.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="spin"></div><p>加载中...</p></div>';
+  if (metaBody) metaBody.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">加载中...</div>';
+  if (tagsEl) tagsEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">加载中...</span>';
 
-      <h2 id="sec2">二、GMP 调度模型</h2>
-      <p>GMP 是 Go 调度器的核心设计，分别代表：</p>
-      <ul>
-        <li><strong>G (Goroutine)：</strong>待执行的任务，包含栈、指令指针、状态等</li>
-        <li><strong>M (Machine)：</strong>操作系统线程，负责实际执行代码</li>
-        <li><strong>P (Processor)：</strong>逻辑处理器，维护本地可运行队列，数量默认等于 CPU 核数</li>
-      </ul>
-      <div class="ai-citation">
-        <span class="ai-citation-icon">💬</span>
-        <div style="flex:1">
-          <div class="ai-citation-text">这段内容被 AI 对话引用过</div>
-          <div style="font-size:12px;color:var(--gray-400);margin-top:2px">来源：AI对话 "微服务并发设计" → <span class="ai-citation-link" onclick="showToast('跳转至对话')">查看对话</span></div>
-        </div>
-      </div>
-
-      <h2 id="sec3">三、Channel 原理</h2>
-      <p>Channel 是 Go 语言中 goroutine 之间通信和同步的核心机制。其内部实现是一个环形缓冲区，配合发送/接收队列实现阻塞通信。</p>
-      <pre><code>type hchan struct {
-    qcount   uint           // 当前元素数量
-    dataqsiz uint           // 环形队列大小
-    buf      unsafe.Pointer // 环形队列指针
-    elemsize uint16         // 元素大小
-    closed   uint32         // 是否已关闭
-    sendx    uint           // 发送索引
-    recvx    uint           // 接收索引
-    recvq    waitq          // 接收等待队列
-    sendq    waitq          // 发送等待队列
-    lock     mutex          // 互斥锁
-}</code></pre>
-
-      <h2 id="sec4">四、实战案例</h2>
-      <p>以下是一个使用 goroutine + channel 实现的并行文件处理：</p>
-      <pre><code>func processFiles(files []string) {
-    jobs := make(chan string, len(files))
-    results := make(chan Result, len(files))
-    for w := 1; w <= 3; w++ {
-        go worker(w, jobs, results)
+  try {
+    if (!window.DB) {
+      if (article) article.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">DB 不可用</div>';
+      return;
     }
-    for _, file := range files {
-        jobs <- file
+
+    var result = await window.DB.getKnowledgeItemDetail(id);
+    if (!result.success || !result.data) {
+      if (article) article.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">条目不存在或加载失败</div>';
+      return;
     }
-    close(jobs)
-    for range files {
-        fmt.Println(<-results)
+
+    var item = result.data;
+    kbState.currentItem = item;
+
+    // 渲染文章内容
+    var contentHtml = '<h1>' + kbEscapeHtml(item.title) + '</h1>';
+    if (item.summary) contentHtml += '<blockquote>' + kbEscapeHtml(item.summary) + '</blockquote>';
+    // 简单 Markdown 渲染
+    var content = item.content || '';
+    contentHtml += kbRenderMarkdown(content);
+    if (article) article.innerHTML = contentHtml;
+
+    // 构建 TOC
+    var headings = article ? article.querySelectorAll('h2') : [];
+    if (headings.length > 0 && tocEl) {
+      tocEl.style.display = '';
+      var tocList = document.getElementById('toc-list');
+      if (tocList) {
+        tocList.innerHTML = '';
+        headings.forEach(function(h, i) {
+          h.id = 'kb-sec-' + i;
+          var btn = document.createElement('button');
+          btn.className = 'toc-link' + (i === 0 ? ' active' : '');
+          btn.textContent = h.textContent;
+          btn.onclick = function() { scrollToSection('kb-sec-' + i, this); };
+          tocList.appendChild(btn);
+        });
+      }
+    } else if (tocEl) {
+      tocEl.style.display = 'none';
     }
-}</code></pre>
-      <p style="margin-top:32px;color:var(--gray-400);font-size:12px;text-align:center">— 文档结束 —</p>
-    `
-  };
-  article.innerHTML = mockArticle.content;
+
+    // 渲染元数据
+    if (metaBody) {
+      var metaHtml = '';
+      metaHtml += '<div class="side-meta-row"><span class="side-meta-label">分类</span><span class="side-meta-value">' + kbEscapeHtml(item.categoryId || '未分类') + '</span></div>';
+      metaHtml += '<div class="side-meta-row"><span class="side-meta-label">创建</span><span class="side-meta-value">' + kbFormatDate(item.createdAt) + '</span></div>';
+      metaHtml += '<div class="side-meta-row"><span class="side-meta-label">更新</span><span class="side-meta-value">' + kbFormatDate(item.updatedAt) + '</span></div>';
+      if (item.sourceUrl) metaHtml += '<div class="side-meta-row"><span class="side-meta-label">来源</span><span class="side-link" onclick="window.open(\'' + kbEscapeHtml(item.sourceUrl) + '\', \'_blank\')">' + kbEscapeHtml(item.sourceUrl.replace(/^https?:\/\//, '').split('/')[0]) + '</span></div>';
+      var wordCount = (item.content || '').length;
+      if (wordCount > 0) metaHtml += '<div class="side-meta-row"><span class="side-meta-label">大小</span><span class="side-meta-value">' + wordCount + ' 字</span></div>';
+      metaHtml += '<div class="side-meta-row"><span class="side-meta-label">阅读进度</span><span class="side-meta-value" id="read-progress-text">0%</span></div>';
+      metaBody.innerHTML = metaHtml;
+    }
+
+    // 渲染标签
+    if (tagsEl) {
+      if (item.tags && item.tags.length > 0) {
+        tagsEl.innerHTML = item.tags.map(function(t) { return '<span class="kc-tag">' + kbEscapeHtml(t) + '</span>'; }).join('');
+      } else {
+        tagsEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">暂无标签</span>';
+      }
+    }
+
+    // 渲染关联知识（基于相同分类的其他条目）
+    if (relatedEl) {
+      relatedEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">加载中...</span>';
+      try {
+        if (item.categoryId) {
+          var relatedRes = await window.DB.getKnowledgeItems(item.categoryId, 1, 5);
+          var relatedItems = (relatedRes.success ? relatedRes.data : []).filter(function(r) { return r._id !== id; }).slice(0, 3);
+          if (relatedItems.length > 0) {
+            relatedEl.innerHTML = relatedItems.map(function(r) {
+              return '<div class="related-item" onclick="showKnowledgeDetail(\'' + r._id + '\')"><span>🔗</span><span class="related-title">' + kbEscapeHtml(r.title) + '</span></div>';
+            }).join('');
+          } else {
+            relatedEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">暂无关联知识</span>';
+          }
+        } else {
+          relatedEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">暂无关联知识</span>';
+        }
+      } catch (e) {
+        relatedEl.innerHTML = '<span style="color:var(--gray-400);font-size:13px;">暂无关联知识</span>';
+      }
+    }
+
+    // 面包屑
+    if (breadcrumb) {
+      breadcrumb.innerHTML = '<a onclick="backToList()">知识库</a><span class="breadcrumb-sep">/</span><span style="color:var(--gray-800);font-weight:500">' + kbEscapeHtml(item.title) + '</span>';
+    }
+
+    // 过期检测
+    var expiryPanel = document.getElementById('detail-expiry-panel');
+    if (expiryPanel && item.updatedAt) {
+      var ageDate = new Date(item.updatedAt);
+      var monthsOld = (Date.now() - ageDate.getTime()) / 2592000000;
+      if (monthsOld > 3) {
+        expiryPanel.style.display = '';
+        var expiryText = document.getElementById('side-expiry-text');
+        if (expiryText) expiryText.textContent = '此知识已 ' + Math.floor(monthsOld) + ' 个月未更新，可能已过时';
+      } else {
+        expiryPanel.style.display = 'none';
+      }
+    }
+
+  } catch (e) {
+    console.error('加载详情失败:', e);
+    if (article) article.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">加载失败: ' + kbEscapeHtml(e.message) + '</div>';
+  }
+}
+
+function kbRenderMarkdown(md) {
+  if (!md) return '';
+  var html = md;
+  // 代码块
+  html = html.replace(/```[\s\S]*?```/g, function(m) {
+    var code = m.replace(/^```/, '').replace(/```$/, '').replace(/^\w+\n/, '');
+    return '<pre><code>' + kbEscapeHtml(code.trim()) + '</code></pre>';
+  });
+  // 行内代码
+  html = html.replace(/`([^`]+)`/g, function(m, c) { return '<code>' + kbEscapeHtml(c) + '</code>'; });
+  // 标题
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // 粗体/斜体
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // 列表
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>[\s\S]*?<\/li>)/g, function(m) { return '<ul>' + m + '</ul>'; });
+  html = html.replace(/<\/ul>\s*<ul>/g, '');
+  // 段落
+  html = html.split(/\n\n+/).map(function(p) {
+    if (p.match(/^<(h[1-6]|pre|ul|blockquote)/)) return p;
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('\n');
+  return html;
 }
 
 function updateReadProgress() {
-  const content = document.getElementById('detail-content');
-  const pct = Math.min(100, Math.round((content.scrollTop / (content.scrollHeight - content.clientHeight)) * 100));
-  document.getElementById('read-progress-fill').style.width = pct + '%';
-  document.getElementById('read-progress-text').textContent = pct + '%';
-  
-  document.querySelectorAll('.toc-link').forEach(link => link.classList.remove('active'));
-  const sections = ['sec1', 'sec2', 'sec3', 'sec4'];
-  for (let i = sections.length - 1; i >= 0; i--) {
-    const section = document.getElementById(sections[i]);
-    if (section && section.offsetTop <= content.scrollTop + 100) {
-      document.querySelectorAll('.toc-link')[i].classList.add('active');
+  var content = document.getElementById('detail-content');
+  if (!content) return;
+  var pct = Math.min(100, Math.round((content.scrollTop / (content.scrollHeight - content.clientHeight || 1)) * 100));
+  var fill = document.getElementById('read-progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  var progText = document.getElementById('read-progress-text');
+  if (progText) progText.textContent = pct + '%';
+
+  document.querySelectorAll('.toc-link').forEach(function(l) { l.classList.remove('active'); });
+  var sections = document.querySelectorAll('#article-content h2');
+  for (var i = sections.length - 1; i >= 0; i--) {
+    if (sections[i].offsetTop <= content.scrollTop + 100) {
+      var links = document.querySelectorAll('.toc-link');
+      if (links[i]) links[i].classList.add('active');
       break;
     }
   }
 }
 
 function scrollToSection(id, btn) {
-  const target = document.getElementById(id);
-  if (target) {
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-  document.querySelectorAll('.toc-link').forEach(l => l.classList.remove('active'));
-  btn.classList.add('active');
+  var target = document.getElementById(id);
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('.toc-link').forEach(function(l) { l.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
 }
 
 /* ================================================================
@@ -1156,179 +1321,503 @@ function scrollToSection(id, btn) {
    ================================================================ */
 
 function openModal(id) {
-  document.getElementById(id).classList.add('show');
+  var el = document.getElementById(id);
+  if (el) el.classList.add('show');
+  if (id === 'modal-upload') loadUploadCategories();
 }
-
-function closeModal(id) {
-  document.getElementById(id).classList.remove('show');
-}
+function closeModal(id) { var el = document.getElementById(id); if (el) el.classList.remove('show'); }
 
 function switchEditor(mode) {
-  document.querySelectorAll('.editor-tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-  
+  document.querySelectorAll('.editor-tab').forEach(function(t) { t.classList.remove('active'); });
+  if (event && event.target) event.target.classList.add('active');
+  var editEl = document.getElementById('editor-edit');
+  var previewEl = document.getElementById('editor-preview');
   if (mode === 'edit') {
-    document.getElementById('editor-edit').style.display = 'block';
-    document.getElementById('editor-preview').style.display = 'none';
+    if (editEl) editEl.style.display = 'block';
+    if (previewEl) previewEl.style.display = 'none';
   } else {
-    document.getElementById('editor-edit').style.display = 'none';
-    const preview = document.getElementById('editor-preview');
-    preview.style.display = 'block';
-    preview.innerHTML = document.getElementById('entry-content').value.replace(/\n/g, '<br>');
+    if (editEl) editEl.style.display = 'none';
+    if (previewEl) {
+      previewEl.style.display = 'block';
+      var content = document.getElementById('entry-content');
+      previewEl.innerHTML = content ? kbRenderMarkdown(content.value) : '';
+    }
   }
 }
 
 function addTag(e) {
   if (e.key !== 'Enter') return;
-  const input = e.target;
-  const value = input.value.trim();
+  var input = e.target;
+  var value = input.value.trim();
   if (!value) return;
-  
-  const chip = document.createElement('span');
+  var chip = document.createElement('span');
   chip.className = 'tag-chip';
-  chip.innerHTML = value + ' <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span>';
+  chip.innerHTML = kbEscapeHtml(value) + ' <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span>';
   input.before(chip);
   input.value = '';
 }
 
 function selectColor(el) {
-  document.querySelectorAll('.color-option').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('.color-option').forEach(function(c) { c.classList.remove('sel'); });
   el.classList.add('sel');
 }
 
 /* ================================================================
-   表单操作
+   表单操作 — 全部接通 DB
    ================================================================ */
 
-function saveEntry() {
-  const title = document.getElementById('entry-title').value.trim();
-  if (!title) {
-    showToast('请输入标题', 'warning');
-    return;
-  }
-  showToast('知识条目创建成功', 'success');
-  closeModal('modal-new-entry');
-  renderKnowledgeItems();
+function loadCategoryOptionsInto(selectId) {
+  var select = document.getElementById(selectId);
+  if (!select) return;
+  var currentVal = select.value;
+  select.innerHTML = '<option value="">请选择分类...</option>';
+  kbState.categories.forEach(function(cat) {
+    select.innerHTML += '<option value="' + cat._id + '">' + kbEscapeHtml(cat.name) + '</option>';
+  });
+  select.value = currentVal;
 }
 
-function openEditModal(id) {
-  if (id) {
-    kbState.currentItemId = id;
+function loadCategoryParentOptions() {
+  var select = document.getElementById('cat-parent');
+  if (!select) return;
+  select.innerHTML = '<option value="">无（一级分类）</option>';
+  kbState.categories.filter(function(c) { return !c.parentId; }).forEach(function(cat) {
+    select.innerHTML += '<option value="' + cat._id + '">' + kbEscapeHtml(cat.name) + '</option>';
+  });
+}
+
+async function saveEntry() {
+  var title = (document.getElementById('entry-title').value || '').trim();
+  if (!title) { showToast('请输入标题', 'warning'); return; }
+  var content = (document.getElementById('entry-content').value || '').trim();
+  var categoryId = (document.getElementById('entry-category').value || '').trim();
+  var level = (document.getElementById('entry-level').value || 'public').trim();
+  var sourceUrl = (document.getElementById('entry-source-url').value || '').trim();
+  var summary = (document.getElementById('entry-summary').value || '').trim();
+  var tags = [];
+  document.querySelectorAll('#entry-tags-wrap .tag-chip').forEach(function(chip) {
+    tags.push(chip.textContent.replace(/\s×$/, '').trim());
+  });
+
+  try {
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    var data = { title: title, content: content, categoryId: categoryId, level: level, sourceUrl: sourceUrl, summary: summary, tags: tags };
+    var result;
+    if (kbState.currentItemId) {
+      result = await window.DB.updateKnowledgeItem(kbState.currentItemId, data);
+    } else {
+      // 新建时先查重
+      var dedup = await window.DB.checkKnowledgeDuplicate(data);
+      if (dedup.success && dedup.data.isDuplicate) {
+        if (dedup.data.suggestion === 'skip') {
+          showToast('该 URL 已存在，自动跳过：' + (dedup.data.matchedItem.title || ''), 'warning');
+          return;
+        }
+        if (dedup.data.suggestion === 'mark_duplicate') {
+          if (!confirm('检测到疑似重复条目（相似度 ' + dedup.data.similarity + '%）：\n' +
+              (dedup.data.matchedItem.title || '') + '\n\n仍要继续创建吗？')) return;
+        }
+      } else if (dedup.success && dedup.data.similarity >= 60) {
+        if (!confirm('检测到可能相关条目（相似度 ' + dedup.data.similarity + '%）：\n' +
+            (dedup.data.matchedItem.title || '') + '\n\n仍要继续创建吗？')) return;
+      }
+      result = await window.DB.createKnowledgeItem(data);
+    }
+    if (!result.success) { showToast('保存失败: ' + (result.error || '未知错误'), 'error'); return; }
+    showToast(kbState.currentItemId ? '知识条目更新成功' : '知识条目创建成功', 'success');
+    closeModal('modal-new-entry');
+    kbState.currentItemId = null;
+    await loadCategoryTree();
+    await renderKnowledgeItems();
+  } catch (e) {
+    showToast('保存失败: ' + e.message, 'error');
   }
-  document.getElementById('modal-title').textContent = id ? '编辑知识条目' : '新建知识条目';
+}
+
+async function openEditModal(id) {
+  if (id) kbState.currentItemId = id;
+  loadCategoryOptionsInto('entry-category');
+  if (id) {
+    try {
+      if (window.DB) {
+        var res = await window.DB.getKnowledgeItemDetail(id);
+        if (res.success && res.data) {
+          document.getElementById('entry-title').value = res.data.title || '';
+          document.getElementById('entry-content').value = res.data.content || '';
+          document.getElementById('entry-category').value = res.data.categoryId || '';
+          document.getElementById('entry-level').value = res.data.level || 'public';
+          document.getElementById('entry-source-url').value = res.data.sourceUrl || '';
+          document.getElementById('entry-summary').value = res.data.summary || '';
+          var tagsWrap = document.getElementById('entry-tags-wrap');
+          if (tagsWrap) {
+            tagsWrap.querySelectorAll('.tag-chip').forEach(function(c) { c.remove(); });
+            (res.data.tags || []).forEach(function(t) {
+              var chip = document.createElement('span');
+              chip.className = 'tag-chip';
+              chip.innerHTML = kbEscapeHtml(t) + ' <span class="tag-chip-remove" onclick="this.parentElement.remove()">×</span>';
+              tagsWrap.insertBefore(chip, tagsWrap.querySelector('.tag-input'));
+            });
+          }
+        }
+      }
+    } catch (e) { console.error('加载条目详情失败:', e); }
+  } else {
+    document.getElementById('entry-title').value = '';
+    document.getElementById('entry-content').value = '';
+    document.getElementById('entry-category').value = '';
+    document.getElementById('entry-level').value = 'public';
+    document.getElementById('entry-source-url').value = '';
+    document.getElementById('entry-summary').value = '';
+    var tw = document.getElementById('entry-tags-wrap');
+    if (tw) tw.querySelectorAll('.tag-chip').forEach(function(c) { c.remove(); });
+  }
   openModal('modal-new-entry');
 }
 
-function createCategory() {
-  const name = document.getElementById('cat-name').value.trim();
-  if (!name) {
-    showToast('请输入分类名称', 'warning');
-    return;
+async function createCategory() {
+  var name = (document.getElementById('cat-name').value || '').trim();
+  if (!name) { showToast('请输入分类名称', 'warning'); return; }
+  var parentId = (document.getElementById('cat-parent').value || '').trim();
+  try {
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    var result = await window.DB.createCategory({ name: name, parentId: parentId });
+    if (!result.success) { showToast('创建失败: ' + (result.error || '未知错误'), 'error'); return; }
+    showToast('分类创建成功', 'success');
+    closeModal('modal-new-category');
+    document.getElementById('cat-name').value = '';
+    await loadCategoryTree();
+  } catch (e) { showToast('创建失败: ' + e.message, 'error'); }
+}
+
+async function openImportConfirm(itemId) {
+  loadCategoryOptionsInto('import-category');
+  try {
+    if (window.DB && itemId) {
+      var res = await window.DB.getKnowledgeItemDetail(itemId);
+      if (res.success && res.data) {
+        document.getElementById('import-source-title').textContent = res.data.title || '';
+        document.getElementById('import-source-url').textContent = res.data.sourceUrl || '';
+        document.getElementById('import-title').value = res.data.title || '';
+        document.getElementById('import-summary').value = res.data.summary || '';
+        kbState.currentItemId = itemId;
+      }
+    }
+  } catch (e) { console.error('加载推荐详情失败:', e); }
+  openModal('modal-import-confirm');
+}
+
+async function confirmImport() {
+  try {
+    if (!window.DB || !kbState.currentItemId) { showToast('入库失败', 'error'); return; }
+    var title = document.getElementById('import-title').value.trim();
+    var categoryId = document.getElementById('import-category').value.trim();
+    var level = document.getElementById('import-level').value.trim();
+    var summary = document.getElementById('import-summary').value.trim();
+    var tags = [];
+    document.querySelectorAll('#import-tags-wrap .tag-chip').forEach(function(chip) {
+      tags.push(chip.textContent.replace(/\s×$/, '').trim());
+    });
+    var result = await window.DB.updateKnowledgeItem(kbState.currentItemId, { title: title, categoryId: categoryId, level: level, summary: summary, tags: tags, isDeleted: false });
+    if (!result.success) { showToast('入库失败: ' + (result.error || ''), 'error'); return; }
+    showToast('入库成功', 'success');
+    closeModal('modal-import-confirm');
+    kbState.currentItemId = null;
+    await renderKnowledgeItems();
+  } catch (e) { showToast('入库失败: ' + e.message, 'error'); }
+}
+
+async function confirmImportWithPlan() {
+  await confirmImport();
+  if (kbState.currentItemId && window.DB) {
+    try {
+      var detail = await window.DB.getKnowledgeItemDetail(kbState.currentItemId);
+      if (detail.success && detail.data) {
+        await window.DB.addToStudyPlan({ title: '学习: ' + detail.data.title, description: detail.data.summary || (detail.data.content || '').substring(0, 200) });
+        showToast('已加入学习计划', 'success');
+      }
+    } catch (e) { console.error('加入学习计划失败:', e); }
   }
-  showToast('分类创建成功', 'success');
-  closeModal('modal-new-category');
 }
 
-function confirmImport() {
-  showToast('仅入库成功', 'success');
-  closeModal('modal-import-confirm');
+async function restoreFromTrash(id) {
+  try {
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    var result = await window.DB.restoreKnowledgeItem(id);
+    if (!result.success) { showToast('恢复失败', 'error'); return; }
+    showToast('已恢复', 'success');
+    await renderKnowledgeItems();
+  } catch (e) { showToast('恢复失败: ' + e.message, 'error'); }
 }
 
-function confirmImportWithPlan() {
-  showToast('已入库并加入学习计划', 'success');
-  closeModal('modal-import-confirm');
-}
-
-function restoreFromTrash(id) {
-  showToast('已恢复', 'success');
-  renderKnowledgeItems();
-}
-
-function permanentDelete(id) {
+async function permanentDelete(id) {
   if (!confirm('确定要彻底删除吗？此操作不可恢复！')) return;
-  showToast('已永久删除', 'danger');
-  renderKnowledgeItems();
+  try {
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    var result = await window.DB.permanentDeleteKnowledgeItem(id);
+    if (!result.success) { showToast('删除失败', 'error'); return; }
+    showToast('已永久删除', 'success');
+    await renderKnowledgeItems();
+  } catch (e) { showToast('删除失败: ' + e.message, 'error'); }
 }
 
-function restoreAllTrash() {
-  showToast('全部恢复成功', 'success');
-  renderKnowledgeItems();
+/* 列表页直接删除知识条目（移入回收站，联动清理切片） */
+async function deleteKnowledgeItem(id) {
+  if (!confirm('确定要删除吗？将移入回收站，30天内可恢复。')) return;
+  try {
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+
+    // 先获取条目信息，检查是否有 backendItemId (后端向量库关联)
+    var itemRes = await window.DB.getKnowledgeItemDetail(id);
+    if (itemRes.success && itemRes.data && itemRes.data.backendItemId) {
+      // 联动删除后端向量+文件
+      await window.DB.deleteKnowledgeChunks(itemRes.data.backendItemId);
+    }
+
+    var result = await window.DB.softDeleteKnowledgeItem(id);
+    if (!result.success) { showToast('删除失败', 'error'); return; }
+    showToast('已移入回收站', 'success');
+    await renderKnowledgeItems();
+  } catch (e) { showToast('删除失败: ' + e.message, 'error'); }
 }
 
-function emptyTrash() {
+async function restoreAllTrash() {
+  if (!confirm('确定恢复回收站全部条目？')) return;
+  try {
+    if (!window.DB) return;
+    var trashRes = await window.DB.getTrashItems();
+    var items = (trashRes.success ? trashRes.data : []) || [];
+    for (var i = 0; i < items.length; i++) {
+      await window.DB.restoreKnowledgeItem(items[i]._id);
+    }
+    showToast('全部恢复成功', 'success');
+    await renderKnowledgeItems();
+  } catch (e) { showToast('恢复失败: ' + e.message, 'error'); }
+}
+
+async function emptyTrash() {
   if (!confirm('确定清空回收站？此操作不可撤销。')) return;
-  showToast('回收站已清空', 'danger');
-  renderKnowledgeItems();
+  try {
+    if (!window.DB) return;
+    var result = await window.DB.emptyTrash();
+    if (!result.success) { showToast('清空失败', 'error'); return; }
+    showToast('回收站已清空', 'success');
+    await renderKnowledgeItems();
+  } catch (e) { showToast('清空失败: ' + e.message, 'error'); }
 }
 
 function toggleScoreDetail(el) {
-  const parent = el.parentElement.nextElementSibling;
-  if (parent.classList.contains('hidden')) {
-    parent.classList.remove('hidden');
-    el.textContent = '收起 ▲';
-  } else {
-    parent.classList.add('hidden');
-    el.textContent = '展开 ▼';
-  }
+  var parent = el.parentElement.nextElementSibling;
+  if (parent.classList.contains('hidden')) { parent.classList.remove('hidden'); el.textContent = '收起 ▲'; }
+  else { parent.classList.add('hidden'); el.textContent = '展开 ▼'; }
 }
 
-function ignoreAIItem(id) {
-  showToast('已忽略此推荐', 'info');
-  kbState.selectedIds.delete(id);
-  updateBatchBar();
-  renderKnowledgeItems();
+async function ignoreAIItem(id) {
+  try {
+    if (window.DB) await window.DB.softDeleteKnowledgeItem(id);
+    showToast('已忽略此推荐', 'info');
+    kbState.selectedIds.delete(id);
+    updateBatchBar();
+    await renderKnowledgeItems();
+  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
-function delayAIItem(id) {
-  showToast('已暂缓7天', 'info');
-  kbState.selectedIds.delete(id);
-  updateBatchBar();
-  renderKnowledgeItems();
+async function delayAIItem(id) {
+  try {
+    if (window.DB) await window.DB.delayKnowledge(id);
+    showToast('已暂缓7天', 'info');
+    kbState.selectedIds.delete(id);
+    updateBatchBar();
+    await renderKnowledgeItems();
+  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
-function markUpdated() {
-  showToast('已标记为已更新', 'success');
-  document.getElementById('side-expiry-alert').style.display = 'none';
+async function markUpdated() {
+  try {
+    if (window.DB && kbState.currentItemId) {
+      await window.DB.updateKnowledgeItem(kbState.currentItemId, { updatedAt: new Date() });
+    }
+    showToast('已标记为已更新', 'success');
+    var panel = document.getElementById('detail-expiry-panel');
+    if (panel) panel.style.display = 'none';
+  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
-function ignoreExpiry(id) {
-  showToast('已忽略过期提醒', 'info');
+async function markExpiredUpdated(id) {
+  try {
+    if (window.DB) await window.DB.updateKnowledgeItem(id, { updatedAt: new Date() });
+    showToast('已标记为已更新', 'success');
+    await loadExpiryModal();
+  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
-function markExpiredUpdated(id) {
-  showToast('已标记为已更新', 'success');
+function ignoreExpiry(id) { showToast('已忽略过期提醒', 'info'); }
+
+async function archiveExpired(id) {
+  try {
+    if (window.DB) await window.DB.archiveKnowledge(id);
+    showToast('已归档', 'success');
+    await loadExpiryModal();
+  } catch (e) { showToast('归档失败: ' + e.message, 'error'); }
 }
 
-function archiveExpired(id) {
-  showToast('已归档', 'success');
-}
-
-function generateReviewCard(id) {
+async function generateReviewCard(id) {
+  var targetId = id || kbState.currentItemId;
+  if (!targetId) { showToast('请先选择知识条目', 'warning'); return; }
   showToast('正在生成复习卡片...', 'info');
-  setTimeout(() => showToast('复习卡片生成成功', 'success'), 1000);
+  try {
+    if (window.DB && window.DB.aiGenerateReviewCards) {
+      var res = await window.DB.aiGenerateReviewCards(targetId);
+      if (res.success) showToast('复习卡片生成成功', 'success');
+      else showToast('生成失败: ' + (res.error || ''), 'error');
+    } else { showToast('AI 生成功能不可用', 'warning'); }
+  } catch (e) { showToast('生成失败: ' + e.message, 'error'); }
 }
 
-function linkKnowledge() {
-  showToast('关联功能开发中', 'info');
-}
+function linkKnowledge() { showToast('关联功能开发中', 'info'); }
 
-function exportMarkdown() {
+async function exportMarkdown() {
+  if (!kbState.currentItemId) { showToast('请先选择知识条目', 'warning'); return; }
   showToast('正在导出...', 'info');
-  setTimeout(() => showToast('导出成功', 'success'), 1000);
+  try {
+    if (window.DB) {
+      var res = await window.DB.exportKnowledgeMarkdown(kbState.currentItemId);
+      if (res.success && res.data) {
+        var blob = new Blob([res.data], { type: 'text/markdown' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'knowledge-' + kbState.currentItemId + '.md';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('导出成功', 'success');
+      } else { showToast('导出失败', 'error'); }
+    }
+  } catch (e) { showToast('导出失败: ' + e.message, 'error'); }
 }
 
-function addToStudyPlan() {
-  showToast('已加入学习计划', 'success');
+async function addToStudyPlan() {
+  if (!kbState.currentItemId || !window.DB) { showToast('操作失败', 'error'); return; }
+  try {
+    var res = await window.DB.getKnowledgeItemDetail(kbState.currentItemId);
+    if (!res.success || !res.data) { showToast('获取条目信息失败', 'error'); return; }
+    var result = await window.DB.addToStudyPlan({ title: '学习: ' + res.data.title, description: res.data.summary || (res.data.content || '').substring(0, 200) });
+    if (result.success) showToast('已加入学习计划', 'success');
+    else showToast('加入失败', 'error');
+  } catch (e) { showToast('加入失败: ' + e.message, 'error'); }
 }
 
-function moveToTrash() {
+async function moveToTrash() {
+  if (!kbState.currentItemId) return;
   if (!confirm('确定移入回收站？')) return;
-  showToast('已移入回收站', 'info');
-  backToList();
+  try {
+    if (window.DB) await window.DB.softDeleteKnowledgeItem(kbState.currentItemId);
+    showToast('已移入回收站', 'info');
+    backToList();
+    await renderKnowledgeItems();
+  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
-function mergeKnowledge() {
-  showToast('合并功能开发中', 'info');
+function mergeKnowledge() { showToast('合并功能开发中', 'info'); }
+function generateImprovementPlan() { showToast('正在生成改进计划...', 'info'); }
+
+/* ================================================================
+   知识体检 — 从 DB 加载
+   ================================================================ */
+
+async function loadHealthModal() {
+  var body = document.getElementById('modal-health-body');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="spin"></div><p>正在生成体检报告...</p></div>';
+  try {
+    if (!window.DB) { body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">DB 不可用</div>'; return; }
+    var res = await window.DB.getKnowledgeHealth();
+    if (!res.success || !res.data) { body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">加载失败</div>'; return; }
+
+    var items = res.data.items || [];
+    var categories = res.data.categories || [];
+    var cards = res.data.cards || [];
+    var duplicates = res.data.duplicates || [];
+
+    // 计算体检指标
+    var itemsWithoutCategory = items.filter(function(i) { return !i.categoryId; }).length;
+    var itemsWithoutCard = items.filter(function(i) { return !cards.some(function(c) { return c.knowledgeId === i._id; }); }).length;
+    var expiredCount = 0;
+    var now = Date.now();
+    items.forEach(function(i) {
+      if (i.updatedAt) {
+        var age = (now - new Date(i.updatedAt).getTime()) / 2592000000;
+        if (age > 3) expiredCount++;
+      }
+    });
+
+    // 健康度计算 (分类30 + 卡片30 + 时效25 + 基础15 - 重复扣分)
+    var totalItems = items.length || 1;
+    var catScore = Math.round(((totalItems - itemsWithoutCategory) / totalItems) * 30);
+    var cardScore = Math.round(((totalItems - itemsWithoutCard) / totalItems) * 30);
+    var expScore = Math.round(((totalItems - expiredCount) / totalItems) * 25);
+    var baseScore = totalItems > 0 ? 15 : 0;
+    var dupPenalty = Math.min(duplicates.length * 3, 10);
+    var healthScore = catScore + cardScore + expScore + baseScore - dupPenalty;
+
+    var html = '';
+    html += '<div class="health-score"><div class="health-score-num">' + healthScore + '</div><div class="health-score-label">健康度 / 100</div></div>';
+
+    // 孤岛知识
+    if (itemsWithoutCard > 0) {
+      html += '<div class="health-section"><div class="health-section-title">📌 孤岛知识（' + itemsWithoutCard + '条）</div>' +
+        '<div class="health-item"><span class="health-item-icon">🏝️</span>' +
+        '<div class="health-item-content"><div class="health-item-title">' + itemsWithoutCard + ' 条知识未生成复习卡片</div>' +
+        '<div class="health-item-desc">建议生成复习卡片以加强记忆</div></div>' +
+        '<span class="health-item-action" onclick="processOrphaned()">一键处理 →</span></div></div>';
+    }
+
+    // 无分类知识
+    if (itemsWithoutCategory > 0) {
+      html += '<div class="health-section"><div class="health-section-title">📂 未分类（' + itemsWithoutCategory + '条）</div>' +
+        '<div class="health-item"><span class="health-item-icon">📋</span>' +
+        '<div class="health-item-content"><div class="health-item-title">' + itemsWithoutCategory + ' 条知识未设置分类</div>' +
+        '<div class="health-item-desc">建议分类以便管理和检索</div></div></div></div>';
+    }
+
+    // 可能过时
+    if (expiredCount > 0) {
+      html += '<div class="health-section"><div class="health-section-title">⏰ 可能过时（' + expiredCount + '条）</div>' +
+        '<div class="health-item"><span class="health-item-icon">🕐</span>' +
+        '<div class="health-item-content"><div class="health-item-title">' + expiredCount + ' 条知识超过 3 个月未更新</div>' +
+        '<div class="health-item-desc">建议检查更新或归档</div></div>' +
+        '<span class="health-item-action" onclick="closeModal(\'modal-health\');openModal(\'modal-expiry\')">查看详情 →</span></div></div>';
+    }
+
+    // 重复项检测
+    if (duplicates.length > 0) {
+      html += '<div class="health-section"><div class="health-section-title">🔄 疑似重复（' + duplicates.length + '组）</div>';
+      duplicates.forEach(function(d) {
+        var simLabel = d.similarity === 100 ? 'URL相同' : '相似度 ' + d.similarity + '%';
+        html += '<div class="health-item"><span class="health-item-icon">📎</span>' +
+          '<div class="health-item-content"><div class="health-item-title">' + kbEscapeHtml(d.itemA.title || '无标题') + ' ⟷ ' + kbEscapeHtml(d.itemB.title || '无标题') + '</div>' +
+          '<div class="health-item-desc">' + simLabel + ' · 建议合并或删除其一</div></div></div>';
+      });
+      html += '</div>';
+    }
+
+    // 统计概览
+    html += '<div class="health-section"><div class="health-section-title">📊 数据概览</div>' +
+      '<div class="health-item"><span class="health-item-icon">📈</span>' +
+      '<div class="health-item-content"><div class="health-item-title">总条目 ' + items.length + ' · 分类 ' + categories.length + ' · 复习卡片 ' + cards.length + '</div>' +
+      '<div class="health-item-desc">分类覆盖率 ' + Math.round(((totalItems - itemsWithoutCategory) / totalItems) * 100) + '% · 卡片覆盖率 ' + Math.round(((totalItems - itemsWithoutCard) / totalItems) * 100) + '%</div></div></div></div>';
+
+    if (items.length === 0) {
+      html = '<div class="health-score"><div class="health-score-num">—</div><div class="health-score-label">暂无数据</div></div>' +
+        '<div style="text-align:center;padding:32px;color:var(--gray-400);">创建知识条目后即可生成体检报告</div>';
+    }
+
+    body.innerHTML = html;
+  } catch (e) {
+    console.error('加载体检报告失败:', e);
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">加载失败: ' + kbEscapeHtml(e.message) + '</div>';
+  }
 }
 
 async function processOrphaned() {
@@ -1338,28 +1827,16 @@ async function processOrphaned() {
       var res = await window.DB.aiProcessOrphaned();
       if (res.success && res.content) {
         showToast('孤岛知识处理完成', 'success');
-        // 在体检弹窗中显示 AI 处理结果
-        var modalBody = document.querySelector('#modal-health .modal-body');
+        var modalBody = document.querySelector('#modal-health-body');
         if (modalBody) {
           var aiEl = document.createElement('div');
           aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 孤岛知识处理建议</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 孤岛知识处理建议</div><div style="color:var(--gray-700);white-space:pre-wrap">' + kbEscapeHtml(res.content) + '</div>';
           modalBody.appendChild(aiEl);
         }
-      } else {
-        showToast('AI 处理失败: ' + (res.error || '未知错误'), 'error');
-      }
-    } else {
-      showToast('DB 不可可用', 'error');
-    }
-  } catch (e) {
-    showToast('处理失败: ' + e.message, 'error');
-  }
-}
-
-function generateImprovementPlan() {
-  showToast('正在生成改进计划...', 'info');
-  setTimeout(() => showToast('改进计划已生成', 'success'), 1000);
+      } else { showToast('AI 处理失败: ' + (res.error || '未知错误'), 'error'); }
+    } else { showToast('AI 功能不可用', 'warning'); }
+  } catch (e) { showToast('处理失败: ' + e.message, 'error'); }
 }
 
 async function generateHealthReport() {
@@ -1369,28 +1846,125 @@ async function generateHealthReport() {
       var res = await window.DB.aiHealthReport();
       if (res.success && res.content) {
         showToast('报告已生成', 'success');
-        // 在体检弹窗中显示 AI 报告
-        var modalBody = document.querySelector('#modal-health .modal-body');
+        var modalBody = document.querySelector('#modal-health-body');
         if (modalBody) {
           var aiEl = document.createElement('div');
           aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 体检报告</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 体检报告</div><div style="color:var(--gray-700);white-space:pre-wrap">' + kbEscapeHtml(res.content) + '</div>';
           modalBody.appendChild(aiEl);
         }
-      } else {
-        showToast('AI 生成失败: ' + (res.error || '未知错误'), 'error');
-      }
+      } else { showToast('AI 生成失败: ' + (res.error || '未知错误'), 'error'); }
+    } else { showToast('AI 功能不可用', 'warning'); }
+  } catch (e) { showToast('生成失败: ' + e.message, 'error'); }
+}
+
+/* ================================================================
+   过期检测 — 从 DB 加载
+   ================================================================ */
+
+async function loadExpiredBanner() {
+  var banner = document.getElementById('expiry-banner');
+  var textEl = document.getElementById('expiry-banner-text');
+  if (!banner || !textEl) return;
+  try {
+    if (!window.DB) return;
+    var res = await window.DB.getExpiredItems();
+    var items = (res.success ? res.data : []) || [];
+    kbState.expiredItems = items;
+    if (items.length > 0) {
+      textEl.innerHTML = '<strong>' + items.length + ' 条知识</strong> 可能已过时，建议检查更新或归档';
+      banner.style.display = '';
     } else {
-      showToast('DB 不可可用', 'error');
+      banner.style.display = 'none';
     }
+  } catch (e) { console.warn('加载过期检测失败:', e); banner.style.display = 'none'; }
+}
+
+async function loadExpiryModal() {
+  var body = document.getElementById('modal-expiry-body');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="spin"></div><p>正在检测过期知识...</p></div>';
+  try {
+    if (!window.DB) { body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">DB 不可用</div>'; return; }
+    var res = await window.DB.getExpiredItems();
+    var items = (res.success ? res.data : []) || [];
+    kbState.expiredItems = items;
+    if (items.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div style="font-size:32px;margin-bottom:8px;">✅</div>所有知识条目都在活跃期</div>';
+      return;
+    }
+    body.innerHTML = '<div class="expiry-list">' + items.map(function(item, i) {
+      var ageMonths = item.updatedAt ? Math.floor((Date.now() - new Date(item.updatedAt).getTime()) / 2592000000) : 0;
+      return '<div class="expiry-item"><div class="expiry-item-info">' +
+        '<div class="expiry-item-title">' + kbEscapeHtml(item.title) + '</div>' +
+        '<div class="expiry-item-reason">已 ' + ageMonths + ' 个月未更新</div></div>' +
+        '<div class="expiry-item-actions">' +
+        '<button class="btn btn-sm" style="background:var(--success);color:#fff" onclick="markExpiredUpdated(\'' + item._id + '\')">已更新</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="archiveExpired(\'' + item._id + '\')">归档</button>' +
+        '<button class="btn btn-ghost btn-sm" onclick="ignoreExpiry(\'' + item._id + '\')">忽略</button>' +
+        '</div></div>';
+    }).join('') + '</div>';
   } catch (e) {
-    showToast('生成失败: ' + e.message, 'error');
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger);">检测失败: ' + kbEscapeHtml(e.message) + '</div>';
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  renderKnowledgeItems();
-});
+/* ================================================================
+   全局暴露
+   ================================================================ */
+
+window.initKbPage = initKbPage;
+window.toggleCategory = toggleCategory;
+window.selectCategory = selectCategory;
+window.filterCategories = filterCategories;
+window.switchKbTab = switchKbTab;
+window.searchKnowledge = searchKnowledge;
+window.doQuickSearch = doQuickSearch;
+window.toggleBatchSelect = toggleBatchSelect;
+window.batchImport = batchImport;
+window.batchIgnore = batchIgnore;
+window.clearBatchSelection = clearBatchSelection;
+window.showKnowledgeDetail = showKnowledgeDetail;
+window.backToList = backToList;
+window.updateReadProgress = updateReadProgress;
+window.scrollToSection = scrollToSection;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.switchEditor = switchEditor;
+window.addTag = addTag;
+window.selectColor = selectColor;
+window.saveEntry = saveEntry;
+window.openEditModal = openEditModal;
+window.createCategory = createCategory;
+window.openImportConfirm = openImportConfirm;
+window.confirmImport = confirmImport;
+window.confirmImportWithPlan = confirmImportWithPlan;
+window.restoreFromTrash = restoreFromTrash;
+window.permanentDelete = permanentDelete;
+window.restoreAllTrash = restoreAllTrash;
+window.emptyTrash = emptyTrash;
+window.toggleScoreDetail = toggleScoreDetail;
+window.ignoreAIItem = ignoreAIItem;
+window.delayAIItem = delayAIItem;
+window.markUpdated = markUpdated;
+window.ignoreExpiry = ignoreExpiry;
+window.markExpiredUpdated = markExpiredUpdated;
+window.archiveExpired = archiveExpired;
+window.generateReviewCard = generateReviewCard;
+window.linkKnowledge = linkKnowledge;
+window.exportMarkdown = exportMarkdown;
+window.addToStudyPlan = addToStudyPlan;
+window.moveToTrash = moveToTrash;
+window.mergeKnowledge = mergeKnowledge;
+window.processOrphaned = processOrphaned;
+window.generateImprovementPlan = generateImprovementPlan;
+window.generateHealthReport = generateHealthReport;
+window.loadHealthModal = loadHealthModal;
+window.loadExpiryModal = loadExpiryModal;
+
+/* ================================================================
+   事件监听
+   ================================================================ */
 
 document.addEventListener('keydown', function(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -1398,7 +1972,19 @@ document.addEventListener('keydown', function(e) {
     openModal('modal-search');
   }
   if (e.key === 'Escape') {
-    const overlays = document.querySelectorAll('.modal-overlay.show');
-    overlays.forEach(overlay => overlay.classList.remove('show'));
+    document.querySelectorAll('.modal-overlay.show').forEach(function(overlay) { overlay.classList.remove('show'); });
   }
 });
+
+// 体检/过期弹窗打开时自动加载数据
+var _origOpenModal = window.openModal;
+window.openModal = function(id) {
+  _origOpenModal(id);
+  if (id === 'modal-health') loadHealthModal();
+  else if (id === 'modal-expiry') loadExpiryModal();
+  else if (id === 'modal-new-category') loadCategoryParentOptions();
+  else if (id === 'modal-new-entry') { if (!kbState.currentItemId) loadCategoryOptionsInto('entry-category'); }
+};
+
+// 新建分类弹窗打开时加载父分类选项
+</script>

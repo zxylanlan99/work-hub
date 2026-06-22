@@ -155,6 +155,9 @@ const DB = {
       case 'health-report':
         return [{ role: 'user', content: '请分析知识库的整体健康状况，包括分类覆盖度、知识更新频率、关联密度等，给出健康报告。' }];
 
+      case 'deduplicate':
+        return [{ role: 'user', content: description || '请对比文章内容，判断是否重复并给出合并建议。' }];
+
       case 'generate-cards': {
         let itemInfo = '';
         if (itemId) {
@@ -366,6 +369,68 @@ const DB = {
     return { success: true, data: { history: history.data, cards: cards.data } };
   },
 
+  /**
+   * AI-022: 生成每周 AI 诊断报告
+   * 聚合近一周复习历史、任务完成情况、薄弱主题，生成诊断报告
+   */
+  async generateWeeklyDiagnosisReport() {
+    const monday = new Date();
+    monday.setDate(monday.getDate() - monday.getDay() + 1);
+    monday.setHours(0, 0, 0, 0);
+    console.log('[DB] 📡 生成每周 AI 诊断报告');
+
+    const [historyResult, cardsResult, tasksResult, goalsResult] = await Promise.all([
+      this._exec(this._collection('review_history').where({ reviewedAt: this._gte(monday) }).get()),
+      this._exec(this._collection('review_cards').where({}).get()),
+      this._exec(this._collection('tasks').where({}).get()),
+      this._exec(this._collection('goals').where({}).get())
+    ]);
+
+    const history = historyResult.data || [];
+    const cards = cardsResult.data || [];
+    const tasks = tasksResult.data || [];
+    const goals = goalsResult.data || [];
+
+    // 统计本周完成任务数
+    const completedTasks = tasks.filter(t => t.status === 'completed' && t.updatedAt && new Date(t.updatedAt) >= monday).length;
+    const totalTasks = tasks.length;
+
+    // 统计本周复习情况
+    const reviewCount = history.length;
+    const avgQuality = reviewCount > 0
+      ? (history.reduce((sum, h) => sum + (h.quality || 0), 0) / reviewCount).toFixed(1)
+      : 0;
+
+    // 薄弱主题（掌握度 < 0.5 的卡片对应知识）
+    const weakCards = cards.filter(c => (c.mastery || 0) < 0.5).slice(0, 10);
+    const weakTopics = weakCards.map(c => c.question || '未命名主题');
+
+    const prompt = '请根据以下用户近一周学习数据生成诊断报告。\n\n' +
+      '本周完成任务：' + completedTasks + '/' + totalTasks + '\n' +
+      '本周复习次数：' + reviewCount + '\n' +
+      '平均复习质量：' + avgQuality + '/5\n' +
+      '当前目标数：' + goals.length + '\n' +
+      '薄弱主题：' + (weakTopics.length > 0 ? weakTopics.join('、') : '暂无') + '\n\n' +
+      '请生成每周诊断报告。';
+
+    const aiResult = await this._aiProxy({
+      action: 'weekly-diagnosis',
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    if (!aiResult.success || !aiResult.content) {
+      return { success: false, error: aiResult.error || 'AI 未返回内容' };
+    }
+
+    try {
+      const parsed = JSON.parse(aiResult.content);
+      return { success: true, data: parsed };
+    } catch (e) {
+      console.warn('[DB] 诊断报告 JSON 解析失败:', e.message);
+      return { success: false, error: '诊断报告解析失败: ' + e.message, raw: aiResult.content };
+    }
+  },
+
   /* ================================================================
      四、学习计划模块接口 (13 逻辑接口)
      ================================================================ */
@@ -491,6 +556,129 @@ const DB = {
     return this._aiProxy({ action: 'goal-summary', goalId });
   },
 
+  /**
+   * AI-021: 基于描述+知识库/网络搜索制定学习计划（仅生成方案，不入库）
+   * @param {string} description - 用户描述的学习目标
+   * @param {Object} options - { useWebSearch: boolean, topK: number }
+   * @returns { success, data: { title, description, milestones[], recommendedMaterials[] } }
+   */
+  async aiCreateGoalWithSearch(description, options) {
+    const { useWebSearch = true, topK = 5 } = options || {};
+    console.log('[DB] 📡 AI 制定学习计划（搜索增强）:', { description: (description || '').substring(0, 50), useWebSearch });
+
+    // 1. 本地知识库向量搜索
+    const localResults = await this.searchKnowledgeChunks(description, topK, 0.3);
+    const localMaterials = (localResults.data || []).slice(0, topK).map(r => ({
+      source: 'knowledge',
+      title: (r.metadata && r.metadata.title) || '知识库片段',
+      content: r.content || ''
+    }));
+
+    // 2. 真实网络搜索
+    let webMaterials = [];
+    if (useWebSearch) {
+      const webResults = await this.searchWeb(description, topK);
+      webMaterials = (webResults.data || []).slice(0, topK).map(r => ({
+        source: 'web',
+        title: r.title || '网络资讯',
+        content: (r.summary || r.content || '').substring(0, 800)
+      }));
+    }
+
+    const materials = [...localMaterials, ...webMaterials];
+    const materialText = materials.map((m, i) =>
+      '资料' + (i + 1) + '（' + m.source + '）: ' + m.title + '\n' + m.content
+    ).join('\n\n');
+
+    const userPrompt = '用户想学习目标：' + (description || '未描述') + '\n\n' +
+      '检索到的参考资料：\n' + (materialText || '（无检索到相关资料）') + '\n\n' +
+      '请基于以上信息制定学习计划。';
+
+    const aiResult = await this._aiProxy({
+      action: 'create-plan-with-search',
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    if (!aiResult.success || !aiResult.content) {
+      return { success: false, error: aiResult.error || 'AI 未返回内容' };
+    }
+
+    try {
+      const parsed = JSON.parse(aiResult.content);
+      return {
+        success: true,
+        data: {
+          ...parsed,
+          recommendedMaterials: materials.map(m => m.title)
+        }
+      };
+    } catch (e) {
+      console.warn('[DB] 学习计划 JSON 解析失败:', e.message);
+      return { success: false, error: '学习计划解析失败: ' + e.message, raw: aiResult.content };
+    }
+  },
+
+  /**
+   * AI-021-CONFIRM: 用户确认后将 AI 生成的学习计划写入数据库
+   * @param {Object} plan - aiCreateGoalWithSearch 返回的 data
+   */
+  async confirmCreateGoalFromPlan(plan) {
+    if (!plan || !plan.title) {
+      return { success: false, error: '学习计划数据不完整' };
+    }
+    console.log('[DB] 📡 确认创建目标:', { title: plan.title });
+
+    // 1. 创建目标
+    const goalResult = await this._exec(
+      this._collection('goals').add({
+        title: plan.title,
+        description: plan.description || '',
+        status: 'active',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+    );
+    const goalId = goalResult.data && goalResult.data.id;
+    if (!goalId) {
+      return { success: false, error: '目标创建失败' };
+    }
+
+    // 2. 创建里程碑和任务
+    const milestones = plan.milestones || [];
+    for (let i = 0; i < milestones.length; i++) {
+      const ms = milestones[i];
+      const msResult = await this._exec(
+        this._collection('milestones').add({
+          goalId: goalId,
+          title: ms.title || ('里程碑 ' + (i + 1)),
+          status: 'pending',
+          sort: i,
+          createdAt: new Date()
+        })
+      );
+      const milestoneId = msResult.data && msResult.data.id;
+
+      const tasks = ms.tasks || [];
+      for (let j = 0; j < tasks.length; j++) {
+        const taskTitle = typeof tasks[j] === 'string' ? tasks[j] : tasks[j].title;
+        await this._exec(
+          this._collection('tasks').add({
+            goalId: goalId,
+            milestoneId: milestoneId || '',
+            title: taskTitle || ('任务 ' + (j + 1)),
+            status: 'pending',
+            sort: j,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          })
+        );
+      }
+    }
+
+    console.log('[DB] ✅ 学习计划已入库:', { goalId, milestoneCount: milestones.length });
+    return { success: true, data: { goalId: goalId } };
+  },
+
   /** DB-W-002: 创建任务 */
   async createTask(data) {
     console.log('[DB] 📡 createTask 写入:', { title: data.title, goalId: data.goalId });
@@ -529,6 +717,27 @@ const DB = {
     );
     console.log('[DB] ✅ completeTask 返回:', result);
     return result;
+  },
+
+  /** 删除任务 */
+  async deleteTask(taskId) {
+    return this._exec(
+      this._collection('tasks').doc(taskId).remove()
+    );
+  },
+
+  /** 启动任务 (待办 → 进行中) */
+  async startTask(taskId) {
+    return this._exec(
+      this._collection('tasks').doc(taskId).update({ status: 'in_progress', updatedAt: new Date() })
+    );
+  },
+
+  /** 再次启动任务 (已完成 → 进行中) */
+  async restartTask(taskId) {
+    return this._exec(
+      this._collection('tasks').doc(taskId).update({ status: 'in_progress', updatedAt: new Date() })
+    );
   },
 
   /* ---------- 里程碑操作 (无编号, 2.2.2 节) ---------- */
@@ -749,6 +958,50 @@ const DB = {
     return this._aiProxy({ action: 'all-improvement-plans' });
   },
 
+  /**
+   * AI-020: 生成复习计划练习题
+   * @param {Object} options - { cardIds, questionTypeRatio, difficulty, count }
+   *   questionTypeRatio: { choice: 0.5, fill: 0.3, qa: 0.2 }
+   *   difficulty: 'easy'|'medium'|'hard'|'mixed'
+   *   count: 题目总数
+   */
+  async generateReviewExercises(options) {
+    const { cardIds, questionTypeRatio, difficulty, count } = options || {};
+    console.log('[DB] 📡 生成复习练习题:', { cardCount: (cardIds || []).length, difficulty, count });
+
+    let cardInfo = '';
+    if (cardIds && Array.isArray(cardIds) && cardIds.length > 0) {
+      try {
+        const cardPromises = cardIds.map(id => this._exec(this._collection('review_cards').doc(id).get()));
+        const cardResults = await Promise.all(cardPromises);
+        const cards = cardResults.map(r => r.data && r.data[0]).filter(Boolean);
+        if (cards.length > 0) {
+          cardInfo = cards.map((c, i) => '卡片' + (i + 1) + '：\n问题：' + (c.question || '无') + '\n答案：' + (c.answer || '无')).join('\n\n');
+        }
+      } catch (e) { /* 忽略 */ }
+    }
+
+    const ratioText = JSON.stringify(questionTypeRatio || { choice: 0.5, fill: 0.3, qa: 0.2 });
+    const userPrompt = '请根据以下复习卡片生成练习题。\n\n题型比例：' + ratioText + '\n难度：' + (difficulty || 'mixed') + '\n题目总数：' + (count || 5) + '\n\n复习卡片内容：\n' + (cardInfo || '（无具体卡片，请生成通用练习题）');
+
+    const aiResult = await this._aiProxy({
+      action: 'review-exercises',
+      messages: [{ role: 'user', content: userPrompt }]
+    });
+
+    if (!aiResult.success || !aiResult.content) {
+      return { success: false, error: aiResult.error || 'AI 未返回内容' };
+    }
+
+    try {
+      const parsed = JSON.parse(aiResult.content);
+      return { success: true, data: parsed };
+    } catch (e) {
+      console.warn('[DB] 练习题 JSON 解析失败:', e.message);
+      return { success: false, error: '练习题解析失败: ' + e.message, raw: aiResult.content };
+    }
+  },
+
   /* ---------- 复习卡片创建 (无编号) ---------- */
   async createReviewCard(data) {
     return this._exec(
@@ -857,8 +1110,130 @@ const DB = {
     return { success: true, data: { ...itemData, reviewCards: cards.data } };
   },
 
-  /** DB-W-004: 创建知识条目 */
+  /** DB-R-025: 入库前查重 (PRD 3.3 去重规则) */
+  async checkKnowledgeDuplicate(data) {
+    // Step 1: URL 完全匹配 → 自动跳过
+    if (data.sourceUrl) {
+      const urlMatch = await this._exec(
+        this._collection('knowledge_items')
+          .where({ sourceUrl: data.sourceUrl, isDeleted: false })
+          .get()
+      );
+      if (urlMatch.success && urlMatch.data && urlMatch.data.length > 0) {
+        return { success: true, data: {
+          isDuplicate: true, similarity: 100, type: 'url_match',
+          matchedItem: urlMatch.data[0], suggestion: 'skip'
+        }};
+      }
+    }
+
+    // Step 2: 标题相似度检测
+    const allItems = await this._exec(
+      this._collection('knowledge_items')
+        .where({ isDeleted: false })
+        .get()
+    );
+    const newTitle = (data.title || '').toLowerCase().trim();
+    let bestMatch = null;
+    let bestSim = 0;
+    for (const item of (allItems.data || [])) {
+      const sim = this._calcSimilarity(newTitle, (item.title || '').toLowerCase().trim());
+      if (sim > bestSim) { bestSim = sim; bestMatch = item; }
+    }
+
+    // Step 3: 分级处理
+    if (bestSim >= 85) {
+      return { success: true, data: {
+        isDuplicate: true, similarity: bestSim, type: 'suspected_duplicate',
+        matchedItem: bestMatch, suggestion: 'mark_duplicate'
+      }};
+    }
+    if (bestSim >= 60) {
+      return { success: true, data: {
+        isDuplicate: false, similarity: bestSim, type: 'possibly_related',
+        matchedItem: bestMatch, suggestion: 'show_diff'
+      }};
+    }
+    return { success: true, data: { isDuplicate: false, unique: true, similarity: bestSim }};
+  },
+
+  /** 标题相似度计算 (Jaccard 系数 on char-bigrams) */
+  _calcSimilarity(str1, str2) {
+    if (!str1 || !str2) return 0;
+    if (str1 === str2) return 100;
+    const getBigrams = (s) => {
+      const set = new Set();
+      for (let i = 0; i < s.length - 1; i++) set.add(s.substring(i, i + 2));
+      return set;
+    };
+    const s1 = getBigrams(str1), s2 = getBigrams(str2);
+    if (s1.size === 0 || s2.size === 0) return 0;
+    let intersection = 0;
+    for (const b of s1) { if (s2.has(b)) intersection++; }
+    return Math.round((intersection / (s1.size + s2.size - intersection)) * 100);
+  },
+
+  /** 批量查找重复项 (供体检报告使用) */
+  _findDuplicates(items) {
+    const duplicates = [];
+    const seen = new Set();
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        if (seen.has(items[j]._id)) continue;
+        // URL 相同
+        if (items[i].sourceUrl && items[j].sourceUrl && items[i].sourceUrl === items[j].sourceUrl) {
+          duplicates.push({ itemA: items[i], itemB: items[j], similarity: 100, type: 'url_match' });
+          seen.add(items[j]._id);
+          continue;
+        }
+        // 标题相似度
+        const sim = this._calcSimilarity(
+          (items[i].title || '').toLowerCase().trim(),
+          (items[j].title || '').toLowerCase().trim()
+        );
+        if (sim >= 85) {
+          duplicates.push({ itemA: items[i], itemB: items[j], similarity: sim, type: 'suspected_duplicate' });
+          seen.add(items[j]._id);
+        }
+      }
+    }
+    return duplicates;
+  },
+
+  /** AI-012: 信息去重合并 (PRD 3F 节点) */
+  async aiDeduplicate(newArticle, existingArticles) {
+    const articlesText = (existingArticles || []).map(function(a, i) {
+      return (i + 1) + '. ' + (a.title || '无标题') + '\n   ' + ((a.summary || a.content || '').substring(0, 300));
+    }).join('\n\n');
+    return this._aiProxy({
+      action: 'deduplicate',
+      messages: [{
+        role: 'user',
+        content: '对比以下新文章与已有文章，判断是否重复。返回JSON格式：\n' +
+          '{"isDuplicate": true/false, "similarity": 0-100, "mergeSuggestion": "merge|skip|keep_both", "diffPoints": ["差异点1", "差异点2"]}\n\n' +
+          '新文章标题：' + (newArticle.title || '无标题') + '\n' +
+          '新文章摘要：' + ((newArticle.summary || newArticle.content || '').substring(0, 500)) + '\n\n' +
+          '已有文章：\n' + (articlesText || '（无）')
+      }]
+    });
+  },
+
+  /** DB-W-004: 创建知识条目 (入库前自动查重) */
   async createKnowledgeItem(data) {
+    // 上传文件跳过查重 (由后端处理)
+    if (data.sourceType !== 'upload') {
+      // 入库前查重 — URL 重复则自动跳过
+      if (data.sourceUrl || data.title) {
+        const dedup = await this.checkKnowledgeDuplicate(data);
+        if (dedup.success && dedup.data.isDuplicate && dedup.data.suggestion === 'skip') {
+          return { success: false, error: '该 URL 已存在，自动跳过', data: dedup.data };
+        }
+        // 疑似重复(>85%) 仍允许入库但标记
+        if (dedup.success && dedup.data.isDuplicate && dedup.data.suggestion === 'mark_duplicate') {
+          console.warn('[DB] ⚠️ 入库疑似重复条目:', data.title, '相似度:', dedup.data.similarity);
+        }
+      }
+    }
     return this._exec(
       this._collection('knowledge_items').add({
         title: data.title,
@@ -868,6 +1243,12 @@ const DB = {
         tags: data.tags || [],
         sourceUrl: data.sourceUrl || '',
         sourceType: data.sourceType || 'manual',
+        fileType: data.fileType || '',
+        fileSize: data.fileSize || 0,
+        fileName: data.fileName || '',
+        chunkCount: data.chunkCount || 0,
+        parseStatus: data.parseStatus || '',
+        backendItemId: data.backendItemId || '',
         level: data.level || 'public',
         isDeleted: false,
         deletedAt: null,
@@ -886,15 +1267,17 @@ const DB = {
     );
   },
 
-  /** DB-D-003: 删除知识条目 (软删除) */
+  /** DB-D-003: 删除知识条目 (软删除，联动清理切片) */
   async softDeleteKnowledgeItem(itemId) {
+    await this.deleteKnowledgeChunks(itemId);
     return this._exec(
       this._collection('knowledge_items').doc(itemId).update({ isDeleted: true, deletedAt: new Date(), updatedAt: new Date() })
     );
   },
 
-  /** DB-D-004: 永久删除 */
+  /** DB-D-004: 永久删除 (联动清理切片) */
   async permanentDeleteKnowledgeItem(itemId) {
+    await this.deleteKnowledgeChunks(itemId);
     return this._exec(this._collection('knowledge_items').doc(itemId).remove());
   },
 
@@ -1022,6 +1405,194 @@ const DB = {
     return { success: true, data: { id: newItem.id } };
   },
 
+  /* ================================================================
+     文件上传与文档切片 — 通过 Python 后端处理
+     后端: FastAPI + ChromaDB + all-MiniLM-L6-v2
+     流程: 上传文件 → 后台异步(解析→切片→向量化→存ChromaDB)
+     ================================================================ */
+
+  /** 后端 API 基础地址 */
+  _kbBackendURL() {
+    return (window.CONFIG && window.CONFIG.kbBackend && window.CONFIG.kbBackend.baseURL) || 'http://localhost:8765';
+  },
+
+  /**
+   * 上传知识文件 — 发送到 Python 后端，后台异步处理
+   * 支持 PDF / PPT / Word / Markdown / TXT
+   * @param {File} file - 浏览器 File 对象
+   * @param {string} categoryId - 分类 ID
+   * @returns {success, data: {taskId, itemId, status}}
+   */
+  async uploadKnowledgeFile(file, categoryId) {
+    try {
+      console.log('[DB] 上传文件到后端:', file.name, '大小:', file.size);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('categoryId', categoryId || '');
+
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'HTTP ' + response.status);
+      }
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error || '上传失败');
+
+      console.log('[DB] 文件已提交到后端处理:', result.data);
+      return { success: true, data: result.data };
+
+    } catch (error) {
+      console.error('[DB] 上传文件失败:', error);
+      return { success: false, error: error.message || '上传失败' };
+    }
+  },
+
+  /**
+   * 查询上传处理状态 (轮询用)
+   * @param {string} taskId - 上传返回的 taskId
+   * @returns {success, data: {status, progress, chunkCount, error}}
+   */
+  async getUploadStatus(taskId) {
+    try {
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/status/' + taskId);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[DB] 查询状态失败:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * 向量搜索 — 余弦相似度，过滤低相关性结果
+   * @param {string} query - 查询文本
+   * @param {number} topK - 返回前 K 条
+   * @param {number} minSimilarity - 最低相似度阈值 (0~1)
+   * @returns {success, data: [{id, content, similarity, metadata}]}
+   */
+  async searchKnowledgeChunks(query, topK, minSimilarity) {
+    try {
+      const cfg = (window.CONFIG && window.CONFIG.kbBackend) || {};
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: query,
+          top_k: topK || cfg.searchTopK || 10,
+          min_similarity: minSimilarity || cfg.minSimilarity || 0.3
+        })
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[DB] 向量搜索失败:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  /**
+   * 获取文档切片列表
+   * @param {string} itemId - 知识条目 ID
+   */
+  async getKnowledgeChunks(itemId) {
+    try {
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/chunks/' + itemId);
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[DB] 获取切片失败:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  /**
+   * 删除知识条目 — 联动删除文件 + 向量 + 记录
+   * @param {string} itemId - 知识条目 ID
+   */
+  async deleteKnowledgeChunks(itemId) {
+    try {
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/' + itemId, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('[DB] 删除失败:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /** 获取后端知识库统计 */
+  async getKnowledgeBackendStats() {
+    try {
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/stats');
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message, data: {} };
+    }
+  },
+
+  /* ================================================================
+     网络搜索与 RSS 抓取辅助（真实数据源）
+     ================================================================ */
+
+  /**
+   * 真实网络搜索 — 由后端代理调用公开新闻搜索 API
+   * @param {string} query - 搜索关键词
+   * @param {number} topK - 返回条数
+   */
+  async searchWeb(query, topK = 10) {
+    try {
+      console.log('[DB] 🌐 网络搜索:', query);
+      const response = await fetch(this._kbBackendURL() + '/api/search/web', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, top_k: topK })
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      console.log('[DB] 📥 网络搜索结果:', { count: (result.data || []).length });
+      return result;
+    } catch (error) {
+      console.error('[DB] 网络搜索失败:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  /**
+   * 抓取 RSS 源获取最新资讯
+   * @param {Array<string>} sources - RSS 源地址列表
+   */
+  async fetchRSSSources(sources) {
+    try {
+      console.log('[DB] 📡 RSS 抓取:', sources);
+      const response = await fetch(this._kbBackendURL() + '/api/news/rss', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sources })
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const result = await response.json();
+      console.log('[DB] 📥 RSS 抓取结果:', { count: (result.data || []).length });
+      return result;
+    } catch (error) {
+      console.error('[DB] RSS 抓取失败:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
   /** AGG-011: 条目统计 */
   async getKnowledgeStats() {
     const [itemCount, categoryCount] = await Promise.all([
@@ -1031,14 +1602,15 @@ const DB = {
     return { success: true, data: { itemCount, categoryCount } };
   },
 
-  /** AGG-012: 知识体检 */
+  /** AGG-012: 知识体检 (含重复项检测) */
   async getKnowledgeHealth() {
     const [items, categories, cards] = await Promise.all([
       this._exec(this._collection('knowledge_items').where({ isDeleted: false }).get()),
       this._exec(this._collection('categories').where({}).get()),
       this._exec(this._collection('review_cards').where({}).get())
     ]);
-    return { success: true, data: { items: items.data, categories: categories.data, cards: cards.data } };
+    const duplicates = this._findDuplicates(items.data || []);
+    return { success: true, data: { items: items.data, categories: categories.data, cards: cards.data, duplicates } };
   },
 
   /** AI-009: 孤岛知识处理 */
@@ -1133,6 +1705,58 @@ const DB = {
     return { success: true, data: { reply } };
   },
 
+  /**
+   * AI-012-KB: 发送消息并引用资料内容，AI 基于资料上下文回复
+   * @param {string} chatId
+   * @param {string} content - 用户消息
+   * @param {Array<string>} knowledgeIds - 要引用的知识条目 ID 列表
+   * @param {string} model
+   */
+  async sendMessageWithKnowledge(chatId, content, knowledgeIds, model = 'mimo') {
+    console.log('[DB] 📡 发送带资料引用的消息:', { chatId, knowledgeCount: (knowledgeIds || []).length });
+
+    // 1. 读取知识条目内容
+    let materialText = '';
+    if (knowledgeIds && knowledgeIds.length > 0) {
+      try {
+        const itemPromises = knowledgeIds.map(id => this._exec(this._collection('knowledge_items').doc(id).get()));
+        const itemResults = await Promise.all(itemPromises);
+        const items = itemResults.map(r => r.data && r.data[0]).filter(Boolean);
+        materialText = items.map((item, i) =>
+          '资料' + (i + 1) + '《' + (item.title || '未命名') + '》：\n' +
+          (item.summary || item.content || '').substring(0, 1200)
+        ).join('\n\n---\n\n');
+      } catch (e) {
+        console.warn('[DB] 读取引用资料失败:', e.message);
+      }
+    }
+
+    // 2. 构造带上下文的用户消息
+    const contextPrefix = materialText
+      ? '请参考以下资料回答问题：\n\n' + materialText + '\n\n---\n\n用户问题：'
+      : '';
+    const fullContent = contextPrefix + content;
+
+    // 3. 保存用户消息（原始问题）
+    await this._collection('messages').add({
+      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
+    });
+
+    // 4. 调用 AI
+    const aiResult = await this._aiProxy({
+      action: 'chat', messages: [{ role: 'user', content: fullContent }], model
+    });
+    const reply = aiResult.success ? aiResult.content : '抱歉,AI 暂时无法回复';
+
+    // 5. 保存 AI 回复
+    await this._collection('messages').add({
+      chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
+    });
+    await this._collection('chats').doc(chatId).update({ updatedAt: new Date() });
+
+    return { success: true, data: { reply } };
+  },
+
   /** DB-U-026: 收藏消息 */
   async starMessage(messageId) {
     return this._exec(
@@ -1204,10 +1828,14 @@ const DB = {
      八、资讯模块接口 (13 逻辑接口)
      ================================================================ */
 
-  /** DB-R-027: 推荐资讯 (未读列表) */
+  /** DB-R-027: 推荐资讯 (未读 + 未入库列表，按评分降序) */
   async getRecommendedNews() {
     return this._exec(
-      this._collection('news_items').where({ hasRead: false }).orderBy('createdAt', 'desc').get()
+      this._collection('news_items')
+        .where({ hasRead: false, isSaved: false })
+        .orderBy('score', 'desc')
+        .orderBy('createdAt', 'desc')
+        .get()
     );
   },
 
@@ -1223,14 +1851,25 @@ const DB = {
     return this._exec(this._collection('news_items').doc(newsId).get());
   },
 
+  /** getNewsById — getNewsPreview 别名，前端统一调用入口 */
+  async getNewsById(newsId) {
+    return this.getNewsPreview(newsId);
+  },
+
   /** AGG-014: 资讯统计 */
   async getNewsOverviewStats() {
-    const [unread, total, saved] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [unread, total, saved, todaySaved, todayRead, ignored] = await Promise.all([
       this._count('news_items', { hasRead: false }),
       this._count('news_items', {}),
-      this._count('news_items', { isSaved: true })
+      this._count('news_items', { isSaved: true }),
+      this._count('news_items', { isSaved: true, updatedAt: this._gte(todayStart) }),
+      this._count('news_items', { hasRead: true, updatedAt: this._gte(todayStart) }),
+      this._count('news_items', { ignored: true })
     ]);
-    return { success: true, data: { unread, total, saved } };
+    return { success: true, data: { unread, total, saved, todaySaved, todayRead, ignored, todayProcessed: todayRead } };
   },
 
   /** AGG-015: 资讯统计详情 */
@@ -1289,18 +1928,120 @@ const DB = {
     return this._aiProxy({ action: 'import-suggestions', newsId });
   },
 
-  /** DB-U-029: 入库资讯 */
+  /**
+   * AI-023: 每日抓取学习相关资讯并 AI 评分入库
+   * @param {Array<string>} sources - RSS 源地址，为空时使用推荐源
+   */
+  async dailyCrawlAndScore(sources) {
+    const defaultSources = [
+      'https://feeds.feedburner.com/oreilly/radar',
+      'https://news.ycombinator.com/rss',
+      'https://www.technologyreview.com/rss/',
+      'https://www.infoq.cn/rss/',
+      'https://www.jiqizhixin.com/rss'
+    ];
+    const rssSources = sources && sources.length > 0 ? sources : defaultSources;
+    console.log('[DB] 📡 每日资讯爬取开始:', rssSources);
+
+    // 1. 抓取 RSS
+    const rssResult = await this.fetchRSSSources(rssSources);
+    if (!rssResult.success) {
+      return { success: false, error: rssResult.error || 'RSS 抓取失败' };
+    }
+
+    const articles = rssResult.data || [];
+    if (articles.length === 0) {
+      return { success: true, data: { crawled: 0, saved: 0 } };
+    }
+
+    // 2. 逐条 AI 判断与评分
+    let savedCount = 0;
+    for (const article of articles) {
+      try {
+        const prompt = '请判断以下资讯是否与学习相关，并给出评分和分类。\n\n' +
+          '标题：' + (article.title || '无标题') + '\n' +
+          '摘要：' + (article.summary || article.content || '').substring(0, 1000) + '\n' +
+          '来源：' + (article.sourceUrl || article.sourceName || '未知');
+
+        const aiResult = await this._aiProxy({
+          action: 'news-judge',
+          messages: [{ role: 'user', content: prompt }]
+        });
+
+        if (!aiResult.success || !aiResult.content) continue;
+
+        let parsed = null;
+        try {
+          parsed = JSON.parse(aiResult.content);
+        } catch (e) {
+          console.warn('[DB] 资讯评分 JSON 解析失败:', e.message);
+          continue;
+        }
+
+        if (!parsed.isLearningRelated || !parsed.worthSaving) {
+          console.log('[DB] ⏭️ 资讯被 AI 过滤:', article.title);
+          continue;
+        }
+
+        // 3. 写入 news_items
+        await this._exec(
+          this._collection('news_items').add({
+            title: parsed.title || article.title || '未命名资讯',
+            content: article.content || '',
+            summary: parsed.summary || article.summary || '',
+            sourceUrl: article.sourceUrl || '',
+            sourceName: article.sourceName || 'RSS',
+            category: parsed.category || '',
+            tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 5) : [],
+            score: typeof parsed.score === 'number' ? parsed.score : 50,
+            level: parsed.level || 'low',
+            hasRead: false,
+            isSaved: false,
+            aiScored: true,
+            createdAt: article.publishedAt ? new Date(article.publishedAt) : new Date(),
+            updatedAt: new Date()
+          })
+        );
+        savedCount++;
+      } catch (e) {
+        console.warn('[DB] 单条资讯处理失败:', e.message);
+      }
+    }
+
+    console.log('[DB] ✅ 每日资讯爬取完成:', { crawled: articles.length, saved: savedCount });
+    return { success: true, data: { crawled: articles.length, saved: savedCount } };
+  },
+
+  /** DB-U-029: 入库资讯（资讯 → 知识库） */
   async importNewsToKnowledge(newsId) {
     const newsResult = await this._exec(this._collection('news_items').doc(newsId).get());
     const news = newsResult.data && newsResult.data.length > 0 ? newsResult.data[0] : null;
     if (!news) return { success: false, error: '资讯不存在' };
+
+    // 知识库 content 优先使用 news.content，其次 summary，最后 title
+    var knowledgeContent = news.content || news.summary || '';
+    if (!knowledgeContent) knowledgeContent = '来源：' + (news.sourceUrl || news.sourceName || '') + '\n\n（无详细内容，请手动补充）';
+
     const knowledgeResult = await this._collection('knowledge_items').add({
-      title: news.title, content: news.summary || '', sourceUrl: news.sourceUrl || '',
-      sourceType: 'news', isDeleted: false, level: 'public', tags: news.tags || [],
-      createdAt: new Date(), updatedAt: new Date()
+      title: news.title || '未命名资讯',
+      content: knowledgeContent,
+      summary: news.summary || '',
+      sourceUrl: news.sourceUrl || '',
+      sourceName: news.sourceName || '',
+      sourceType: 'news',
+      category: news.category || '',
+      isDeleted: false,
+      level: 'public',
+      tags: news.tags || [],
+      score: news.score || 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
-    await this._collection('news_items').doc(newsId).update({ isSaved: true, knowledgeId: knowledgeResult.id });
-    return { success: true };
+    // 标记资讯为已入库
+    await this._exec(
+      this._collection('news_items').doc(newsId).update({ isSaved: true, knowledgeId: knowledgeResult.id, updatedAt: new Date() })
+    );
+    return { success: true, data: { knowledgeId: knowledgeResult.id } };
   },
 
   /** DB-U-030: 忽略资讯 */
@@ -1310,17 +2051,21 @@ const DB = {
     );
   },
 
-  /** DB-W-010: 手动录入资讯 */
+  /** DB-W-010: 手动录入资讯（含 AI 评分） */
   async addManualNews(data) {
-    return this._exec(
+    // 1. 先写入原始数据
+    var addResult = await this._exec(
       this._collection('news_items').add({
-        title: data.title,
+        title: data.title || '',
+        content: data.content || '',
         sourceUrl: data.sourceUrl || '',
         sourceName: data.sourceName || '',
         category: data.category || '',
         tags: data.tags || [],
         summary: data.summary || '',
         importance: data.importance || 0,
+        score: 0,
+        level: '',
         hasRead: false,
         isSaved: false,
         knowledgeId: null,
@@ -1328,6 +2073,117 @@ const DB = {
         createdAt: new Date()
       })
     );
+
+    if (!addResult.success) return addResult;
+
+    // 2. 获取新写入的记录 ID
+    var newsId = (addResult.data && addResult.data.id) ? addResult.data.id : null;
+    if (!newsId) return addResult;
+
+    // 3. 异步触发 AI 评分（不阻塞主流程）
+    this._aiScoreNewsAsync(newsId, data);
+
+    return { success: true, data: { id: newsId } };
+  },
+
+  /** AI 评分资讯 — 异步执行，不阻塞录入流程 */
+  async _aiScoreNewsAsync(newsId, originalData) {
+    try {
+      console.log('[DB] 🤖 开始 AI 评分资讯:', newsId);
+
+      // 构建评分请求
+      var isUrlMode = !originalData.title && originalData.sourceUrl;
+      var evalContent = originalData.content || originalData.sourceUrl || originalData.title || '';
+
+      var prompt = '你是资讯评分专家。请对以下资讯进行五维评分（总分100），并生成标题、摘要和标签。\n\n' +
+        '五维评分体系（PRD 3.1）：\n' +
+        '- 信源可信度(20%)：域名权威度+作者可信度+引用背书\n' +
+        '- 内容价值(30%)：信息密度+原创性+深度+实用性\n' +
+        '- 主题关联度(25%)：与学习方向匹配度\n' +
+        '- 信息新鲜度(15%)：时效性\n' +
+        '- 可转化性(10%)：可摘要性+可操作性\n\n' +
+        '请严格按以下 JSON 格式返回（不要包含其他内容）：\n' +
+        '{"title":"生成的标题","summary":"50字以内摘要","score":85,"level":"high","tags":["标签1","标签2","标签3"],"scoreDetail":{"信源可信度":[18,"权威技术博客"],"内容价值":[25,"深度分析"],"主题关联度":[20,"高度相关"],"信息新鲜度":[12,"近期内容"],"可转化性":[8,"可操作"]}}\n\n' +
+        '评分标准：80-100=high(强烈推荐)，60-79=mid(推荐)，40-59=low(可选)，<40不推荐\n\n' +
+        '资讯内容：\n' + (isUrlMode ? 'URL: ' + originalData.sourceUrl : evalContent.substring(0, 3000));
+
+      var aiRes = await this._aiProxy({
+        action: 'chat',
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      if (!aiRes || !aiRes.success || !aiRes.content) {
+        console.warn('[DB] AI 评分未返回内容，使用默认值');
+        await this._exec(
+          this._collection('news_items').doc(newsId).update({
+            title: originalData.title || (isUrlMode ? '来自 ' + originalData.sourceUrl : '未命名资讯'),
+            summary: originalData.summary || '（AI 评分未完成，请手动编辑）',
+            score: 50,
+            level: 'low',
+            tags: ['待评分'],
+            updatedAt: new Date()
+          })
+        );
+        return;
+      }
+
+      // 4. 解析 AI 返回的 JSON
+      var parsed = null;
+      try {
+        // 尝试提取 JSON
+        var jsonMatch = aiRes.content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        console.warn('[DB] AI 评分 JSON 解析失败:', e.message);
+      }
+
+      if (!parsed) {
+        console.warn('[DB] AI 评分解析失败，使用默认值');
+        parsed = {
+          title: originalData.title || (isUrlMode ? '来自 ' + originalData.sourceUrl : '未命名资讯'),
+          summary: aiRes.content.substring(0, 100),
+          score: 50,
+          level: 'low',
+          tags: ['AI分析']
+        };
+      }
+
+      // 5. 更新记录
+      var updateData = {
+        title: parsed.title || originalData.title || '未命名资讯',
+        summary: parsed.summary || '',
+        score: typeof parsed.score === 'number' ? parsed.score : 50,
+        level: parsed.level || (parsed.score >= 80 ? 'high' : parsed.score >= 60 ? 'mid' : 'low'),
+        tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 5) : [],
+        scoreDetail: parsed.scoreDetail || null,
+        aiScored: true,
+        updatedAt: new Date()
+      };
+
+      await this._exec(
+        this._collection('news_items').doc(newsId).update(updateData)
+      );
+
+      console.log('[DB] ✅ AI 评分完成:', newsId, 'score=' + updateData.score, 'level=' + updateData.level);
+      return { success: true, data: updateData };
+
+    } catch (e) {
+      console.error('[DB] AI 评分异常:', e);
+      // 评分失败不阻塞，记录默认值
+      try {
+        await this._exec(
+          this._collection('news_items').doc(newsId).update({
+            title: originalData.title || (originalData.sourceUrl ? '来自 ' + originalData.sourceUrl : '未命名资讯'),
+            summary: '（AI 评分异常，请手动编辑）',
+            score: 50,
+            level: 'low',
+            updatedAt: new Date()
+          })
+        );
+      } catch (e2) { /* 忽略 */ }
+    }
   },
 
   /** DB-U-031: 批量入库资讯 */
@@ -1346,6 +2202,21 @@ const DB = {
   /** DB-U-033: 批量暂缓资讯 */
   async batchDelayNews(newsIds, delayedUntil) {
     return this._batchUpdate('news_items', newsIds, { delayedUntil, updatedAt: new Date() });
+  },
+
+  /** 批量永久删除资讯 */
+  async batchDeleteNews(newsIds) {
+    var failed = [];
+    for (const id of newsIds) {
+      try {
+        await this._exec(this._collection('news_items').doc(id).remove());
+      } catch (e) {
+        console.error('[DB] 删除资讯失败:', id, e.message);
+        failed.push(id);
+      }
+    }
+    if (failed.length > 0) return { success: false, error: '部分删除失败: ' + failed.length + ' 条' };
+    return { success: true };
   },
 
   /** DB-U-034: 恢复资讯 */
@@ -1532,7 +2403,7 @@ const DB = {
 
   /** AGG-021: 导出数据 (读取全部集合) */
   async exportAllData() {
-    const collections = ['goals', 'milestones', 'tasks', 'knowledge_items', 'categories',
+    const collections = ['goals', 'milestones', 'tasks', 'knowledge_items', 'knowledge_chunks', 'categories',
       'review_cards', 'review_history', 'news_items', 'chats', 'messages', 'output_docs', 'scraps', 'user_settings'];
     const data = {};
     for (const coll of collections) {
@@ -1559,7 +2430,7 @@ const DB = {
 
   /** DB-D-011: 清空数据 */
   async clearAllData() {
-    const collections = ['goals', 'milestones', 'tasks', 'knowledge_items', 'categories',
+    const collections = ['goals', 'milestones', 'tasks', 'knowledge_items', 'knowledge_chunks', 'categories',
       'review_cards', 'review_history', 'news_items', 'chats', 'messages', 'output_docs', 'scraps', 'user_settings'];
     for (const coll of collections) {
       const result = await this._exec(this._collection(coll).where({}).get());

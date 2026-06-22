@@ -43,7 +43,8 @@
         <textarea id="message-input" placeholder="输入你的问题..." rows="3"></textarea>
         <div class="input-actions">
           <button class="btn btn-outline" onclick="handleFileUpload()">📎 上传文件</button>
-          <input type="file" id="file-input" style="display:none" onchange="processFileUpload(event)">
+          <input type="file" id="file-input" style="display:none" accept=".txt,.md,.pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.xml,.html,.htm,.js,.ts,.py,.java,.cpp,.c,.h,.css,.jpg,.jpeg,.png,.gif,.webp,.svg" onchange="processFileUpload(event)" multiple>
+          <div id="attached-files" style="display:none;padding:4px 0;"></div>
           <button class="btn btn-primary" onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -60,7 +61,8 @@ var chatState = {
   currentChatId: null,
   currentModel: null,
   inflightCount: 0,
-  conversations: []
+  conversations: [],
+  pendingFiles: []  // 待发送的附件列表 [{file, name, type}]
 };
 
 // ================================================================
@@ -298,23 +300,79 @@ async function loadMessages(chatId) {
 function renderMessageHtml(msg) {
   var isUser = msg.role === 'user';
   var time = msg.createdAt ? formatChatTime(msg.createdAt) : '';
-  var content = escapeChatHtml(msg.content);
-  
-  return '<div class="message ' + msg.role + '" style="display:flex;margin-bottom:16px;' +
-    (isUser ? 'justify-content:flex-end;' : '') + '">' +
-    '<div style="max-width:75%;">' +
-    '<div style="background:' + (isUser ? 'var(--primary)' : 'var(--gray-100)') + ';' +
-    'color:' + (isUser ? '#fff' : 'var(--gray-800)') + ';' +
-    'padding:12px 16px;border-radius:' + (isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px') + ';' +
-    'word-break:break-word;line-height:1.6;font-size:14px;">' +
-    '<pre style="margin:0;white-space:pre-wrap;font-family:inherit;">' + content + '</pre>' +
-    '</div>' +
-    '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;' +
-    (isUser ? 'text-align:right;' : '') + '">' +
-    (isUser ? '👤 我' : '🤖 AI') + ' · ' + time +
-    '</div>' +
-    '</div>' +
-    '</div>';
+
+  // AI 消息：简单 markdown 渲染（代码块 + 加粗 + 换行）
+  // 用户消息：转义后保留换行
+  var contentHtml;
+  if (isUser) {
+    contentHtml = '<div style="white-space:pre-wrap;word-break:break-word;">' + escapeChatHtml(msg.content) + '</div>';
+  } else {
+    contentHtml = '<div class="ai-message-body" style="word-break:break-word;line-height:1.7;">' +
+      renderMarkdownLite(msg.content) + '</div>';
+  }
+
+  // 附件标签（仅用于临时预览，已发送消息不含附件信息）
+  var attachmentHtml = '';
+  if (msg.attachments && msg.attachments.length > 0) {
+    attachmentHtml = '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">' +
+      msg.attachments.map(function(a) {
+        return '<span style="background:rgba(255,255,255,0.2);border-radius:8px;padding:2px 8px;font-size:11px;">📎 ' +
+          escapeChatHtml(a) + '</span>';
+      }).join('') + '</div>';
+  }
+
+  if (isUser) {
+    // 用户消息：右对齐，蓝色气泡
+    return '<div class="message user" style="display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;margin-bottom:18px;padding:0 8px;">' +
+      '<div style="max-width:72%;order:1;">' +
+        '<div style="background:var(--primary);color:#fff;' +
+          'padding:10px 14px;border-radius:18px 18px 4px 18px;' +
+          'box-shadow:0 1px 4px rgba(0,0,0,0.1);font-size:14px;line-height:1.6;">' +
+          attachmentHtml + contentHtml +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;text-align:right;padding-right:2px;">' + time + '</div>' +
+      '</div>' +
+      '<div style="order:2;width:32px;height:32px;border-radius:50%;background:var(--primary);' +
+        'display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">👤</div>' +
+      '</div>';
+  } else {
+    // AI 消息：左对齐，浅灰气泡
+    return '<div class="message assistant" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:18px;padding:0 8px;">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);' +
+        'display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">🤖</div>' +
+      '<div style="max-width:72%;">' +
+        '<div style="background:var(--gray-100,#f4f4f5);color:var(--gray-800,#1f2937);' +
+          'padding:10px 14px;border-radius:18px 18px 18px 4px;' +
+          'box-shadow:0 1px 4px rgba(0,0,0,0.06);font-size:14px;">' +
+          contentHtml +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;padding-left:2px;">' + time + '</div>' +
+      '</div>' +
+      '</div>';
+  }
+}
+
+// 轻量 Markdown 渲染（支持代码块、行内代码、加粗、斜体、换行、列表）
+function renderMarkdownLite(text) {
+  if (!text) return '';
+  var html = escapeChatHtml(text);
+  // 代码块
+  html = html.replace(/```([\w]*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+    return '<pre style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:8px;' +
+      'overflow-x:auto;font-size:13px;margin:8px 0;"><code>' + code.trim() + '</code></pre>';
+  });
+  // 行内代码
+  html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.08);padding:1px 5px;border-radius:4px;font-size:13px;">$1</code>');
+  // 加粗
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // 斜体
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // 无序列表（以 - 或 • 开头）
+  html = html.replace(/^[-•] (.+)$/gm, '<li style="margin:2px 0;">$1</li>');
+  html = html.replace(/(<li[^>]*>[\s\S]+?<\/li>)/g, '<ul style="padding-left:16px;margin:4px 0;">$1</ul>');
+  // 换行
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
 
 // ================================================================
@@ -325,8 +383,9 @@ async function sendMessage() {
   var input = document.getElementById('message-input');
   var content = input ? input.value.trim() : '';
   
-  if (!content) {
-    chatToast('请输入消息', 'warning');
+  // 有附件时允许空文本消息（附件本身就是内容）
+  if (!content && chatState.pendingFiles.length === 0) {
+    chatToast('请输入消息或上传附件', 'warning');
     return;
   }
   
@@ -346,16 +405,38 @@ async function sendMessage() {
     chatToast('请先在设置页面配置 AI 模型', 'warning');
     return;
   }
-  
+
+  // 收集附件信息（用于气泡展示）
+  var attachmentNames = chatState.pendingFiles.map(function(f) { return f.name; });
+
+  // ① 先清空输入框和附件区（让 UI 立即响应）
   if (input) input.value = '';
+  var pendingFiles = chatState.pendingFiles.slice();
+  chatState.pendingFiles = [];
+  renderAttachedFiles();
+  
+  // ② 发送时读取附件内容
+  var fileContents = '';
+  if (pendingFiles.length > 0) {
+    try {
+      var contents = await Promise.all(pendingFiles.map(readFileContent));
+      fileContents = contents.join('');
+    } catch (e) {
+      console.warn('[AIChat] 读取附件失败:', e);
+    }
+  }
+
+  // ③ 组合最终发送内容
+  var finalContent = content + fileContents;
   
   var container = document.getElementById('chat-messages');
   
-  // 显示用户消息
+  // ④ 显示用户消息（带附件标签）
   if (container) {
     container.innerHTML += renderMessageHtml({
       role: 'user',
-      content: content,
+      content: content || '（仅附件）',
+      attachments: attachmentNames,
       createdAt: new Date()
     });
     container.scrollTop = container.scrollHeight;
@@ -363,8 +444,10 @@ async function sendMessage() {
   
   // 显示 typing indicator
   if (container) {
-    container.innerHTML += '<div id="typing-indicator" style="display:flex;margin-bottom:16px;">' +
-      '<div style="background:var(--gray-100);padding:12px 16px;border-radius:16px 16px 16px 4px;">' +
+    container.innerHTML += '<div id="typing-indicator" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:18px;padding:0 8px;">' +
+      '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);' +
+        'display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">🤖</div>' +
+      '<div style="background:var(--gray-100,#f4f4f5);padding:12px 16px;border-radius:18px 18px 18px 4px;">' +
       '<div class="typing-dots"><span></span><span></span><span></span></div>' +
       '</div></div>';
     container.scrollTop = container.scrollHeight;
@@ -373,11 +456,11 @@ async function sendMessage() {
   chatState.inflightCount++;
   
   try {
-    console.log('[AIChat] 📡 发送消息:', { chatId: chatState.currentChatId, model: chatState.currentModel });
+    console.log('[AIChat] 📡 发送消息:', { chatId: chatState.currentChatId, model: chatState.currentModel, hasAttachments: pendingFiles.length > 0 });
     
     var result = window.DB
-      ? await window.DB.sendMessageAndReply(chatState.currentChatId, content, chatState.currentModel)
-      : { success: false, error: 'DB 不可可用' };
+      ? await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel)
+      : { success: false, error: 'DB 不可用' };
     
     // 移除 typing indicator
     var typing = document.getElementById('typing-indicator');
@@ -502,29 +585,121 @@ function handleFileUpload() {
   if (input) input.click();
 }
 
-function processFileUpload(event) {
-  var file = event.target.files[0];
-  if (!file) return;
-  
-  // 目前支持文本文件，将内容附加到输入框
-  if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.txt')) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var input = document.getElementById('message-input');
-      if (input) {
-        var existing = input.value.trim();
-        var fileContent = '\n\n--- 文件: ' + file.name + ' ---\n' + e.target.result.substring(0, 2000);
-        input.value = existing + (existing ? '\n' : '') + fileContent;
-        chatToast('文件内容已附加（前2000字符）', 'success');
-      }
-    };
-    reader.readAsText(file);
-  } else {
-    chatToast('暂仅支持文本文件（.txt/.md）', 'warning');
+// 文件类型分类
+var FILE_TYPE_SUPPORT = {
+  text: ['.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm', '.js', '.ts', '.py', '.java', '.cpp', '.c', '.h', '.css'],
+  image: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
+  doc: ['.pdf', '.doc', '.docx', '.xls', '.xlsx']
+};
+
+function getFileCategory(file) {
+  var name = file.name.toLowerCase();
+  if (file.type.startsWith('text/')) return 'text';
+  for (var ext of FILE_TYPE_SUPPORT.text) {
+    if (name.endsWith(ext)) return 'text';
   }
-  
+  for (var ext of FILE_TYPE_SUPPORT.image) {
+    if (name.endsWith(ext)) return 'image';
+  }
+  for (var ext of FILE_TYPE_SUPPORT.doc) {
+    if (name.endsWith(ext)) return 'doc';
+  }
+  return 'unknown';
+}
+
+function processFileUpload(event) {
+  var files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    var category = getFileCategory(file);
+
+    if (category === 'unknown') {
+      chatToast('不支持的文件类型: ' + file.name, 'warning');
+      continue;
+    }
+
+    // 文件大小限制 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      chatToast('文件过大（最大 10MB）: ' + file.name, 'warning');
+      continue;
+    }
+
+    chatState.pendingFiles.push({ file: file, name: file.name, category: category });
+    chatToast('已添加附件: ' + file.name, 'success');
+  }
+
+  // 渲染附件预览标签
+  renderAttachedFiles();
+
   // 重置 input 以便重复上传
   event.target.value = '';
+}
+
+function renderAttachedFiles() {
+  var container = document.getElementById('attached-files');
+  if (!container) return;
+
+  if (chatState.pendingFiles.length === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  container.style.display = 'flex';
+  container.style.flexWrap = 'wrap';
+  container.style.gap = '6px';
+  container.style.padding = '6px 0 2px';
+
+  container.innerHTML = chatState.pendingFiles.map(function(f, idx) {
+    var icon = f.category === 'image' ? '🖼️' : (f.category === 'doc' ? '📄' : '📝');
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--gray-100,#f4f4f5);' +
+      'border:1px solid var(--gray-200,#e4e4e7);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--gray-700,#374151);">' +
+      icon + ' ' + escapeChatHtml(f.name) +
+      ' <span onclick="removeAttachment(' + idx + ')" style="cursor:pointer;color:var(--gray-400);margin-left:2px;' +
+      'font-size:14px;line-height:1;" title="移除">×</span>' +
+      '</span>';
+  }).join('');
+}
+
+function removeAttachment(idx) {
+  chatState.pendingFiles.splice(idx, 1);
+  renderAttachedFiles();
+}
+
+// 读取文件内容（返回 Promise<string>）
+function readFileContent(fileObj) {
+  return new Promise(function(resolve, reject) {
+    var file = fileObj.file;
+    var category = fileObj.category;
+
+    if (category === 'image') {
+      // 图片转 base64 描述（纯客户端无法 OCR，仅告知 AI 文件名）
+      resolve('[图片文件: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + 'KB)]');
+      return;
+    }
+
+    if (category === 'doc') {
+      // PDF/Word 等二进制文件，前端无法直接解析，告知 AI 文件名和大小
+      resolve('[附件: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + 'KB) — 请注意此为二进制文档格式，内容解析需后端支持]');
+      return;
+    }
+
+    // 文本文件：直接读取（最多 4000 字符）
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var content = e.target.result;
+      if (content.length > 4000) {
+        content = content.substring(0, 4000) + '\n... [文件内容过长，已截断至前4000字符]';
+      }
+      resolve('\n\n--- 附件: ' + file.name + ' ---\n' + content + '\n--- 附件结束 ---');
+    };
+    reader.onerror = function() {
+      resolve('[附件读取失败: ' + file.name + ']');
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
 }
 
 // ================================================================
@@ -578,4 +753,5 @@ window.deleteChatConfirm = deleteChatConfirm;
 window.exportChat = exportChat;
 window.handleFileUpload = handleFileUpload;
 window.processFileUpload = processFileUpload;
+window.removeAttachment = removeAttachment;
 </script>

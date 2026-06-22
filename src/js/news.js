@@ -84,6 +84,9 @@ function bindEvents() {
 
   const refreshBtn = document.getElementById('refresh-news-btn');
   if (refreshBtn) refreshBtn.addEventListener('click', () => loadNewsList());
+
+  const crawlBtn = document.getElementById('crawl-news-btn');
+  if (crawlBtn) crawlBtn.addEventListener('click', startDailyCrawl);
 }
 
 /* ================================================================
@@ -352,6 +355,30 @@ async function addManualNews() {
   } catch (error) {
     console.error('录入资讯失败:', error);
     showToast('录入失败', 'error');
+  }
+}
+
+/**
+ * AI-023: 每日抓取真实 RSS 资讯并 AI 评分入库
+ */
+async function startDailyCrawl() {
+  try {
+    showToast('正在从 RSS 源抓取最新资讯…', 'info');
+    const result = window.DB
+      ? await window.DB.dailyCrawlAndScore()
+      : { success: true, data: { crawled: 0, saved: 0 } };
+
+    if (result.success) {
+      const data = result.data || { crawled: 0, saved: 0 };
+      showToast(`抓取完成：${data.crawled || 0} 条资讯，入库 ${data.saved || 0} 条`, 'success');
+      loadNewsStats();
+      loadNewsList();
+    } else {
+      showToast('抓取失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('每日资讯抓取失败:', error);
+    showToast('抓取失败', 'error');
   }
 }
 

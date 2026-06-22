@@ -26,11 +26,11 @@
   </div>
 
   <!-- 【AGG-001】续接卡 -->
-  <div class="resume-card" onclick="openPlanDetail('goal-1')">
+  <div class="resume-card" onclick="_resumeLastGoal()">
     <span class="resume-card-icon">⏭️</span>
     <div class="resume-info">
-      <div class="resume-title" id="planResumeTitle">继续上次学习：微服务架构实战</div>
-      <div class="resume-sub" id="planResumeSub">上次停在「服务通信 — gRPC vs REST 对比」· 预计剩余 45 分钟</div>
+      <div class="resume-title" id="planResumeTitle">加载中...</div>
+      <div class="resume-sub" id="planResumeSub">正在获取上次学习位置...</div>
     </div>
     <button class="btn btn-primary btn-sm">继续 →</button>
   </div>
@@ -81,26 +81,28 @@
       <!-- 【DB-R-004】目标概况 -->
       <div class="detail-hero" id="detailHero">
         <div class="detail-title-row">
-          <div class="detail-title" id="detailTitle">微服务架构实战</div>
+          <div class="detail-title" id="detailTitle">加载中...</div>
           <div style="display:flex;gap:8px;">
             <span class="badge badge-active" id="detailStatusBadge">🟢 进行中</span>
-            <button class="btn btn-ghost btn-sm">✏️ 编辑</button>
-            <button class="btn btn-ghost btn-sm" style="color:var(--danger)">⋯</button>
+            <button class="btn btn-ghost btn-sm" onclick="openMilestoneEditModal()">✏️ 编辑</button>
+            <div style="position:relative;display:inline-block;">
+              <button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="event.stopPropagation();toggleDetailMenu(this)">⋯</button>
+              <div class="goal-card-dropdown" id="detailMenuDropdown" style="display:none;position:absolute;top:100%;right:0;z-index:100;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:120px;padding:4px 0;">
+                <button class="dropdown-item" style="display:block;width:100%;padding:8px 14px;text-align:left;border:none;background:none;color:var(--danger);font-size:13px;cursor:pointer;" onclick="event.stopPropagation();openDeleteGoalModal()">🗑 删除目标</button>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="detail-desc" id="detailDesc">系统掌握微服务设计、开发与部署，能在工作中独立拆分并实施微服务架构。</div>
+        <div class="detail-desc" id="detailDesc"></div>
         <div class="progress-big-wrap">
           <div class="progress-big-label">
-            <span style="font-size:13px;color:var(--gray-500);" id="detailTaskSummary">8 / 12 任务完成</span>
-            <span class="progress-big-pct" id="detailProgress">65%</span>
+            <span style="font-size:13px;color:var(--gray-500);" id="detailTaskSummary">—</span>
+            <span class="progress-big-pct" id="detailProgress">—</span>
           </div>
-          <div class="progress-big-bar"><div class="progress-fill primary" id="detailProgressFill" style="width:65%;height:10px;"></div></div>
+          <div class="progress-big-bar"><div class="progress-fill primary" id="detailProgressFill" style="width:0%;height:10px;"></div></div>
         </div>
         <div class="detail-meta-row" id="detailMeta">
-          <div class="detail-meta-item">📅 <strong>创建</strong> 2026-04-10</div>
-          <div class="detail-meta-item">🏁 <strong>截止</strong> 2026-08-30</div>
-          <div class="detail-meta-item">⏱️ <strong>总耗时</strong> 已用 28h / 预计 42h</div>
-          <div class="detail-meta-item">🔥 <strong>连续学习</strong> 7 天</div>
+          <div class="detail-meta-item" style="color:var(--gray-400);">加载中...</div>
         </div>
       </div>
 
@@ -134,56 +136,23 @@
         </div>
       </div>
 
-      <!-- 【AI-004】耗时预测 -->
+      <!-- 【AI-004】耗时预测 — 动态渲染 -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">⏱️ AI 耗时预测</div>
         </div>
-        <div class="panel-body">
-          <div class="estimate-p70-row">
-            <span>gRPC 对比分析</span>
-            <div class="estimate-p70-right">
-              <span class="estimate-p70-time">80-100min</span>
-              <span class="estimate-p70-conf conf-high">P70</span>
-            </div>
-          </div>
-          <div class="estimate-p70-row">
-            <span>消息队列应用</span>
-            <div class="estimate-p70-right">
-              <span class="estimate-p70-time">100-150min</span>
-              <span class="estimate-p70-conf conf-med">P70</span>
-            </div>
-          </div>
-          <div class="estimate-p70-row">
-            <span>里程碑3（整体）</span>
-            <div class="estimate-p70-right">
-              <span class="estimate-p70-time">约 5h</span>
-              <span class="estimate-p70-conf conf-med">P70</span>
-            </div>
-          </div>
-          <div class="estimate-p70-hint">💡 P70 = 70% 概率在该时间内完成</div>
+        <div class="panel-body" id="aiTimeEstimateBody">
+          <div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">选择目标后自动计算</div>
         </div>
       </div>
 
-      <!-- 难度曲线 -->
+      <!-- 难度曲线 — 动态渲染 -->
       <div class="panel">
         <div class="panel-header">
           <div class="panel-title">📈 难度曲线</div>
         </div>
-        <div class="panel-body">
-          <div class="difficulty-chart">
-            <div class="diff-bar easy" style="height:30%"></div>
-            <div class="diff-bar easy" style="height:40%"></div>
-            <div class="diff-bar medium" style="height:60%"></div>
-            <div class="diff-bar medium" style="height:55%"></div>
-            <div class="diff-bar hard" style="height:75%"></div>
-            <div class="diff-bar hard" style="height:80%"></div>
-            <div class="diff-bar medium" style="height:65%"></div>
-            <div class="diff-bar medium" style="height:50%"></div>
-          </div>
-          <div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--gray-400);">
-            <span>🟢 简单</span><span>🟡 中等</span><span>🔴 困难</span>
-          </div>
+        <div class="panel-body" id="aiDifficultyChartBody">
+          <div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">选择目标后自动生成</div>
         </div>
       </div>
     </div>
@@ -360,32 +329,126 @@
   </div>
 </div>
 
-<!-- ===== 弹窗3：任务完成 ===== -->
+<!-- ===== 弹窗3b：删除目标确认 ===== -->
+<div class="modal-overlay" id="deleteGoalModal">
+  <div class="modal modal-sm" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title">⚠️ 确认删除</div>
+      <button class="modal-close" onclick="closePlanModal('deleteGoalModal')">×</button>
+    </div>
+    <div class="modal-body" style="padding:20px 24px;">
+      <p style="font-size:14px;color:var(--gray-700);margin-bottom:8px;">确定要删除这个学习目标吗？</p>
+      <p style="font-size:13px;color:var(--gray-400);">删除后，该目标下的所有里程碑与任务都将被<strong style="color:var(--danger)">永久删除</strong>且无法恢复。</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('deleteGoalModal')">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeleteGoalAction()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗3c：里程碑编辑 ===== -->
+<div class="modal-overlay" id="milestoneEditModal">
+  <div class="modal modal-md" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">✏️ 编辑里程碑</div>
+        <div class="modal-subtitle" id="milestoneEditSubtitle">管理目标的学习阶段</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('milestoneEditModal')">×</button>
+    </div>
+    <div class="modal-body" id="milestoneEditBody" style="max-height:400px;overflow-y:auto;">
+      <div style="text-align:center;padding:32px;color:var(--gray-400);">
+        <div class="spin" style="display:inline-block;margin-right:8px"></div>加载中...
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closePlanModal('milestoneEditModal')">完成</button>
+      <button class="btn btn-primary" onclick="addNewMilestoneInline()">+ 添加里程碑</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗3d：任务编辑 ===== -->
+<div class="modal-overlay" id="taskEditModal">
+  <div class="modal modal-md" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">✏️ 编辑任务</div>
+        <div class="modal-subtitle">修改任务信息</div>
+      </div>
+      <button class="modal-close" onclick="closePlanModal('taskEditModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">任务名称 <span class="required">*</span></label>
+        <input class="form-input" id="editTaskName" placeholder="输入任务名称">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">截止日期</label>
+          <input class="form-input" type="date" id="editTaskDeadline">
+        </div>
+        <div class="form-group">
+          <label class="form-label">优先级</label>
+          <select class="form-select" id="editTaskPriority">
+            <option value="high">高优先级</option>
+            <option value="mid" selected>中优先级</option>
+            <option value="low">低优先级</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">任务描述（可选）</label>
+        <textarea class="form-textarea" id="editTaskDesc" rows="2" placeholder="补充说明..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" style="margin-right:auto;" onclick="confirmDeleteTaskFromEdit()">🗑 删除此任务</button>
+      <button class="btn btn-secondary" onclick="closePlanModal('taskEditModal')">取消</button>
+      <button class="btn btn-primary" onclick="confirmEditTask()">保存修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 弹窗3：任务完成（按原型改造） ===== -->
 <!-- 【DB-U-006】完成任务 -->
 <div class="modal-overlay" id="taskCompleteModal">
   <div class="modal modal-sm" onclick="event.stopPropagation()">
-    <div class="modal-body" style="text-align:center;padding:32px 24px;">
-      <div class="complete-success">
-        <div class="complete-emoji">🎉</div>
-        <div class="complete-title">任务完成！</div>
-        <div class="complete-desc">太棒了，继续保持！接下来你想做什么？</div>
-      </div>
-      <div class="complete-options">
-        <div class="complete-option" onclick="completeWith('note')">
-          <span class="complete-option-icon">✍️</span>
-          <div class="complete-option-text">
-            <div class="complete-option-title">写学习笔记</div>
-            <div class="complete-option-desc">记录学习心得，沉淀为知识条目</div>
+    <div class="modal-header">
+      <div class="modal-title">完成任务确认</div>
+      <button class="modal-close" onclick="closePlanModal('taskCompleteModal')">×</button>
+    </div>
+    <div class="modal-body" style="padding:24px 20px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+      <div style="font-size:17px;font-weight:700;color:var(--gray-800);margin-bottom:8px;" id="completeTaskTitle">「任务名」完成！</div>
+      <div style="font-size:13px;color:var(--gray-500);margin-bottom:6px;" id="completeTaskProgress">里程碑2 进度：3/4 任务 · 75%</div>
+      <div style="font-size:12.5px;color:var(--gray-400);margin-bottom:20px;">自动生成复习卡片，将在 <strong style="color:var(--primary)">2天后</strong> 推送复习</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+        <!-- 选项1：写学习笔记 -->
+        <div onclick="completeWith('note')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--gray-200);border-radius:12px;cursor:pointer;background:var(--white);text-align:left;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--primary-light)';this.style.background='var(--gray-50)'" onmouseout="this.style.borderColor='var(--gray-200)';this.style.background='var(--white)'">
+          <span style="font-size:24px;flex-shrink:0;">✏️</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--gray-800);" id="completeNoteTitle">趁热打铁：写一篇学习笔记</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:2px;" id="completeNoteDesc">AI 已准备好 gRPC 和 REST 的对比笔记初稿</div>
           </div>
+          <span style="color:var(--gray-300);flex-shrink:0;">→</span>
         </div>
-        <div class="complete-option" onclick="completeWith('card')">
-          <span class="complete-option-icon">🔖</span>
-          <div class="complete-option-text">
-            <div class="complete-option-title">仅生成复习卡片</div>
-            <div class="complete-option-desc">自动生成间隔重复复习卡片</div>
+
+        <!-- 选项2：只生成复习卡片 -->
+        <div onclick="completeWith('card')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--gray-200);border-radius:12px;cursor:pointer;background:var(--white);text-align:left;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--primary-light)';this.style.background='var(--gray-50)'" onmouseout="this.style.borderColor='var(--gray-200)';this.style.background='var(--white)'">
+          <span style="font-size:24px;flex-shrink:0;">🔄</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;color:var(--gray-800);">只生成复习卡片，继续下一任务</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">2天后提醒复习此知识点</div>
           </div>
+          <span style="color:var(--gray-300);flex-shrink:0;">→</span>
         </div>
       </div>
+    </div>
+    <div class="modal-footer" style="justify-content:flex-end;">
+      <button class="btn btn-secondary btn-sm" onclick="closePlanModal('taskCompleteModal')">暂不处理</button>
     </div>
   </div>
 </div>
@@ -506,10 +569,10 @@
 // 【DB-U-005】更新任务 — tasks.doc(taskId).update({...})
 // 【DB-U-006】完成任务 — tasks.doc(taskId).update({status:'completed'})
 
-// 当前筛选状态
-let planFilter = 'all';
-let currentDetailGoalId = null;
-let createStep = 1;
+// 当前筛选状态 — 注意：learning.js 也声明了这些变量，此处使用 var 避免 let 重复声明冲突
+var planFilter = 'all';
+var currentDetailGoalId = null;
+var createStep = 1;
 
 // 初始化
 async function initPlanPage() {
@@ -679,9 +742,9 @@ async function renderGoalCards(filter, sortBy = 'recent') {
         if (isCompleted) {
           footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toast('查看学习总结','info')">📋 总结</button>`;
         } else if (isPaused) {
-          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resumeGoal('${goalId}')">▶ 恢复</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();resumeGoal('${goalId}')">▶ 恢复</button><div style="position:relative;display:inline-block;"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleGoalCardMenu(this, event)">⋯</button><div class="goal-card-dropdown" style="display:none;position:absolute;top:100%;right:0;z-index:100;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:120px;padding:4px 0;"><button class="dropdown-item" style="display:block;width:100%;padding:8px 14px;text-align:left;border:none;background:none;color:var(--danger);font-size:13px;cursor:pointer;" onclick="event.stopPropagation();openDeleteGoalModal()">🗑 删除目标</button></div></div>`;
         } else {
-          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRescheduleModal()">📅 排期</button><button class="btn btn-ghost btn-sm">⋯</button>`;
+          footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRescheduleModal()">📅 排期</button><div style="position:relative;display:inline-block;"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleGoalCardMenu(this, event)">⋯</button><div class="goal-card-dropdown" style="display:none;position:absolute;top:100%;right:0;z-index:100;background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:120px;padding:4px 0;"><button class="dropdown-item" style="display:block;width:100%;padding:8px 14px;text-align:left;border:none;background:none;color:var(--danger);font-size:13px;cursor:pointer;" onclick="event.stopPropagation();openDeleteGoalModal()">🗑 删除目标</button></div></div>`;
         }
 
         return `<div class="goal-card ${stateClass}" onclick="openPlanDetail('${goalId}')">
@@ -790,22 +853,33 @@ async function openPlanDetail(goalId) {
 
       const tasksHtml = hasTasks ? milestoneTasks.map(t => {
         const tId = t._id || t.id;
-        const checkClass = t.status === 'completed' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : '');
-        const checkContent = t.status === 'completed' ? '✓' : (t.status === 'in_progress' ? '●' : '');
-        const titleClass = t.status === 'completed' ? 'done-text' : '';
+        const status = t.status || 'pending';
+        const titleClass = status === 'completed' ? 'done-text' : '';
         const priorityClass = t.priority === 'high' ? 'priority-high' : (t.priority === 'mid' ? 'priority-mid' : 'priority-low');
         const metaHtml = t.timeActual ? `<span class="task-tag">⏱️ 实际 ${t.timeActual}（预计 ${t.timeEst}）</span>`
-          : (t.status === 'completed' ? `<span class="task-tag">✅ ${t.dueDate || ''}</span>`
+          : (status === 'completed' ? `<span class="task-tag">✅ ${t.dueDate || ''}</span>`
           : (t.dueDate ? `<span class="task-tag overdue">⚠️ 截止 ${t.dueDate}</span>` : ''));
+
+        // 状态机操作按钮
+        let actionBtnHtml = '';
+        if (status === 'pending') {
+          actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="event.stopPropagation();handleTaskAction('${tId}','start')" title="启动任务">▶ 启动</button>`;
+        } else if (status === 'in_progress') {
+          actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--success);" onclick="event.stopPropagation();handleTaskAction('${tId}','complete')" title="完成任务">✓ 完成</button>`;
+        } else if (status === 'completed') {
+          actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--primary);" onclick="event.stopPropagation();handleTaskAction('${tId}','restart')" title="再次启动">↻ 再次启动</button>`;
+        }
+
         return `<div class="task-item">
-          <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${tId}', this)">${checkContent}</div>
           <div class="task-priority ${priorityClass}"></div>
-          <div class="task-body">
+          <div class="task-body" style="flex:1;">
             <div class="task-title ${titleClass}">${t.title}</div>
             <div class="task-meta">${metaHtml}</div>
           </div>
-          <div class="task-actions">
-            <button class="btn btn-ghost btn-sm">✏️</button>
+          <div class="task-actions" style="display:flex;align-items:center;gap:4px;">
+            ${actionBtnHtml}
+            <button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="event.stopPropagation();openTaskEditModal('${tId}')" title="编辑">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--danger);" onclick="event.stopPropagation();handleDeleteTask('${tId}')" title="删除">🗑</button>
           </div>
         </div>`;
       }).join('') : '<div style="padding:8px 0;color:var(--gray-400);font-size:12.5px;">暂无任务</div>';
@@ -850,8 +924,7 @@ function closePlanDetail() {
   document.getElementById('page-title').textContent = '📋 学习计划';
   var topbarRight = document.querySelector('.topbar-right');
   if (topbarRight) {
-    topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>' +
-      '<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>';
+    topbarRight.innerHTML = '<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>';
   }
 }
 
@@ -863,9 +936,378 @@ function toggleMilestone(el) {
   list.style.display = list.style.display === 'none' ? 'block' : 'none';
 }
 
-// 任务完成切换
+// ====== 新增：下拉菜单 & 操作函数 ======
+
+/** 点击页面其他区域关闭所有下拉菜单 */
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.goal-card-dropdown') && !e.target.closest('button')) {
+    document.querySelectorAll('.goal-card-dropdown').forEach(d => d.style.display = 'none');
+  }
+});
+
+/** 目标卡片「…」下拉菜单 */
+function toggleGoalCardMenu(btn, event) {
+  event.stopPropagation();
+  const dropdown = btn.nextElementSibling;
+  const isVisible = dropdown.style.display === 'block';
+  // 关闭所有其他下拉
+  document.querySelectorAll('.goal-card-dropdown').forEach(d => d.style.display = 'none');
+  dropdown.style.display = isVisible ? 'none' : 'block';
+}
+
+/** 详情页「…」下拉菜单 */
+function toggleDetailMenu(btn) {
+  const dropdown = document.getElementById('detailMenuDropdown');
+  if (!dropdown) return;
+  const isVisible = dropdown.style.display === 'block';
+  dropdown.style.display = isVisible ? 'none' : 'block';
+}
+
+/** 打开删除目标确认弹窗 */
+function openDeleteGoalModal() {
+  // 关闭所有下拉
+  document.querySelectorAll('.goal-card-dropdown').forEach(d => d.style.display = 'none');
+  const dm = document.getElementById('detailMenuDropdown');
+  if (dm) dm.style.display = 'none';
+  document.getElementById('deleteGoalModal').classList.add('show');
+}
+
+/** 确认删除目标 */
+async function confirmDeleteGoalAction() {
+  const goalId = currentDetailGoalId;
+  if (!goalId) { toast('未选择目标', 'warning'); return; }
+  closePlanModal('deleteGoalModal');
+  try {
+    if (window.DB) {
+      const res = await window.DB.deleteGoal(goalId);
+      if (res.success) {
+        toast('目标已删除', 'success');
+        closePlanDetail();
+        await renderGoalCards(planFilter);
+      } else {
+        toast('删除失败: ' + (res.error || '未知错误'), 'error');
+      }
+    } else if (window._handleDeleteGoal) {
+      await window._handleDeleteGoal(goalId);
+    } else {
+      toast('DB 未初始化', 'error');
+    }
+  } catch (e) {
+    console.error('删除目标失败:', e);
+    toast('删除目标失败', 'error');
+  }
+}
+
+// ====== 里程碑编辑 ======
+let _editingGoalIdForMs = null;
+
+async function openMilestoneEditModal() {
+  _editingGoalIdForMs = currentDetailGoalId;
+  if (!_editingGoalIdForMs) { toast('请先进入目标详情', 'warning'); return; }
+  document.getElementById('milestoneEditModal').classList.add('show');
+  await renderMilestoneEditList();
+}
+
+async function renderMilestoneEditList() {
+  const body = document.getElementById('milestoneEditBody');
+  try {
+    let milestones = [];
+    if (window.DB) {
+      const res = await DB.getMilestones(_editingGoalIdForMs);
+      milestones = res.success ? (res.data || []) : [];
+    }
+    if (milestones.length === 0) {
+      body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);">暂无里程碑，点击下方按钮添加</div>';
+      return;
+    }
+    body.innerHTML = `<div style="margin-bottom:12px;font-size:13px;color:var(--gray-500);">共 ${milestones.length} 个里程碑（拖拽排序开发中）</div>` +
+      milestones.map((m, i) => {
+        const mId = m._id || m.id;
+        return `<div style="display:flex;align-items:center;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:8px;background:var(--white);">
+          <span style="color:var(--gray-400);margin-right:10px;font-size:13px;">${i + 1}.</span>
+          <span style="flex:1;font-size:14px;color:var(--gray-800);">${(m.title || '未命名').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+          <span style="font-size:11px;background:${m.status === 'completed' ? '#d1fae5' : '#f0fdf4'};color:${m.status === 'completed' ? '#059669' : '#6b7280'};padding:2px 8px;border-radius:8px;margin-right:8px;">${m.status === 'completed'?'已完成':(m.status === 'active'?'进行中':'待开始')}</span>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:12px;" onclick="_deleteMilestoneInEdit('${mId}')">🗑</button>
+        </div>`;
+      }).join('');
+  } catch (e) {
+    console.error('加载里程碑列表失败:', e);
+    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">加载失败：' + (e.message || '未知错误') + '</div>';
+  }
+}
+
+window._deleteMilestoneInEdit = async function(mId) {
+  if (!confirm('确定删除此里程碑及其所有任务？')) return;
+  try {
+    if (window.DB) await DB.deleteMilestone(mId);
+    else if (window._handleDeleteMilestone) await window._handleDeleteMilestone(mId, _editingGoalIdForMs);
+    toast('里程碑已删除', 'success');
+    await renderMilestoneEditList();
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    toast('删除失败', 'error');
+  }
+};
+
+async function addNewMilestoneInline() {
+  const name = prompt('请输入里程碑名称：');
+  if (!name || !name.trim()) return;
+  try {
+    if (window.DB) {
+      // 获取当前最大 sort 值
+      let maxSort = 0;
+      const existing = await DB.getMilestones(_editingGoalIdForMs);
+      if (existing.success && existing.data) {
+        existing.data.forEach(m => { if ((m.sort || 0) > maxSort) maxSort = m.sort; });
+      }
+      await DB.createMilestone({ goalId: _editingGoalIdForMs, title: name.trim(), sort: maxSort + 1 });
+      toast('里程碑已添加', 'success');
+    }
+    await renderMilestoneEditList();
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    toast('添加失败: ' + e.message, 'error');
+  }
+}
+
+// ====== 任务操作状态机 ======
+let _currentEditingTaskId = null;
+
+/** 统一任务动作入口 */
+async function handleTaskAction(taskId, action) {
+  try {
+    switch (action) {
+      case 'start':
+        if (window.DB) await DB.startTask(taskId);
+        toast('任务已启动', 'success');
+        break;
+      case 'complete':
+        // 打开完成确认弹窗
+        openTaskCompleteModalWithInfo(taskId);
+        return; // 不刷新，等弹窗操作
+      case 'restart':
+        if (window.DB) await DB.restartTask(taskId);
+        toast('任务已重新启动', 'success');
+        break;
+    }
+    // 刷新详情
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    console.error('任务操作失败:', e);
+    toast('操作失败', 'error');
+  }
+}
+
+/** 打开完成弹窗并填充任务信息 */
+async function openTaskCompleteModalWithInfo(taskId) {
+  // 找到任务信息用于显示
+  const modal = document.getElementById('taskCompleteModal');
+  modal.setAttribute('data-task-id', taskId);
+
+  // 尝试获取任务标题等信息
+  let taskTitle = '任务';
+  let progressText = '';
+  try {
+    if (currentDetailGoalId && window.DB) {
+      const res = await DB.getGoalDetail(currentDetailGoalId);
+      if (res.success && res.data) {
+        const task = (res.data.tasks || []).find(t => (t._id || t.id) === taskId);
+        if (task) taskTitle = task.title || '任务';
+
+        // 计算进度
+        const allTasks = res.data.tasks || [];
+        const completedCount = allTasks.filter(t => t.status === 'completed').length;
+        const totalCount = allTasks.length;
+        const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+        // 找所属里程碑
+        const ms = (res.data.milestones || []).find(m => (m._id || m.id) === (task.milestoneId || ''));
+        const msIdx = ms ? (res.data.milestones || []).indexOf(ms) + 1 : '?';
+        progressText = `里程碑${msIdx} 进度：${completedCount}/${totalCount} 任务 · ${pct}%`;
+
+        // 更新弹窗文案
+        const noteDescEl = document.getElementById('completeNoteDesc');
+        if (noteDescEl && taskTitle !== '任务') {
+          noteDescEl.textContent = `AI 已准备好 ${taskTitle} 的笔记初稿`;
+        }
+      }
+    }
+  } catch (e) { /* 非阻塞 */ }
+
+  document.getElementById('completeTaskTitle').textContent = `「${taskTitle}」完成！`;
+  document.getElementById('completeTaskProgress').textContent = progressText || '自动生成复习卡片，将在 2天后 推送复习';
+  document.getElementById('completeNoteTitle').textContent = `趁热打铁：写一篇学习笔记`;
+
+  modal.classList.add('show');
+}
+
+/** 删除任务（从列表行） */
+async function handleDeleteTask(taskId) {
+  if (!confirm('确定要删除此任务吗？')) return;
+  try {
+    if (window.DB) await DB.deleteTask(taskId);
+    else if (window._handleDeleteTask) await window._handleDeleteTask(taskId, currentDetailGoalId);
+    else { await DB._exec(DB._collection('tasks').doc(taskId).remove()); }
+    toast('任务已删除', 'success');
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    toast('删除失败', 'error');
+  }
+}
+
+// ====== 任务编辑 ======
+async function openTaskEditModal(taskId) {
+  _currentEditingTaskId = taskId;
+  // 尝试填充现有数据
+  try {
+    if (currentDetailGoalId && window.DB) {
+      const res = await DB.getGoalDetail(currentDetailGoalId);
+      if (res.success && res.data) {
+        const task = (res.data.tasks || []).find(t => (t._id || t.id) === taskId);
+        if (task) {
+          document.getElementById('editTaskName').value = task.title || '';
+          document.getElementById('editTaskDeadline').value = task.deadline || '';
+          document.getElementById('editTaskPriority').value = task.priority || 'mid';
+          document.getElementById('editTaskDesc').value = task.description || '';
+        }
+      }
+    }
+  } catch (e) {}
+  document.getElementById('taskEditModal').classList.add('show');
+}
+
+async function confirmEditTask() {
+  const name = document.getElementById('editTaskName').value.trim();
+  if (!name) { toast('请输入任务名称', 'warning'); return; }
+  if (!_currentEditingTaskId) { toast('未选择任务', 'warning'); return; }
+  try {
+    if (window.DB) {
+      await DB.updateTask(_currentEditingTaskId, {
+        title: name,
+        deadline: document.getElementById('editTaskDeadline').value || null,
+        priority: document.getElementById('editTaskPriority').value,
+        description: document.getElementById('editTaskDesc').value || ''
+      });
+      toast('任务已更新', 'success');
+    }
+    closePlanModal('taskEditModal');
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    toast('更新失败: ' + e.message, 'error');
+  }
+}
+
+async function confirmDeleteTaskFromEdit() {
+  if (!_currentEditingTaskId) return;
+  if (!confirm('确定要删除此任务吗？')) return;
+  try {
+    if (window.DB) await DB.deleteTask(_currentEditingTaskId);
+    toast('任务已删除', 'success');
+    closePlanModal('taskEditModal');
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+  } catch (e) {
+    toast('删除失败', 'error');
+  }
+}
+
+// ====== 完成任务后处理（改造版） ======
+async function completeWith(type) {
+  const taskId = document.getElementById('taskCompleteModal').getAttribute('data-task-id');
+  if (!taskId) return;
+
+  try {
+    // 先完成任务
+    if (window.DB) await DB.completeTask(taskId);
+    closePlanModal('taskCompleteModal');
+
+    if (type === 'note') {
+      // 写学习笔记 → 进入知识沉淀页面
+      toast('正在前往知识沉淀...', 'info');
+      // 尝试获取任务标题
+      let noteTitle = '学习笔记';
+      try {
+        if (currentDetailGoalId && window.DB) {
+          const res = await DB.getGoalDetail(currentDetailGoalId);
+          if (res.success && res.data) {
+            const task = (res.data.tasks || []).find(t => (t._id || t.id) === taskId);
+            if (task) noteTitle = task.title;
+          }
+        }
+      } catch(e) {}
+      // 触发路由切换到知识沉淀
+      if (typeof window.navigateToSection === 'function') {
+        window.navigateToSection('knowledge', { newArticle: true, title: noteTitle });
+      } else {
+        toast(`📝 已准备笔记：${noteTitle}（知识沉淀功能开发中）`, 'info');
+      }
+    } else if (type === 'card') {
+      // 只生成复习卡片 → 纳入复习队列
+      toast('正在生成复习卡片...', 'info');
+      try {
+        let cardTitle = '知识点';
+        try {
+          if (currentDetailGoalId && window.DB) {
+            const res = await DB.getGoalDetail(currentDetailGoalId);
+            if (res.success && res.data) {
+              const task = (res.data.tasks || []).find(t => (t._id || t.id) === taskId);
+              if (task) cardTitle = task.title;
+              const goalTitle = res.data.title || '';
+              // 创建复习卡片
+              const nextReview = new Date();
+              nextReview.setDate(nextReview.getDate() + 2);
+              await DB.createReviewCard({
+                question: `关于「${cardTitle}」的核心要点是什么？`,
+                answer: `来自学习目标「${goalTitle}」中「${cardTitle}」的学习内容。`,
+                questionType: 'open',
+                knowledgeId: taskId,
+                nextReview: nextReview
+              });
+            }
+          }
+        } catch(cardErr) {
+          console.warn('创建复习卡片失败:', cardErr);
+        }
+        toast('✅ 此知识点已列入复习队列', 'success');
+      } catch (e) {
+        console.error('纳入复习队列失败:', e);
+        toast('⚠️ 此知识点未纳入复习队列，请注意手动录入', 'error');
+      }
+    }
+
+    // 刷新详情
+    if (currentDetailGoalId) {
+      if (window.openPlanDetail) await openPlanDetail(currentDetailGoalId);
+      else if (window._openPlanDetail) await window._openPlanDetail(currentDetailGoalId);
+    }
+
+  } catch (error) {
+    console.error('[Plan] ❌ 完成任务失败:', error);
+    toast('完成任务失败', 'error');
+    closePlanModal('taskCompleteModal');
+  }
+}
+
+// 任务完成切换（兼容旧调用）
 function toggleTaskComplete(taskId, el) {
-  openTaskCompleteModal(taskId);
+  openTaskCompleteModalWithInfo(taskId);
 }
 
 // 弹窗控制

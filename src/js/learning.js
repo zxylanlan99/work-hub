@@ -5,12 +5,12 @@
  */
 
 /* ================================================================
-   状态变量
+   状态变量 — 使用 var 确保 learning.js 和 plan.html 内联脚本共享同一变量
    ================================================================ */
-let planFilter = 'all';
-let currentDetailGoalId = null;
+var planFilter = 'all';
+var currentDetailGoalId = null;
 /** 缓存的目标+任务数据，用于排序和进度计算 */
-let goalsCache = [];
+var goalsCache = [];
 
 /* ================================================================
    入口函数 — 由 common.js/SPIN 框架调用
@@ -127,31 +127,88 @@ function _updateGoalStats(goals) {
   if (el3) el3.textContent = goals.filter(g => g.status === 'completed').length;
 }
 
-/** 加载暖身数据 */
+/** 加载暖身数据 — PRD 1C 暖身引擎 */
 async function _loadWarmupData() {
+  var yesterdayText = document.getElementById('planYesterdayText');
+  var quizQ = document.getElementById('planQuizQuestion');
+  var warmupBanner = document.getElementById('planWarmupBanner');
+
   try {
-    // 昨日回顾
+    // 1. 昨日回顾 — 先查复习记录，再查任务完成记录
+    var hasYesterdayData = false;
+
     const reviewResult = await DB.getYesterdayReview();
     if (reviewResult.success && reviewResult.data && reviewResult.data.length > 0) {
-      const yesterdayText = document.getElementById('planYesterdayText');
+      var item = reviewResult.data[reviewResult.data.length - 1];
       if (yesterdayText) {
-        const item = reviewResult.data[reviewResult.data.length - 1];
-        yesterdayText.textContent = item.cardId ? '已复习卡片' : '昨日完成学习任务';
+        yesterdayText.textContent = item.summary || item.cardId ? '已复习 ' + reviewResult.data.length + ' 张卡片' : '昨日完成学习任务';
+      }
+      hasYesterdayData = true;
+    }
+
+    // 如果没有复习记录，查昨日完成的任务
+    if (!hasYesterdayData) {
+      try {
+        var yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+        var todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+
+        var taskRes = await DB._exec(
+          DB._collection('tasks')
+            .where({ status: 'completed' })
+            .orderBy('completedAt', 'desc')
+            .limit(10)
+            .get()
+        );
+
+        if (taskRes.success && taskRes.data && taskRes.data.length > 0) {
+          // 筛选昨日完成的任务
+          var yesterdayTasks = taskRes.data.filter(function(t) {
+            if (!t.completedAt && !t.updatedAt) return false;
+            var d = new Date(t.completedAt || t.updatedAt);
+            return d >= yesterday && d < todayStart;
+          });
+
+          if (yesterdayTasks.length > 0) {
+            if (yesterdayText) {
+              var titles = yesterdayTasks.slice(0, 2).map(function(t) { return t.title || '学习任务'; });
+              yesterdayText.textContent = '昨日完成 ' + yesterdayTasks.length + ' 个任务：' + titles.join('、');
+            }
+            hasYesterdayData = true;
+          }
+        }
+      } catch (e) {
+        console.warn('查询昨日任务失败:', e);
       }
     }
 
-    // 快问快答（异步，不阻塞）
+    // 如果没有任何昨日数据，隐藏暖身卡
+    if (!hasYesterdayData) {
+      if (warmupBanner) warmupBanner.style.display = 'none';
+      return;
+    }
+
+    // 2. 快问快答 — 调用 AI 生成
     try {
       const quizResult = await DB.getQuiz();
-      const quizQ = document.getElementById('planQuizQuestion');
-      if (quizQ && quizResult.success) {
+      if (quizQ && quizResult.success && quizResult.content) {
         quizQ.textContent = typeof quizResult.content === 'string'
-          ? quizResult.content.substring(0, 80)
+          ? quizResult.content.substring(0, 100)
           : '今天学习了什么新知识？';
+      } else if (quizQ) {
+        // AI 不可用时，基于昨日任务生成通用问题
+        quizQ.textContent = '能回忆起昨天学到的核心知识点吗？';
       }
-    } catch (_) { /* quiz 失败不影响页面 */ }
+    } catch (_) {
+      if (quizQ) quizQ.textContent = '能回忆起昨天学到的核心知识点吗？';
+    }
+
   } catch (error) {
     console.error('加载暖身数据失败:', error);
+    // 出错时隐藏暖身卡，不显示"加载中..."
+    if (warmupBanner) warmupBanner.style.display = 'none';
   }
 }
 
@@ -165,16 +222,46 @@ async function _loadResumeData() {
 
       const titleEl = document.getElementById('planResumeTitle');
       const subEl = document.getElementById('planResumeSub');
+      const resumeCard = document.querySelector('.resume-card');
 
       if (lastGoal) {
+        const goalId = lastGoal._id || lastGoal.id;
         if (titleEl) titleEl.textContent = '继续上次学习：' + (lastGoal.title || '学习目标');
         if (subEl) subEl.textContent = '上次更新于 ' + _formatDate(lastGoal.updatedAt || lastGoal.createdAt);
+        // 续接卡 onclick 不再硬编码，由 _resumeLastGoal() 动态获取
+        if (resumeCard) {
+          resumeCard.style.display = '';
+          resumeCard.setAttribute('onclick', '_resumeLastGoal()');
+        }
+      } else {
+        // 没有活跃目标时，隐藏续接卡
+        if (resumeCard) resumeCard.style.display = 'none';
       }
     }
   } catch (error) {
     console.error('加载续接数据失败:', error);
   }
 }
+
+/** 续接上次学习 — 动态获取最后一个活跃目标并打开详情 */
+async function _resumeLastGoal() {
+  try {
+    const result = await DB.getLastBreakpoint();
+    if (result.success && result.data && result.data.goals && result.data.goals.length > 0) {
+      const goal = result.data.goals[0];
+      const goalId = goal._id || goal.id;
+      if (goalId) {
+        _openPlanDetail(goalId);
+        return;
+      }
+    }
+    toast('暂无学习断点，请先创建学习目标', 'info');
+  } catch (e) {
+    console.error('加载续接数据失败:', e);
+    toast('加载失败，请重试', 'error');
+  }
+}
+window._resumeLastGoal = _resumeLastGoal;
 
 /** 显示加载错误 */
 function _showGoalsError() {
@@ -255,7 +342,8 @@ function _goalCardHTML(goal) {
   } else {
     footerRight = `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_handlePauseGoal('${goal._id}')">⏸ 暂停</button>`;
   }
-  footerRight += `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_handleDeleteGoal('${goal._id}')" style="color:var(--danger)">🗑</button>`;
+  // 「…」下拉菜单
+  footerRight += `<div style="position:relative;display:inline-block;"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleGoalCardMenu(this, event)" style="color:var(--danger)">⋯</button><div class="goal-card-dropdown" style="display:none;position:absolute;top:100%;right:0;z-index:100;background:var(--white);border:1px solid var(--gray-200);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:120px;padding:4px 0;"><button class="dropdown-item" style="display:block;width:100%;padding:8px 14px;text-align:left;border:none;background:none;color:var(--danger);font-size:13px;cursor:pointer;" onclick="event.stopPropagation();openDeleteGoalModal('${goal._id}')">🗑 删除目标</button></div></div>`;
 
   return `<div class="goal-card ${stateClass}" onclick="_openPlanDetail('${goal._id}')">
     <div class="goal-header">
@@ -298,7 +386,13 @@ async function _renderDetailView(goalId) {
     if (titleEl) titleEl.textContent = '🎯 ' + (goal.title || '学习目标');
     const topbarRight = document.querySelector('.topbar-right');
     if (topbarRight) {
-      topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
+      var pauseBtnHtml = '';
+      if (goal.status === 'active') {
+        pauseBtnHtml = '<button class="btn btn-sm" style="background:var(--warning);color:#fff;" onclick="_handlePauseGoal(\'' + goalId + '\')">⏸️ 暂停</button>';
+      } else if (goal.status === 'paused') {
+        pauseBtnHtml = '<button class="btn btn-primary btn-sm" onclick="_handleResumeGoal(\'' + goalId + '\')">▶ 恢复</button>';
+      }
+      topbarRight.innerHTML = pauseBtnHtml + '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>';
     }
 
     // 填充详情
@@ -338,14 +432,40 @@ async function _renderDetailView(goalId) {
     // 元数据
     const metaEl = document.getElementById('detailMeta');
     if (metaEl) {
+      // 从任务数据估算总耗时（如果有 timeEst 字段）
+      const totalEst = tasks.reduce((sum, t) => sum + (parseInt(t.timeEst) || parseInt(t.estimatedTime) || 0), 0);
+      const totalActual = tasks.reduce((sum, t) => sum + (parseInt(t.timeActual) || 0), 0);
+      const timeText = totalActual > 0
+        ? `已用 ${totalActual}h / 预计 ${totalEst || '?'}h`
+        : (totalEst > 0 ? `预计 ${totalEst}h` : '—');
+
+      // 连续学习天数：从任务完成时间推算（简化版，取最近有活动的不重复日期数）
+      const taskDates = new Set();
+      tasks.forEach(t => {
+        if (t.completedAt) taskDates.add(t.completedAt.split('T')[0]);
+        if (t.updatedAt) taskDates.add(t.updatedAt.split('T')[0]);
+      });
+      const streakDays = taskDates.size > 0 ? Math.min(taskDates.size, 99) : 0;
+      const streakText = streakDays > 0 ? `${streakDays} 天` : '—';
+
       metaEl.innerHTML =
         `<div class="detail-meta-item">📅 <strong>创建</strong> ${_formatDate(goal.createdAt)}</div>` +
         `<div class="detail-meta-item">🏁 <strong>截止</strong> ${_formatDate(goal.deadline)}</div>` +
-        `<div class="detail-meta-item">📋 <strong>任务</strong> 已完成 ${completed}/${total}</div>`;
+        `<div class="detail-meta-item">⏱️ <strong>总耗时</strong> ${timeText}</div>` +
+        `<div class="detail-meta-item">🔥 <strong>连续学习</strong> ${streakText}</div>`;
     }
 
     // 渲染里程碑
     _renderMilestones(goal.milestones || [], tasks, goal._id || goalId);
+
+    // 动态渲染 AI 耗时预测（基于真实任务数据）
+    _renderTimeEstimate(tasks, goal.milestones || []);
+
+    // 动态渲染难度曲线（基于里程碑/任务数据）
+    _renderDifficultyChart(goal.milestones || [], tasks);
+
+    // 异步加载 AI 诊断面板（不阻塞详情渲染）
+    _loadAiDiagPanel(currentDetailGoalId);
 
     // 滚动到顶部
     if (detailView) detailView.scrollIntoView();
@@ -353,6 +473,162 @@ async function _renderDetailView(goalId) {
     console.error('加载目标详情失败:', error);
     toast('加载目标详情失败', 'error');
   }
+}
+
+/**
+ * 动态渲染 AI 耗时预测面板 — 基于真实任务数据计算
+ * PRD 2C：基于内容量 × 用户历史速度 × 复杂度，输出 P70 置信区间
+ */
+function _renderTimeEstimate(tasks, milestones) {
+  // 查找 AI 耗时预测面板的 body
+  const panels = document.querySelectorAll('.detail-sidebar .panel');
+  if (panels.length < 2) return;
+  const estPanel = panels[1]; // 第二个 panel 是耗时预测
+  const body = estPanel.querySelector('.panel-body');
+  if (!body) return;
+
+  // 筛选未完成任务，按里程碑分组
+  const pendingTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'skipped');
+  if (pendingTasks.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">✅ 所有任务已完成</div>';
+    return;
+  }
+
+  // 按里程碑分组计算预计耗时
+  const msMap = new Map();
+  milestones.forEach(m => msMap.set(m._id || m.id, m));
+
+  const msTimeMap = new Map();
+  pendingTasks.forEach(t => {
+    const msId = t.milestoneId;
+    if (!msTimeMap.has(msId)) msTimeMap.set(msId, []);
+    msTimeMap.get(msId).push(t);
+  });
+
+  let html = '';
+  let totalMin = 0;
+
+  msTimeMap.forEach((msTasks, msId) => {
+    const ms = msMap.get(msId);
+    const msTitle = ms ? (ms.title || '未命名里程碑') : '未分组任务';
+    // 预估时间：如果有 estimatedTime 用它，否则按优先级估算
+    const msEstMin = msTasks.reduce((sum, t) => {
+      const est = parseInt(t.timeEst || t.estimatedTime) || 0;
+      if (est > 0) return sum + est;
+      // 无预估时间时，按优先级粗估：high=90min, mid=60min, low=30min
+      const p = t.priority || 'mid';
+      return sum + (p === 'high' ? 90 : p === 'low' ? 30 : 60);
+    }, 0);
+    totalMin += msEstMin;
+
+    // P70 置信区间：预估时间 ± 20%
+    const low = Math.round(msEstMin * 0.8);
+    const high = Math.round(msEstMin * 1.2);
+    const timeText = msEstMin >= 60
+      ? Math.floor(msEstMin / 60) + '-' + Math.ceil(high / 60) + 'h'
+      : low + '-' + high + 'min';
+    const confClass = msTasks.length > 3 ? 'conf-med' : 'conf-high';
+
+    html += '<div class="estimate-p70-row">' +
+      '<span>' + _escapeHTML(msTitle.substring(0, 12)) + '</span>' +
+      '<div class="estimate-p70-right">' +
+        '<span class="estimate-p70-time">' + timeText + '</span>' +
+        '<span class="estimate-p70-conf ' + confClass + '">P70</span>' +
+      '</div>' +
+    '</div>';
+  });
+
+  // 总计
+  const totalLow = Math.round(totalMin * 0.8);
+  const totalHigh = Math.round(totalMin * 1.2);
+  const totalText = totalMin >= 60
+    ? '约 ' + Math.floor(totalMin / 60) + '-' + Math.ceil(totalHigh / 60) + 'h'
+    : totalLow + '-' + totalHigh + 'min';
+
+  html += '<div class="estimate-p70-row" style="border-top:1px solid var(--gray-200);margin-top:8px;padding-top:8px;font-weight:600;">' +
+    '<span>总计剩余</span>' +
+    '<div class="estimate-p70-right">' +
+      '<span class="estimate-p70-time">' + totalText + '</span>' +
+      '<span class="estimate-p70-conf conf-high">P70</span>' +
+    '</div>' +
+  '</div>';
+
+  html += '<div class="estimate-p70-hint">💡 P70 = 70% 概率在该时间内完成，基于任务量和优先级估算</div>';
+  body.innerHTML = html;
+}
+
+/**
+ * 动态渲染难度曲线 — 基于里程碑/任务数据
+ * PRD 2B：难度曲线是路径生成的产物，反映各里程碑的复杂度
+ */
+function _renderDifficultyChart(milestones, tasks) {
+  const panels = document.querySelectorAll('.detail-sidebar .panel');
+  if (panels.length < 3) return;
+  const diffPanel = panels[2]; // 第三个 panel 是难度曲线
+  const body = diffPanel.querySelector('.panel-body');
+  if (!body) return;
+
+  if (milestones.length === 0) {
+    body.innerHTML = '<div style="text-align:center;padding:16px;color:var(--gray-400);font-size:13px;">暂无里程碑数据</div>';
+    return;
+  }
+
+  // 计算每个里程碑的难度（基于任务数量、优先级、完成率）
+  const diffData = milestones.map((m, i) => {
+    const msId = m._id || m.id;
+    const msTasks = tasks.filter(t => t.milestoneId === msId);
+    const taskCount = msTasks.length;
+    const highPriorityCount = msTasks.filter(t => t.priority === 'high').length;
+    const completedCount = msTasks.filter(t => t.status === 'completed').length;
+    const completionRate = taskCount > 0 ? completedCount / taskCount : 0;
+
+    // 难度评分：任务数(40%) + 高优先级占比(30%) + 里程碑序号递增(30%)
+    const taskScore = Math.min(taskCount / 6, 1) * 40;
+    const priorityScore = taskCount > 0 ? (highPriorityCount / taskCount) * 30 : 15;
+    const orderScore = (i + 1) / milestones.length * 30;
+    const difficulty = Math.round(taskScore + priorityScore + orderScore);
+
+    let level = 'easy';
+    let color = '#10b981';
+    if (difficulty >= 70) { level = 'hard'; color = '#ef4444'; }
+    else if (difficulty >= 45) { level = 'medium'; color = '#f59e0b'; }
+
+    return {
+      label: 'M' + (i + 1),
+      title: m.title || '未命名',
+      difficulty: difficulty,
+      level: level,
+      color: color,
+      taskCount: taskCount,
+      completed: completedCount,
+      isCompleted: m.status === 'completed',
+      isActive: m.status === 'active'
+    };
+  });
+
+  let html = '<div style="margin-bottom:8px;font-size:12px;color:var(--gray-500);">各里程碑难度分布（基于任务量、优先级、进度）</div>';
+  html += '<div style="display:flex;align-items:flex-end;gap:4px;height:100px;padding:0 4px;">';
+
+  diffData.forEach(d => {
+    const height = Math.max(d.difficulty, 15) + '%';
+    const opacity = d.isCompleted ? '0.4' : '1';
+    const border = d.isActive ? '2px solid var(--primary)' : 'none';
+    html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;">' +
+      '<span style="font-size:10px;color:var(--gray-500);">' + (d.isCompleted ? '✅' : d.difficulty) + '</span>' +
+      '<div title="' + _escapeHTML(d.title) + '（' + d.taskCount + '任务' + (d.completed > 0 ? '，已完成' + d.completed : '') + '）" style="width:100%;max-width:32px;height:' + height + ';background:' + d.color + ';border-radius:4px 4px 0 0;opacity:' + opacity + ';border:' + border + ';cursor:pointer;transition:opacity 0.2s;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'' + opacity + '\'"></div>' +
+      '<span style="font-size:10px;color:var(--gray-400);">' + d.label + '</span>' +
+    '</div>';
+  });
+
+  html += '</div>';
+  html += '<div style="display:flex;gap:12px;margin-top:8px;font-size:11px;color:var(--gray-400);">' +
+    '<span>🟢 简单 (&lt;45)</span><span>🟡 中等 (45-69)</span><span>🔴 困难 (≥70)</span>' +
+  '</div>';
+  html += '<div style="margin-top:6px;font-size:11px;color:var(--gray-400);line-height:1.5;">' +
+    '💡 鼠标悬停查看详情，已完成里程碑显示为半透明' +
+  '</div>';
+
+  body.innerHTML = html;
 }
 
 /** 渲染里程碑与任务列表 */
@@ -378,27 +654,39 @@ function _renderMilestones(milestones, tasks, goalId) {
 
     const tasksHtml = hasTasks
       ? mTasks.map(t => {
-          const checkClass = t.status === 'completed' ? 'done' : (t.status === 'in_progress' ? 'in-progress' : (t.status === 'skipped' ? 'skipped' : ''));
-          const checkContent = t.status === 'completed' ? '✓' : (t.status === 'in_progress' ? '●' : (t.status === 'skipped' ? '⏭' : ''));
-          const titleClass = t.status === 'completed' ? 'done-text' : (t.status === 'skipped' ? 'skipped-text' : '');
+          const tId = t._id || t.id;
+          const tStatus = t.status || 'pending';
+          const titleClass = tStatus === 'completed' ? 'done-text' : (tStatus === 'skipped' ? 'skipped-text' : '');
           const priorityClass = t.priority === 'high' ? 'priority-high'
             : (t.priority === 'mid' || t.priority === 'medium' ? 'priority-mid' : 'priority-low');
           let metaHtml = '';
-          if (t.status === 'skipped') {
+          if (tStatus === 'skipped') {
             metaHtml += `<span class="task-tag" style="background:#fef3c7;color:#d97706;">🔖 待补学</span>`;
           }
           if (t.deadline) {
-            metaHtml += `<span class="task-tag ${t.status !== 'completed' && new Date(t.deadline) < new Date() ? 'overdue' : ''}">📅 ${_formatDate(t.deadline)}</span>`;
+            metaHtml += `<span class="task-tag ${tStatus !== 'completed' && new Date(t.deadline) < new Date() ? 'overdue' : ''}">📅 ${_formatDate(t.deadline)}</span>`;
           }
+
+          // 状态机操作按钮
+          let actionBtnHtml = '';
+          if (tStatus === 'pending') {
+            actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="event.stopPropagation();handleTaskAction('${tId}','start')" title="启动任务">▶ 启动</button>`;
+          } else if (tStatus === 'in_progress') {
+            actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--success);" onclick="event.stopPropagation();handleTaskAction('${tId}','complete')" title="完成任务">✓ 完成</button>`;
+          } else if (tStatus === 'completed') {
+            actionBtnHtml = `<button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--primary);" onclick="event.stopPropagation();handleTaskAction('${tId}','restart')" title="再次启动">↻ 再次启动</button>`;
+          }
+
           return `<div class="task-item">
-            <div class="task-check ${checkClass}" onclick="event.stopPropagation();toggleTaskComplete('${t._id}', '${goalId}', this)">${checkContent}</div>
             <div class="task-priority ${priorityClass}"></div>
-            <div class="task-body">
+            <div class="task-body" style="flex:1;">
               <div class="task-title ${titleClass}">${_escapeHTML(t.title || '未命名任务')}</div>
               <div class="task-meta">${metaHtml}</div>
             </div>
-            <div class="task-actions">
-              <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();_handleDeleteTask('${t._id}', '${goalId}')">🗑</button>
+            <div class="task-actions" style="display:flex;align-items:center;gap:4px;">
+              ${actionBtnHtml}
+              <button class="btn btn-ghost btn-sm" style="font-size:12px;" onclick="event.stopPropagation();openTaskEditModal('${tId}')" title="编辑">✏️</button>
+              <button class="btn btn-ghost btn-sm" style="font-size:12px;color:var(--danger);" onclick="event.stopPropagation();handleDeleteTask('${tId}')" title="删除">🗑</button>
             </div>
           </div>`;
         }).join('')
@@ -459,13 +747,31 @@ async function _handleCreateGoal() {
   const topicEl = document.getElementById('genGoalTopic');
 
   try {
+    // AI 搜索增强模式：使用 AI 生成的计划方案，经用户确认后入库
+    if (!isManualMode && window._pendingAIGeneratedPlan && window._pendingAIGeneratedPlan.title) {
+      const plan = window._pendingAIGeneratedPlan;
+      plan.title = title;
+      plan.description = descEl ? descEl.value.trim() : (plan.description || '');
+
+      const result = await DB.confirmCreateGoalFromPlan(plan);
+      if (result.success) {
+        var goalId = result.data && result.data.goalId;
+        toast('目标创建成功', 'success');
+        _resetCreateWizard();
+        _closePlanModal('createGoalModal');
+        await _loadGoals(planFilter);
+        if (goalId) await _renderDetailView(goalId);
+        window._pendingAIGeneratedPlan = null;
+        return;
+      } else {
+        toast('创建失败: ' + (result.error || '未知错误'), 'error');
+        return;
+      }
+    }
+
     const result = await DB.createGoal({
       title,
-      description: descEl ? descEl.value.trim() : '',
-      domain: domainEl ? domainEl.value : '',
-      deadline: deadlineEl && deadlineEl.value ? new Date(deadlineEl.value) : null,
-      weeklyHours: weeklyEl ? weeklyEl.value : '',
-      currentLevel: topicEl ? topicEl.value : ''
+      description: descEl ? descEl.value.trim() : ''
     });
 
     if (result.success) {
@@ -790,7 +1096,7 @@ async function _handleDeleteMilestone(milestoneId, goalId) {
    AI 操作
    ================================================================ */
 
-/** AI 辅助创建目标 */
+/** AI 辅助创建目标（搜索增强，仅生成方案，不入库） */
 async function _handleAICreateGoal() {
   const descEl = document.getElementById('goalBackground');
   const description = descEl ? descEl.value.trim() : '';
@@ -800,25 +1106,78 @@ async function _handleAICreateGoal() {
   }
 
   try {
-    toast('AI 正在分析你的学习目标…', 'info');
-    const result = await DB.aiCreateGoal(description);
-    if (result.success) {
-      // 填充 AI 生成结果到步骤 3
-      const content = typeof result.content === 'string' ? result.content : '已生成学习目标方案';
-      const genTitle = document.getElementById('genGoalTitle');
-      if (genTitle) genTitle.value = content.substring(0, 50);
+    toast('AI 正在搜索资料并制定学习计划…', 'info');
+    const result = await DB.aiCreateGoalWithSearch(description, { useWebSearch: true, topK: 5 });
+    if (result.success && result.data) {
+      window._pendingAIGeneratedPlan = result.data;
 
-      toast('AI 方案已生成', 'success');
+      // 填充 AI 生成结果到步骤 3
+      const genTitle = document.getElementById('genGoalTitle');
+      if (genTitle) genTitle.value = result.data.title || description.substring(0, 50);
+
+      // 渲染 AI 方案预览
+      _renderAIGeneratedPlanPreview(result.data);
+
+      toast('AI 方案已生成，请确认后入库', 'success');
     } else {
       toast('AI 生成失败: ' + (result.error || '未知错误'), 'error');
+      window._pendingAIGeneratedPlan = null;
     }
   } catch (error) {
     console.error('AI 创建目标失败:', error);
     toast('AI 创建目标失败', 'error');
+    window._pendingAIGeneratedPlan = null;
   }
 }
 
-/** AI 诊断 */
+/** 渲染 AI 生成的学习计划预览 */
+function _renderAIGeneratedPlanPreview(plan) {
+  const aiPreview = document.querySelector('#createStep3 .gen-result');
+  if (!aiPreview) return;
+
+  const milestones = plan.milestones || [];
+  let html = '<div style="max-height:320px;overflow:auto;">';
+  html += '<h4 style="margin:0 0 8px 0;font-weight:600;">' + _escapeHTML(plan.title || '学习计划') + '</h4>';
+  if (plan.description) {
+    html += '<p style="color:#6b7280;font-size:13px;margin:0 0 12px 0;">' + _escapeHTML(plan.description) + '</p>';
+  }
+
+  if (milestones.length === 0) {
+    html += '<p style="color:#9ca3af;font-size:13px;">AI 未返回详细里程碑</p>';
+  } else {
+    html += '<ol style="padding-left:18px;margin:0;">';
+    milestones.forEach(function(ms) {
+      html += '<li style="margin-bottom:8px;">' +
+        '<div style="font-weight:600;font-size:14px;">' + _escapeHTML(ms.title || '未命名里程碑') + '</div>';
+      const tasks = ms.tasks || [];
+      if (tasks.length > 0) {
+        html += '<ul style="margin:4px 0 0 0;padding-left:16px;font-size:13px;color:#4b5563;">';
+        tasks.forEach(function(t) {
+          const taskTitle = typeof t === 'string' ? t : t.title;
+          html += '<li>' + _escapeHTML(taskTitle || '未命名任务') + '</li>';
+        });
+        html += '</ul>';
+      }
+      html += '</li>';
+    });
+    html += '</ol>';
+  }
+
+  if (plan.recommendedMaterials && plan.recommendedMaterials.length > 0) {
+    html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e5e7eb;">';
+    html += '<div style="font-size:12px;color:#6b7280;margin-bottom:4px;">推荐参考资料</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px;">';
+    plan.recommendedMaterials.forEach(function(m) {
+      html += '<span style="font-size:12px;background:#f3f4f6;padding:2px 8px;border-radius:12px;">' + _escapeHTML(m) + '</span>';
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+  aiPreview.innerHTML = html;
+}
+
+/** AI 诊断（单目标） */
 async function _handleAIDiagnoseGoal() {
   if (!currentDetailGoalId) {
     toast('请先打开一个目标', 'warning');
@@ -838,6 +1197,65 @@ async function _handleAIDiagnoseGoal() {
     console.error('AI 诊断失败:', error);
     toast('AI 诊断失败', 'error');
   }
+}
+
+/** AI 每周诊断报告 */
+async function _handleWeeklyDiagnosis() {
+  try {
+    toast('AI 正在生成每周诊断报告…', 'info');
+    const result = await DB.generateWeeklyDiagnosisReport();
+    if (result.success && result.data) {
+      _showWeeklyDiagnosisModal(result.data);
+    } else {
+      toast('诊断报告生成失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('每周诊断失败:', error);
+    toast('每周诊断失败', 'error');
+  }
+}
+
+/** 显示每周诊断报告弹窗（使用 modal-lg 720px） */
+function _showWeeklyDiagnosisModal(report) {
+  const existing = document.getElementById('weekly-diagnosis-modal');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay show';
+  overlay.id = 'weekly-diagnosis-modal';
+  overlay.innerHTML = `
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">每周学习诊断报告</div>
+        <span class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('show')">&times;</span>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+          <div style="width:80px;height:80px;border-radius:50%;background:${(report.overallScore || 0) >= 80 ? '#dcfce7' : (report.overallScore || 0) >= 60 ? '#fef3c7' : '#fee2e2'};display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:${(report.overallScore || 0) >= 80 ? '#16a34a' : (report.overallScore || 0) >= 60 ? '#d97706' : '#dc2626'};">${report.overallScore || 0}</div>
+          <div>
+            <div style="font-size:18px;font-weight:600;">综合得分</div>
+            <div style="color:#6b7280;font-size:13px;">任务完成率 ${Math.round((report.completionRate || 0) * 100)}%</div>
+          </div>
+        </div>
+        <div style="margin-bottom:16px;">
+          <h4 style="margin:0 0 8px 0;font-size:14px;color:#374151;">薄弱点</h4>
+          ${(report.weakPoints || []).length === 0 ? '<div style="color:#9ca3af;font-size:13px;">暂无薄弱点，继续保持！</div>' : '<ul style="margin:0;padding-left:18px;font-size:13px;color:#4b5563;">' + (report.weakPoints || []).map(w => '<li>' + _escapeHTML(w) + '</li>').join('') + '</ul>'}
+        </div>
+        <div style="margin-bottom:16px;">
+          <h4 style="margin:0 0 8px 0;font-size:14px;color:#374151;">改进建议</h4>
+          ${(report.suggestions || []).length === 0 ? '<div style="color:#9ca3af;font-size:13px;">暂无建议</div>' : '<ol style="margin:0;padding-left:18px;font-size:13px;color:#4b5563;">' + (report.suggestions || []).map(s => '<li>' + _escapeHTML(s) + '</li>').join('') + '</ol>'}
+        </div>
+        <div>
+          <h4 style="margin:0 0 8px 0;font-size:14px;color:#374151;">下周计划</h4>
+          ${(report.nextWeekPlan || []).length === 0 ? '<div style="color:#9ca3af;font-size:13px;">暂无计划</div>' : '<ol style="margin:0;padding-left:18px;font-size:13px;color:#4b5563;">' + (report.nextWeekPlan || []).map(p => '<li>' + _escapeHTML(p) + '</li>').join('') + '</ol>'}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').classList.remove('show')">关闭</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
 }
 
 /* ================================================================
@@ -982,7 +1400,7 @@ function _closePlanDetail() {
   if (titleEl) titleEl.textContent = '📋 学习计划';
   const topbarRight = document.querySelector('.topbar-right');
   if (topbarRight) {
-    topbarRight.innerHTML = '<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>' +
+    topbarRight.innerHTML =
       '<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>';
   }
 }
@@ -1011,7 +1429,137 @@ function _openRescheduleModal() {
   if (modal) modal.classList.add('show');
 }
 
-function _openDiagModal() {
+// AI 诊断面板缓存
+var _diagCache = {};
+
+/** 加载 AI 诊断面板（详情页右侧栏） */
+async function _loadAiDiagPanel(goalId) {
+  var panelBody = document.getElementById('aiDiagPanelBody');
+  var updateTime = document.getElementById('aiDiagUpdateTime');
+  if (!panelBody) return;
+
+  if (!goalId) {
+    panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">🤖</div><div style="font-size:13px;">选择一个学习目标后，AI 将自动生成诊断报告</div></div>';
+    if (updateTime) updateTime.textContent = '—';
+    return;
+  }
+
+  // 有缓存则直接展示
+  if (_diagCache[goalId]) {
+    _renderDiagPanelSummary(_diagCache[goalId].content, panelBody, updateTime);
+    return;
+  }
+
+  // 显示加载状态
+  panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div style="margin-top:8px;font-size:13px;">AI 正在分析学习进度…</div></div>';
+  if (updateTime) updateTime.textContent = '分析中...';
+
+  try {
+    var res = await DB.aiDiagnoseGoal(goalId);
+    if (res.success && res.content) {
+      _diagCache[goalId] = { content: res.content, time: new Date() };
+      _renderDiagPanelSummary(res.content, panelBody, updateTime);
+    } else {
+      // AI 不可用时不显示 mock 数据，显示简洁提示
+      panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:24px;margin-bottom:6px;">📋</div><div style="font-size:13px;">AI 诊断暂不可用</div><div style="font-size:12px;margin-top:4px;">请确认 AI 模型已在设置中配置</div></div>';
+      if (updateTime) updateTime.textContent = '—';
+    }
+  } catch (error) {
+    console.error('AI 诊断面板加载失败:', error);
+    panelBody.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);"><div style="font-size:24px;margin-bottom:6px;">📋</div><div style="font-size:13px;">AI 诊断暂不可用</div></div>';
+    if (updateTime) updateTime.textContent = '—';
+  }
+}
+
+/** 渲染诊断面板摘要 */
+function _renderDiagPanelSummary(content, panelBody, updateTime) {
+  var now = new Date();
+  if (updateTime) updateTime.textContent = (now.getMonth() + 1) + '月' + now.getDate() + '日更新';
+
+  var summary = (content || '').substring(0, 200);
+  var hasMore = content && content.length > 200;
+
+  panelBody.innerHTML =
+    '<div class="ai-diag-header">' +
+      '<div class="ai-diag-avatar">🤖</div>' +
+      '<div class="ai-diag-score-info"><strong>AI 诊断报告已生成</strong><br><span style="color:var(--gray-400);font-size:12px;">点击下方查看完整报告</span></div>' +
+    '</div>' +
+    '<div class="ai-diag-section">' +
+      '<div class="ai-diag-section-title">📋 诊断摘要</div>' +
+      '<div style="font-size:12.5px;color:var(--gray-600);line-height:1.6;">' + _renderMarkdown(summary) + (hasMore ? '...' : '') + '</div>' +
+    '</div>' +
+    '<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px;justify-content:center;" onclick="openDiagModal()">查看完整诊断报告 →</button>';
+}
+
+/** 简单 Markdown 渲染 */
+function _renderMarkdown(text) {
+  if (!text) return '';
+  var html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4 style="margin:16px 0 8px;color:var(--gray-700);">$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3 style="margin:18px 0 10px;color:var(--gray-700);">$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2 style="margin:20px 0 12px;color:var(--gray-700);">$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^[-*] (.+)$/gm, '<div style="padding-left:16px;margin:4px 0;">• $1</div>')
+    .replace(/\n/g, '<br>');
+  return html;
+}
+
+/** 打开 AI 诊断弹窗（完整报告） */
+async function _openDiagModal() {
+  const modal = document.getElementById('diagModal');
+  if (modal) modal.classList.add('show');
+
+  var goalId = currentDetailGoalId;
+  if (!goalId) {
+    var body = document.getElementById('diagModalBody');
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);">请先选择一个学习目标</div>';
+    return;
+  }
+
+  var body = document.getElementById('diagModalBody');
+  var subtitle = document.getElementById('diagModalSubtitle');
+
+  // 有缓存直接展示
+  if (_diagCache[goalId]) {
+    _renderDiagReport(_diagCache[goalId].content, subtitle, body);
+    return;
+  }
+
+  // 加载状态
+  if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div class="typing-indicator" style="display:inline-block;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div><div style="margin-top:12px;font-size:14px;">AI 正在生成诊断报告…</div></div>';
+  if (subtitle) subtitle.textContent = 'AI 正在分析学习进度...';
+
+  try {
+    var res = await DB.aiDiagnoseGoal(goalId);
+    if (res.success && res.content) {
+      _diagCache[goalId] = { content: res.content, time: new Date() };
+      _renderDiagReport(res.content, subtitle, body);
+    } else {
+      if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">📋</div><div style="font-size:14px;">AI 诊断暂不可用</div><div style="font-size:12px;margin-top:4px;">请确认 AI 模型已在设置中配置</div></div>';
+      if (subtitle) subtitle.textContent = '—';
+    }
+  } catch (error) {
+    console.error('AI 诊断失败:', error);
+    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-400);"><div style="font-size:28px;margin-bottom:8px;">📋</div><div style="font-size:14px;">AI 诊断出错：' + (error.message || '') + '</div></div>';
+    if (subtitle) subtitle.textContent = '诊断出错';
+  }
+}
+
+/** 渲染完整诊断报告 */
+function _renderDiagReport(content, subtitleEl, bodyEl) {
+  var now = new Date();
+  var timeStr = (now.getMonth() + 1) + '月' + now.getDate() + '日 ' + now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+  if (subtitleEl) subtitleEl.textContent = 'AI 诊断报告 · 生成于 ' + timeStr;
+
+  var html = _renderMarkdown(content);
+  if (bodyEl) bodyEl.innerHTML = '<div style="line-height:1.8;font-size:14px;">' + html + '</div>' +
+    '<div style="margin-top:20px;text-align:right;"><button class="btn btn-primary btn-sm" onclick="closePlanModal(\'diagModal\');openRescheduleModal()">📅 按建议调整排期</button></div>';
+}
+
+function _openDiagModalSimple() {
   const modal = document.getElementById('diagModal');
   if (modal) modal.classList.add('show');
 }
@@ -1096,6 +1644,8 @@ function _patchGlobalFunctions() {
   window._handleDeleteMilestone = _handleDeleteMilestone;
   window._handleAICreateGoal = _handleAICreateGoal;
   window._handleAIDiagnoseGoal = _handleAIDiagnoseGoal;
+  window._handleWeeklyDiagnosis = _handleWeeklyDiagnosis;
+  window._renderAIGeneratedPlanPreview = _renderAIGeneratedPlanPreview;
   window._handleReschedule = _handleReschedule;
 
   // 覆盖 UI 函数（部分与 plan.html 内联脚本名称冲突）
@@ -1109,7 +1659,7 @@ function _patchGlobalFunctions() {
   window.openCreateModal = _openCreateModal;
   window.closePlanModal = _closePlanModal;
   window.openRescheduleModal = _openRescheduleModal;
-  window.openDiagModal = _openDiagModal;
+  window.openDiagModal = _openDiagModal;  // 完整版：加载 AI 诊断数据
   window.openAddTaskModal = _openAddTaskModal;
 
   // 子标签切换 — plan.html 中 onclick="switchPlanSubTab(this, 'all')" 需要
@@ -1133,6 +1683,122 @@ function _patchGlobalFunctions() {
       _handleTaskComplete(taskId, goalId || currentDetailGoalId, el);
     }
   };
+
+  // ====== 强制覆盖：下拉菜单 & 状态机操作 ======
+  // 这些函数在 plan.html 内联脚本中也有定义，但内联脚本的 currentDetailGoalId
+  // 与 learning.js 的 currentDetailGoalId 可能不是同一个变量（let 作用域问题），
+  // 因此必须强制覆盖，确保使用 learning.js 维护的 currentDetailGoalId。
+  window.toggleGoalCardMenu = function(btn, e) { e.stopPropagation(); const d = btn.nextElementSibling; if(d) d.style.display = d.style.display==='block'?'none':'block'; };
+  window.toggleDetailMenu = function(btn) { const d = document.getElementById('detailMenuDropdown'); if(d) d.style.display = d.style.display==='block'?'none':'block'; };
+
+  // openDeleteGoalModal — 接受可选的 goalId 参数，设置 currentDetailGoalId
+  window.openDeleteGoalModal = function(goalId) {
+    document.querySelectorAll('.goal-card-dropdown').forEach(function(d){d.style.display='none';});
+    var dm=document.getElementById('detailMenuDropdown'); if(dm) dm.style.display='none';
+    if (goalId) currentDetailGoalId = goalId;
+    document.getElementById('deleteGoalModal').classList.add('show');
+  };
+
+  // confirmDeleteGoalAction — 使用 learning.js 的 currentDetailGoalId
+  window.confirmDeleteGoalAction = async function() {
+    var goalId = currentDetailGoalId;
+    if (!goalId) { toast('未选择目标', 'warning'); return; }
+    closePlanModal('deleteGoalModal');
+    try {
+      const res = await DB.deleteGoal(goalId);
+      if (res.success) {
+        toast('目标已删除', 'success');
+        _closePlanDetail();
+        await _loadGoals(planFilter);
+      } else {
+        toast('删除失败: ' + (res.error || '未知错误'), 'error');
+      }
+    } catch (e) {
+      console.error('删除目标失败:', e);
+      toast('删除目标失败', 'error');
+    }
+  };
+
+  // openMilestoneEditModal — 使用 learning.js 的 currentDetailGoalId
+  window.openMilestoneEditModal = async function() {
+    if (!currentDetailGoalId) { toast('请先进入目标详情', 'warning'); return; }
+    document.getElementById('milestoneEditModal').classList.add('show');
+    await _renderMilestoneEditList();
+  };
+
+  async function _renderMilestoneEditList() {
+    var body = document.getElementById('milestoneEditBody');
+    if (!body) return;
+    try {
+      var milestones = [];
+      if (window.DB && currentDetailGoalId) {
+        var res = await DB.getMilestones(currentDetailGoalId);
+        milestones = res.success ? (res.data || []) : [];
+      }
+      if (milestones.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:32px;color:var(--gray-400);">暂无里程碑，点击下方按钮添加</div>';
+        return;
+      }
+      body.innerHTML = '<div style="margin-bottom:12px;font-size:13px;color:var(--gray-500);">共 ' + milestones.length + ' 个里程碑</div>' +
+        milestones.map(function(m, i) {
+          var mId = m._id || m.id;
+          return '<div style="display:flex;align-items:center;padding:10px 12px;border:1px solid var(--gray-200);border-radius:8px;margin-bottom:8px;background:var(--white);">' +
+            '<span style="color:var(--gray-400);margin-right:10px;font-size:13px;">' + (i + 1) + '.</span>' +
+            '<span style="flex:1;font-size:14px;color:var(--gray-800);">' + _escapeHTML(m.title || '未命名') + '</span>' +
+            '<span style="font-size:11px;background:' + (m.status === 'completed' ? '#d1fae5' : '#f0fdf4') + ';color:' + (m.status === 'completed' ? '#059669' : '#6b7280') + ';padding:2px 8px;border-radius:8px;margin-right:8px;">' + (m.status === 'completed'?'已完成':(m.status === 'active'?'进行中':'待开始')) + '</span>' +
+            '<button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:12px;" onclick="_deleteMilestoneInEdit(\'' + mId + '\')">🗑</button>' +
+          '</div>';
+        }).join('');
+    } catch (e) {
+      console.error('加载里程碑列表失败:', e);
+      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">加载失败：' + (e.message || '未知错误') + '</div>';
+    }
+  }
+  window._renderMilestoneEditList = _renderMilestoneEditList;
+
+  window._deleteMilestoneInEdit = async function(mId) {
+    if (!confirm('确定删除此里程碑及其所有任务？')) return;
+    try {
+      if (window.DB) await DB.deleteMilestone(mId);
+      toast('里程碑已删除', 'success');
+      await _renderMilestoneEditList();
+      if (currentDetailGoalId) await _renderDetailView(currentDetailGoalId);
+    } catch (e) {
+      toast('删除失败', 'error');
+    }
+  };
+
+  window.addNewMilestoneInline = async function() {
+    var name = prompt('请输入里程碑名称：');
+    if (!name || !name.trim()) return;
+    try {
+      if (window.DB) {
+        var maxSort = 0;
+        var existing = await DB.getMilestones(currentDetailGoalId);
+        if (existing.success && existing.data) {
+          existing.data.forEach(function(m) { if ((m.sort || 0) > maxSort) maxSort = m.sort; });
+        }
+        await DB.createMilestone({ goalId: currentDetailGoalId, title: name.trim(), sort: maxSort + 1 });
+        toast('里程碑已添加', 'success');
+      }
+      await _renderMilestoneEditList();
+      if (currentDetailGoalId) await _renderDetailView(currentDetailGoalId);
+    } catch (e) {
+      toast('添加失败: ' + e.message, 'error');
+    }
+  };
+
+  if (!window.handleTaskAction) window.handleTaskAction = async function(taskId, action) {
+    try {
+      if (action === 'start') { await DB.startTask(taskId); toast('任务已启动','success'); }
+      else if (action === 'complete') { var m=document.getElementById('taskCompleteModal'); if(m){m.setAttribute('data-task-id',taskId);m.classList.add('show');} return; }
+      else if (action === 'restart') { await DB.restartTask(taskId); toast('任务已重新启动','success'); }
+      await _renderDetailView(currentDetailGoalId);
+    } catch(e) { toast('操作失败','error'); }
+  };
+  if (!window.handleDeleteTask) window.handleDeleteTask = function(taskId) { _handleDeleteTask(taskId, currentDetailGoalId); };
+  if (!window.openTaskEditModal) window.openTaskEditModal = function(taskId) { toast('编辑任务：'+taskId,'info'); };
+  if (!window.completeWith) window.completeWith = _handleTaskComplete;
 
   // 创建目标（从弹窗保存）
   window.confirmCreateGoal = function () {

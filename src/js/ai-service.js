@@ -163,6 +163,22 @@
     'compare': {
       system: '你是 StudyMind 的 AI 学习助手。请用中文回答用户问题。',
       format: 'text'
+    },
+    'review-exercises': {
+      system: '你是 StudyMind 的复习出题专家。根据提供的复习卡片内容，生成指定题型比例和难度的练习题。\n\n请返回 JSON 格式（不要包含 markdown 代码块标记），结构如下：\n{\n  "exercises": [\n    {\n      "type": "choice|fill|qa",\n      "question": "题目",\n      "options": [{"key": "A", "text": "选项"}],\n      "answer": "答案",\n      "explanation": "解析",\n      "difficulty": "easy|medium|hard"\n    }\n  ]\n}\n\n要求：\n- 严格按传入的题型比例生成题目\n- 每道题标注难度\n- 选择题必须提供 4 个选项和唯一正确答案\n- 填空题和问答题答案要准确简洁',
+      format: 'json'
+    },
+    'create-plan-with-search': {
+      system: '你是 StudyMind 的学习规划专家。根据用户描述和检索到的学习资料，制定学习目标并拆解为里程碑和任务。\n\n请返回 JSON 格式（不要包含 markdown 代码块标记），结构如下：\n{\n  "title": "目标标题",\n  "description": "目标描述",\n  "milestones": [\n    {\n      "title": "里程碑名称",\n      "tasks": ["任务1", "任务2"]\n    }\n  ],\n  "recommendedMaterials": ["资料标题1", "资料标题2"]\n}\n\n要求：\n- 目标标题简洁明确\n- 生成 3-5 个里程碑，按学习顺序排列\n- 每个里程碑包含 2-4 个具体可执行的任务\n- 优先结合提供的参考资料',
+      format: 'json'
+    },
+    'news-judge': {
+      system: '你是 StudyMind 的资讯价值判断专家。判断给定资讯是否与学习相关、是否值得入库，并给出评分和分类。\n\n请返回 JSON 格式（不要包含 markdown 代码块标记），结构如下：\n{\n  "isLearningRelated": true|false,\n  "worthSaving": true|false,\n  "score": 75,\n  "level": "high|mid|low",\n  "title": "优化后的标题",\n  "summary": "50字以内摘要",\n  "tags": ["标签1", "标签2"],\n  "reason": "判断理由"\n}\n\n评分标准：80-100=high，60-79=mid，40-59=low，<40 不推荐',
+      format: 'json'
+    },
+    'weekly-diagnosis': {
+      system: '你是 StudyMind 的学习诊断专家。根据用户近一周的学习数据（复习记录、任务完成情况、薄弱主题），生成诊断报告。\n\n请返回 JSON 格式（不要包含 markdown 代码块标记），结构如下：\n{\n  "overallScore": 78,\n  "completionRate": 0.65,\n  "weakPoints": ["薄弱点1", "薄弱点2"],\n  "strengths": ["优势1", "优势2"],\n  "suggestions": ["建议1", "建议2"],\n  "nextWeekPlan": ["下周行动1", "下周行动2"]\n}\n\n要求：\n- overallScore 为 0-100 的整数\n- 薄弱点不超过 5 个\n- 建议要具体可执行',
+      format: 'json'
     }
   };
 
@@ -170,121 +186,200 @@
   // 核心：调用 AI API
   // ================================================================
 
-  /**
-   * 调用 AI API（OpenAI 兼容格式）
-   * @param {Object} params - { action, messages, model, temperature, maxTokens }
-   * @returns {Promise<{success, content, tokens, model}>}
-   */
-  async function callAI(params) {
-    const { action, messages, model: modelParam, temperature, maxTokens } = params;
+/**
+ * 清洗 AI 返回内容，移除 markdown JSON 代码块包装
+ * @param {string} content
+ * @returns {string}
+ */
+function cleanJsonWrapper(content) {
+  if (!content || typeof content !== 'string') return content;
+  // 匹配 ```json ... ``` 或 ``` ... ```
+  const codeBlockMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (codeBlockMatch && codeBlockMatch[1]) {
+    return codeBlockMatch[1].trim();
+  }
+  return content.trim();
+}
 
-    // 获取模型配置
-    const modelConfig = getModel(modelParam);
-    if (!modelConfig) {
-      console.error('[AIService] 未找到可用的模型配置');
-      return {
-        success: false,
-        error: '未配置 AI 模型，请先在设置页面添加模型配置',
-        content: ''
-      };
-    }
+/**
+ * 判断错误是否可重试
+ */
+function isRetryableError(error, response) {
+  if (!response) return true;
+  // 5xx 服务端错误、429 限流、408 请求超时、网络错误
+  if (response.status >= 500 || response.status === 429 || response.status === 408) return true;
+  // fetch 抛错（网络异常、CORS 等）
+  if (error && error.name === 'TypeError') return true;
+  return false;
+}
 
-    // 获取 AI 设置
-    const settings = getAISettings();
+/**
+ * 带重试的 fetch 调用
+ */
+async function fetchWithRetry(url, options, maxRetries = 3) {
+  let lastError = null;
+  let lastResponse = null;
 
-    // 构建系统提示
-    const actionConfig = ACTION_PROMPTS[action] || ACTION_PROMPTS['chat'];
-    const systemPrompt = actionConfig.system;
-
-    // 构建消息列表
-    const fullMessages = [
-      { role: 'system', content: systemPrompt }
-    ];
-
-    // 如果传入的 messages 已有 system 消息，跳过
-    const userMessages = (messages || []).filter(m => m.role !== 'system');
-    fullMessages.push(...userMessages);
-
-    // 构建请求 URL
-    const baseUrl = modelConfig.baseUrl.replace(/\/$/, '');
-    const url = baseUrl + '/chat/completions';
-
-    // 构建请求头
-    const headers = { 'Content-Type': 'application/json' };
-    if (modelConfig.provider !== 'ollama' && modelConfig.apiKey) {
-      headers['Authorization'] = 'Bearer ' + modelConfig.apiKey;
-    }
-
-    // 构建请求体
-    const body = {
-      model: modelConfig.modelName,
-      messages: fullMessages,
-      temperature: temperature !== undefined ? temperature : (settings.temperature || 0.7),
-      max_tokens: maxTokens || (settings.maxTokens || 4096),
-      stream: false
-    };
-
-    console.log('[AIService] 📡 调用 AI API:', {
-      provider: modelConfig.provider,
-      model: modelConfig.modelName,
-      action: action,
-      url: url,
-      messageCount: fullMessages.length
-    });
-
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(body)
-      });
+      console.log(`[AIService] 🔄 请求尝试 ${attempt + 1}/${maxRetries + 1}: ${url}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => '');
-        console.error('[AIService] ❌ API 返回错误:', response.status, errorText);
-        return {
-          success: false,
-          error: 'API 返回错误 ' + response.status + ': ' + errorText.substring(0, 200),
-          content: ''
-        };
+      if (response.ok) {
+        return { response, error: null };
       }
 
-      const data = await response.json();
-      console.log('[AIService] 📥 API 响应:', { status: 'ok', model: data.model || modelConfig.modelName });
+      lastResponse = response;
+      const errorText = await response.text().catch(() => '');
+      lastError = new Error('API 返回错误 ' + response.status + ': ' + errorText.substring(0, 200));
 
-      // 提取回复内容
-      let content = '';
-      if (data.choices && data.choices.length > 0) {
-        if (data.choices[0].message && data.choices[0].message.content) {
-          content = data.choices[0].message.content;
-        } else if (data.choices[0].text) {
-          content = data.choices[0].text;
-        }
-      } else if (data.content) {
-        content = data.content;
+      if (!isRetryableError(lastError, response)) {
+        console.warn('[AIService] ⚠️ 错误不可重试，直接返回:', response.status);
+        break;
       }
-
-      // 提取 token 用量
-      let tokens = 0;
-      if (data.usage) {
-        tokens = data.usage.total_tokens || (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
-      }
-
-      return {
-        success: true,
-        content: content || '(空回复)',
-        tokens: tokens,
-        model: modelConfig.modelName
-      };
     } catch (error) {
-      console.error('[AIService] ❌ API 调用失败:', error);
-      return {
-        success: false,
-        error: error.message || 'AI API 调用失败',
-        content: ''
-      };
+      lastError = error;
+      lastResponse = null;
+      console.warn(`[AIService] ⚠️ 第 ${attempt + 1} 次请求失败:`, error.message);
+    }
+
+    if (attempt < maxRetries) {
+      const delay = Math.min(1000 * Math.pow(2, attempt), 8000);
+      console.log(`[AIService] ⏳ ${delay}ms 后重试...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+
+  return { response: lastResponse, error: lastError };
+}
+
+/**
+ * 调用 AI API（OpenAI 兼容格式），内置自动重试与 JSON 清洗
+ * @param {Object} params - { action, messages, model, temperature, maxTokens, retry }
+ * @returns {Promise<{success, content, tokens, model}>}
+ */
+async function callAI(params) {
+  const { action, messages, model: modelParam, temperature, maxTokens, retry = 3 } = params;
+
+  // 获取模型配置
+  const modelConfig = getModel(modelParam);
+  if (!modelConfig) {
+    console.error('[AIService] 未找到可用的模型配置');
+    return {
+      success: false,
+      error: '未配置 AI 模型，请先在设置页面添加模型配置',
+      content: ''
+    };
+  }
+
+  // 获取 AI 设置
+  const settings = getAISettings();
+
+  // 构建系统提示
+  const actionConfig = ACTION_PROMPTS[action] || ACTION_PROMPTS['chat'];
+  const systemPrompt = actionConfig.system;
+
+  // 构建消息列表
+  const fullMessages = [
+    { role: 'system', content: systemPrompt }
+  ];
+
+  // 如果传入的 messages 已有 system 消息，跳过
+  const userMessages = (messages || []).filter(m => m.role !== 'system');
+  fullMessages.push(...userMessages);
+
+  // 构建请求 URL
+  const baseUrl = modelConfig.baseUrl.replace(/\/$/, '');
+  const url = baseUrl + '/chat/completions';
+
+  // 构建请求头
+  const headers = { 'Content-Type': 'application/json' };
+  if (modelConfig.provider !== 'ollama' && modelConfig.apiKey) {
+    headers['Authorization'] = 'Bearer ' + modelConfig.apiKey;
+  }
+
+  // 构建请求体
+  const body = {
+    model: modelConfig.modelName,
+    messages: fullMessages,
+    temperature: temperature !== undefined ? temperature : (settings.temperature || 0.7),
+    max_tokens: maxTokens || (settings.maxTokens || 4096),
+    stream: false
+  };
+
+  console.log('[AIService] 📡 调用 AI API:', {
+    provider: modelConfig.provider,
+    model: modelConfig.modelName,
+    action: action,
+    url: url,
+    messageCount: fullMessages.length,
+    maxRetries: retry
+  });
+
+  const { response, error } = await fetchWithRetry(url, {
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify(body)
+  }, retry);
+
+  if (error || !response) {
+    console.error('[AIService] ❌ API 调用失败（已重试）:', error);
+    return {
+      success: false,
+      error: error && error.message ? error.message : 'AI API 调用失败',
+      content: ''
+    };
+  }
+
+  try {
+    const data = await response.json();
+    console.log('[AIService] 📥 API 响应:', { status: 'ok', model: data.model || modelConfig.modelName });
+
+    // 提取回复内容
+    let content = '';
+    if (data.choices && data.choices.length > 0) {
+      if (data.choices[0].message && data.choices[0].message.content) {
+        content = data.choices[0].message.content;
+      } else if (data.choices[0].text) {
+        content = data.choices[0].text;
+      }
+    } else if (data.content) {
+      content = data.content;
+    }
+
+    // 清洗 JSON 包装
+    if (actionConfig.format === 'json' && content) {
+      const originalLength = content.length;
+      content = cleanJsonWrapper(content);
+      if (content.length !== originalLength) {
+        console.log('[AIService] 🧹 已清洗 JSON 代码块包装');
+      }
+    }
+
+    // 提取 token 用量
+    let tokens = 0;
+    if (data.usage) {
+      tokens = data.usage.total_tokens || (data.usage.prompt_tokens || 0) + (data.usage.completion_tokens || 0);
+    }
+
+    return {
+      success: true,
+      content: content || '(空回复)',
+      tokens: tokens,
+      model: modelConfig.modelName
+    };
+  } catch (parseError) {
+    console.error('[AIService] ❌ 响应解析失败:', parseError);
+    return {
+      success: false,
+      error: 'AI 响应解析失败: ' + parseError.message,
+      content: ''
+    };
+  }
+}
 
   /**
    * 测试模型连接

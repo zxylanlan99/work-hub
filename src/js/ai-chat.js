@@ -71,14 +71,25 @@ function renderMarkdown(content) {
     return escapeHtml(content);
   }
   try {
-    // 配置 marked 选项
+    // 配置 marked 选项（禁用可能导致 XSS 的功能）
     window.marked.setOptions({
       breaks: true,        // 换行符转换为 <br>
       gfm: true,            // GitHub 风味 Markdown
       headerIds: false,    // 禁用标题 ID（防 XSS）
-      mangle: false        // 禁用标题 mangle（防 XSS）
+      mangle: false,       // 禁用标题 mangle（防 XSS）
+      smartLists: true,    // 智能列表
+      smartypants: true    // 智能标点
     });
-    return window.marked.parse(content);
+    
+    // 使用 marked 解析 Markdown
+    const html = window.marked.parse(content);
+    
+    // 使用 DOMPurify 进行 XSS 清理
+    if (typeof window.DOMPurify === 'function') {
+      return window.DOMPurify.sanitize(html);
+    }
+    
+    return html;
   } catch (e) {
     console.error('Markdown 渲染失败:', e);
     return escapeHtml(content);

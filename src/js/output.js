@@ -505,7 +505,7 @@ async function loadScraps() {
       const isProcessing = scrap.status === 'processing';
       let statusBadge = '';
       if (isConverted) statusBadge = '<span class="badge badge-success" style="font-size:10px;">已转化</span>';
-      if (isProcessing) statusBadge = '<span class="badge badge-secondary" style="font-size:10px;">已忽略</span>';
+      if (isProcessing) statusBadge = '<span class="badge badge-secondary" style="font-size:10px;">处理中</span>';
 
       return `
         <div class="scrap-item" style="border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; margin-bottom: 10px; position: relative; ${isConverted || isProcessing ? 'opacity:0.6;' : ''}">

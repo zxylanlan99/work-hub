@@ -288,7 +288,33 @@
 
   // 检查真实 CloudBase SDK 是否已正确加载
   if (!window.cloudbase || typeof window.cloudbase.init !== 'function') {
-    throw new Error('[CloudBase] ❌ 真实 CloudBase SDK 未正确加载！请检查网络连接或 CDN 是否可用。本项目禁止使用模拟数据。');
+    console.error('[CloudBase] ❌ 真实 CloudBase SDK 未正确加载！');
+    console.error('[CloudBase] 请检查：1. 网络连接 2. CDN 是否可用 3. SDK 版本是否正确');
+    
+    // 显示友好的错误提示
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #dc2626;
+      color: white;
+      padding: 24px 32px;
+      border-radius: 12px;
+      text-align: center;
+      z-index: 9999;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    `;
+    errorDiv.innerHTML = `
+      <div style="font-size: 48px; margin-bottom: 16px;">🔌</div>
+      <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">服务连接失败</div>
+      <div style="font-size: 14px; opacity: 0.9;">请检查网络连接后刷新页面</div>
+    `;
+    document.body.appendChild(errorDiv);
+    
+    return;
   }
   console.log('[CloudBase] ✅ 真实 CloudBase SDK 已加载');
 

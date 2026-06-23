@@ -94,7 +94,7 @@ async function loadStatistics() {
       quickCards[2].querySelector('.quick-card-sub').textContent = `${unread}条AI推荐资讯待处理`;
     }
     if (quickCards[3]) {
-      const drafts = outputStats.success ? (outputStats.data.drafts || 0) : 0;
+      const drafts = outputStats.success ? (outputStats.data.draftCount || 0) : 0;
       quickCards[3].querySelector('.quick-card-sub').textContent = `${drafts}篇草稿待完成`;
     }
   } catch (error) {

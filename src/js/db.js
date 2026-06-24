@@ -2473,9 +2473,9 @@ const DB = {
       this._exec(this._collection('output_docs').get())
     ]);
     
-    const draftCount = draftResult.data || 0;
-    const publishedCount = publishedResult.data || 0;
-    const scrapCount = scrapResult.data || 0;
+    const draftCount = draftResult || 0;
+    const publishedCount = publishedResult || 0;
+    const scrapCount = scrapResult || 0;
     
     let totalWords = 0;
     if (docsResult.success && docsResult.data) {

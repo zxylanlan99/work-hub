@@ -194,6 +194,7 @@ async function loadYesterdaySummary() {
 /* AI-001: 快问快答 */
 async function loadQuiz() {
   try {
+    const quizContainer = document.getElementById('quizContainer');
     const questionEl = document.getElementById('quiz-question');
     const optionsContainer = document.getElementById('quiz-options');
     const answerBtn = document.getElementById('quiz-answer-btn');

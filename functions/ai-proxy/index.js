@@ -8,9 +8,13 @@ exports.main = async (event, context) => {
   const { action, messages, model, temperature, maxTokens } = event;
   
   const apiKeys = {
-    mimo: process.env.MIMO_API_KEY || 'tp-cgnwdis3jmla7c5apcy0vnmdc3w7w7uq3uytnn69wo2hcz98',
-    silicon: process.env.SILICON_API_KEY || 'sk-fnvlamiyyfctzkxvtvhruwtizalcicxuswnfgemqxxwuougn'
+    mimo: process.env.MIMO_API_KEY,
+    silicon: process.env.SILICON_API_KEY
   };
+
+  // 启动时检查密钥
+  if (!apiKeys.mimo) console.warn('WARNING: MIMO_API_KEY not set');
+  if (!apiKeys.silicon) console.warn('WARNING: SILICON_API_KEY not set');
   
   const apiUrls = {
     mimo: 'https://api.mimo.sogou.com/api/text/chat',

@@ -17,10 +17,11 @@ async function initCloudbase() {
     }
 
     if (!window.cloudbase) {
-      console.error('CloudBase SDK not loaded');
+      console.error('[CloudBase] SDK not loaded');
       return null;
     }
 
+    // 使用 @cloudbase/js-sdk v2.28.6 初始化
     app = window.cloudbase.init({
       env: CONFIG.cloudbase.env,
       region: CONFIG.cloudbase.region
@@ -28,9 +29,14 @@ async function initCloudbase() {
 
     db = app.database();
 
-    await app.auth().anonymousAuthProvider().signIn();
+    // v2.x 匿名登录 API
+    await app.auth().signInAnonymously();
 
-    console.log('CloudBase initialized successfully');
+    // 挂载到全局供其他模块使用
+    window.app = app;
+    window.db = db;
+
+    console.log('[CloudBase] 初始化成功');
     return app;
   } catch (error) {
     console.error('CloudBase initialization failed:', error);

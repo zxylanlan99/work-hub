@@ -239,7 +239,15 @@ function updateContentLayout(pageId) {
 }
 
 // 初始化应用
-function initApp() {
+async function initApp() {
+  // 先初始化 CloudBase
+  try {
+    await initCloudbase();
+    console.log('[Framework] CloudBase initialized successfully');
+  } catch (error) {
+    console.error('[Framework] Failed to initialize CloudBase:', error);
+  }
+  
   // 初始化导航
   initNavigation();
   

@@ -13,8 +13,12 @@ const DB = {
 
   /** 获取集合引用 */
   _collection(name) {
-    if (!db) throw new Error('CloudBase 未初始化, 请先调用 initCloudbase()');
-    return db.collection(name);
+    const database = window.db;
+    if (!database) {
+      console.error('[DB] db is not defined, attempting to initialize...');
+      throw new Error('CloudBase 未初始化, 请先调用 initCloudbase()');
+    }
+    return database.collection(name);
   },
 
   /** 安全执行查询, 统一返回 {success, data, error} */

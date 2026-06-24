@@ -291,18 +291,20 @@
     }
   }
 
+  // 立即挂载 Mock SDK 到 window.cloudbase
+  window.cloudbase = {
+    init: function() {
+      console.log('[CloudBase] 初始化 Mock SDK');
+      return new MockApp();
+    }
+  };
+
   // 检查真实 CloudBase SDK 是否已正确加载
-  if (!window.cloudbase || typeof window.cloudbase.init !== 'function') {
-    console.warn('[CloudBase] ⚠️ CloudBase SDK CDN 未加载，启用 Mock 模式（localStorage 存储）');
-    // 将 Mock SDK 挂载到 window.cloudbase，作为真实 SDK 的降级方案
-    window.cloudbase = {
-      init: function() {
-        console.log('[CloudBase] 初始化 Mock SDK');
-        return new MockApp();
-      }
-    };
+  if (window.TCB && typeof window.TCB.init === 'function') {
+    console.log('[CloudBase] ✅ 真实 CloudBase SDK 已加载，替换为真实 SDK');
+    window.cloudbase = window.TCB;
   } else {
-    console.log('[CloudBase] ✅ 真实 CloudBase SDK 已加载');
+    console.warn('[CloudBase] ⚠️ CloudBase SDK CDN 未加载，使用 Mock 模式（localStorage 存储）');
   }
 
   // 模拟 CONFIG

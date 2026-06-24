@@ -1,6 +1,6 @@
 {
   "name": "studymind",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "StudyMind - 个人学习管理系统",
   "main": "src/pages/index.html",
   "scripts": {

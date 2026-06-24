@@ -77,17 +77,15 @@
   <!-- DOMPurify XSS 防护库 -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 
-  <!-- CloudBase SDK (生产环境) -->
-  <script src="https://imgcache.qq.com/qcloud/cloudbase-js-sdk/2.8.3/cloudbase.js"></script>
-  <!-- CloudBase Mock SDK (本地开发测试) -->
-  <script src="js/cloudbase-mock.js?v=10"></script>
+  <!-- CloudBase Mock SDK (优先使用，避免 CDN 加载失败) -->
+  <script src="js/cloudbase-mock.js?v=11"></script>
   <!-- 脚本引入 -->
-  <script src="js/utils.js?v=10"></script>
-  <script src="js/config.js?v=10"></script>
-  <script src="js/cloudbase.js?v=10"></script>
-  <script src="js/ai-service.js?v=10"></script>
-  <script src="js/mock.js?v=10"></script>
-  <script src="js/db.js?v=10"></script>
-  <script src="js/framework.js?v=10"></script>
+  <script src="js/utils.js?v=11"></script>
+  <script src="js/config.js?v=11"></script>
+  <script src="js/cloudbase.js?v=11"></script>
+  <script src="js/ai-service.js?v=11"></script>
+  <script src="js/mock.js?v=11"></script>
+  <script src="js/db.js?v=11"></script>
+  <script src="js/framework.js?v=11"></script>
 </body>
 </html>

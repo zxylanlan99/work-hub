@@ -8,7 +8,16 @@
    状态管理
    ================================================================ */
 
-const newsState = {
+/* 【修复】const 不挂载到 window，内联脚本无法访问，改用 var */
+var newsState = {
+  mainTab: 'recommend',       // 'recommend' | 'history' | 'stats'
+  recSubTab: 'all',           // 'all' | 'high' | 'mid' | 'low' | 'ignored'
+  historySubTab: 'imported',  // 'imported' | 'ignored' | 'trash'
+  batchMode: false,
+  selectedIds: new Set(),
+  currentPreviewId: null,
+  currentImportId: null,
+  currentItems: [],           // 缓存当前渲染的 items，供全选/批量操作使用
   currentTab: 'recommend',
   currentPage: 1,
   pageSize: 20

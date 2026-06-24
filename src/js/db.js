@@ -2044,14 +2044,14 @@ const DB = {
    * @param {Array<string>} sources - RSS 源地址，为空时使用推荐源
    */
   async dailyCrawlAndScore(sources) {
-    const defaultSources = [
-      'https://feeds.feedburner.com/oreilly/radar',
-      'https://news.ycombinator.com/rss',
-      'https://www.technologyreview.com/rss/',
-      'https://www.infoq.cn/rss/',
-      'https://www.jiqizhixin.com/rss'
-    ];
-    const rssSources = sources && sources.length > 0 ? sources : defaultSources;
+    /* 【Issue 1 修复】优先从数据库读取用户启用的RSS源，不再使用硬编码默认源 */
+    let rssSources = sources;
+    if (!rssSources || rssSources.length === 0) {
+      rssSources = await this.getEnabledRssUrls();
+    }
+    if (rssSources.length === 0) {
+      return { success: false, error: '没有启用的RSS源，请先在RSS源管理中启用或添加信息源' };
+    }
     console.log('[DB] 📡 每日资讯爬取开始:', rssSources);
 
     // 1. 抓取 RSS
@@ -2061,17 +2061,45 @@ const DB = {
     }
 
     const articles = rssResult.data || [];
+    const failedSources = rssResult.failedSources || [];
     if (articles.length === 0) {
-      return { success: true, data: { crawled: 0, saved: 0 } };
+      /* 【修复】返回失败源详情，帮助用户定位问题 */
+      const failMsg = failedSources.length > 0
+        ? '所有RSS源均抓取失败：' + failedSources.map(function(f) { return f.url; }).join('、')
+        : 'RSS源返回0条内容';
+      return { success: true, data: { crawled: 0, saved: 0 }, failedSources: failedSources, message: failMsg };
     }
 
     // 2. 逐条 AI 判断与评分
     let savedCount = 0;
     for (const article of articles) {
       try {
+        /* 【Issue 2 修复】尝试抓取文章全文，提升内容质量 */
+        let fullContent = article.content || '';
+        if (!fullContent && article.sourceUrl) {
+          try {
+            const extractRes = await fetch(this._kbBackendURL() + '/api/news/extract', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: article.sourceUrl })
+            });
+            if (extractRes.ok) {
+              const extractData = await extractRes.json();
+              if (extractData.success && extractData.content) {
+                fullContent = extractData.content;
+                article.content = fullContent;
+              }
+            }
+          } catch (extractErr) {
+            console.warn('[DB] 全文抓取失败，使用摘要:', extractErr.message);
+          }
+        }
+
+        /* 【Issue 3 修复】AI评分使用文章全文而非仅标题+摘要 */
+        const evalContent = fullContent || article.summary || '';
         const prompt = '请判断以下资讯是否与学习相关，并给出评分和分类。\n\n' +
           '标题：' + (article.title || '无标题') + '\n' +
-          '摘要：' + (article.summary || article.content || '').substring(0, 1000) + '\n' +
+          '内容：' + evalContent.substring(0, 3000) + '\n' +
           '来源：' + (article.sourceUrl || article.sourceName || '未知');
 
         const aiResult = await this._aiProxy({
@@ -2121,6 +2149,89 @@ const DB = {
 
     console.log('[DB] ✅ 每日资讯爬取完成:', { crawled: articles.length, saved: savedCount });
     return { success: true, data: { crawled: articles.length, saved: savedCount } };
+  },
+
+  /* ========== RSS源管理接口 (Issue 1 新增) ========== */
+
+  /** 获取所有RSS源 */
+  async getRssSources() {
+    const result = await this._exec(
+      this._collection('rss_sources').orderBy('createdAt', 'desc').get()
+    );
+    return { success: true, data: result.data || [] };
+  },
+
+  /** 添加RSS源 */
+  async addRssSource(data) {
+    if (!data.url) return { success: false, error: 'RSS源地址不能为空' };
+    const result = await this._exec(
+      this._collection('rss_sources').add({
+        name: data.name || '',
+        url: data.url,
+        category: data.category || '其他',
+        enabled: data.enabled !== false,
+        isPreset: data.isPreset || false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+    );
+    return { success: true, data: result };
+  },
+
+  /** 更新RSS源 */
+  async updateRssSource(id, data) {
+    data.updatedAt = new Date();
+    await this._exec(this._collection('rss_sources').doc(id).update(data));
+    return { success: true };
+  },
+
+  /** 删除RSS源 */
+  async deleteRssSource(id) {
+    await this._exec(this._collection('rss_sources').doc(id).remove());
+    return { success: true };
+  },
+
+  /** 切换RSS源启用/禁用状态 */
+  async toggleRssSource(id, enabled) {
+    await this._exec(
+      this._collection('rss_sources').doc(id).update({ enabled: enabled, updatedAt: new Date() })
+    );
+    return { success: true };
+  },
+
+  /** 初始化预设RSS源（首次使用时调用） */
+  async initDefaultRssSources() {
+    /* 检查是否已有数据，有则跳过 */
+    const existing = await this._exec(this._collection('rss_sources').limit(1).get());
+    if (existing.data && existing.data.length > 0) return { success: true, data: { skipped: true } };
+
+    const presets = [
+      { name: 'Hacker News', url: 'https://news.ycombinator.com/rss', category: '技术资讯', enabled: true, isPreset: true },
+      { name: 'InfoQ 中文', url: 'https://www.infoq.cn/rss/', category: '技术资讯', enabled: true, isPreset: true },
+      { name: '机器之心', url: 'https://www.jiqizhixin.com/rss', category: 'AI/ML', enabled: true, isPreset: true },
+      { name: 'MIT Technology Review', url: 'https://www.technologyreview.com/rss/', category: '科技前沿', enabled: true, isPreset: true },
+      { name: 'O\'Reilly Radar', url: 'https://feeds.feedburner.com/oreilly/radar', category: '技术资讯', enabled: true, isPreset: true },
+      { name: '阮一峰周刊', url: 'https://www.ruanyifeng.com/blog/atom.xml', category: '技术博客', enabled: false, isPreset: true },
+      { name: '掘金前端', url: 'https://rsshub.app/juejin/category/frontend', category: '前端开发', enabled: false, isPreset: true },
+      { name: 'CSDN 热门', url: 'https://rsshub.app/csdn/hot', category: '技术资讯', enabled: false, isPreset: true },
+      { name: '36氪', url: 'https://rsshub.app/36kr/newsflashes', category: '科技新闻', enabled: false, isPreset: true },
+      { name: '少数派', url: 'https://sspai.com/feed', category: '效率工具', enabled: false, isPreset: true }
+    ];
+
+    for (const p of presets) {
+      await this._exec(this._collection('rss_sources').add({
+        ...p, createdAt: new Date(), updatedAt: new Date()
+      }));
+    }
+    return { success: true, data: { count: presets.length } };
+  },
+
+  /** 获取启用的RSS源URL列表（供dailyCrawlAndScore使用） */
+  async getEnabledRssUrls() {
+    const result = await this._exec(
+      this._collection('rss_sources').where({ enabled: true }).get()
+    );
+    return (result.data || []).map(s => s.url);
   },
 
   /** DB-U-029: 入库资讯（资讯 → 知识库） */

@@ -22,13 +22,10 @@ const topbarConfigs = {
     right: `<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
     center: ''
   },
+  /* 【Issue 4 修复】tab移到页面内容区，与review/plan等页面风格一致 */
   news: {
     right: `<span class="topbar-greeting"></span>`,
-    center: `<div class="sub-tabs">
-              <div class="sub-tab active" onclick="switchNewsMainTab('recommend')">AI推荐清单</div>
-              <div class="sub-tab" onclick="switchNewsMainTab('history')">资讯历史</div>
-              <div class="sub-tab" onclick="switchNewsMainTab('stats')">统计概览</div>
-            </div>`
+    center: ''
   },
   knowledge: {
     right: `<span class="topbar-greeting"></span>`,

@@ -18,6 +18,7 @@ import asyncio
 import threading
 from datetime import datetime
 from typing import Optional
+from html.parser import HTMLParser
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,8 +46,10 @@ ALLOWED_ORIGINS = [
     "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com",  # 腾讯云部署
     "http://localhost:8771",  # 本地开发
     "http://localhost:8765",  # 本地开发备选
+    "http://localhost:8090",  # Trae 预览服务器
     "http://127.0.0.1:8765",
     "http://127.0.0.1:8771",
+    "http://127.0.0.1:8090",
 ]
 
 app.add_middleware(
@@ -499,6 +502,90 @@ def _parse_rss_feed(xml_text: str, source_url: str):
     return articles
 
 
+class ExtractRequest(BaseModel):
+    url: str
+
+
+class _TextExtractor(HTMLParser):
+    """从 HTML 中提取正文文本，跳过 script/style/nav/header/footer 等标签"""
+
+    SKIP_TAGS = {'script', 'style', 'nav', 'header', 'footer', 'aside', 'noscript', 'svg', 'iframe'}
+
+    def __init__(self):
+        super().__init__()
+        self._skip_depth = 0
+        self._chunks: list[str] = []
+        self._in_body = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'body':
+            self._in_body = True
+        if tag in self.SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data):
+        if self._skip_depth > 0:
+            return
+        text = data.strip()
+        if text and len(text) > 2:
+            self._chunks.append(text)
+
+    def get_text(self) -> str:
+        return '\n'.join(self._chunks)
+
+
+@app.post("/api/news/extract")
+async def extract_article_content(req: ExtractRequest):
+    """
+    【Issue 2 修复】抓取文章原文 URL，提取正文文本内容
+    供 dailyCrawlAndScore 调用，提升 AI 评分的信息量
+    """
+    url = req.url
+    if not url:
+        raise HTTPException(status_code=400, detail="URL 为空")
+
+    try:
+        headers = {
+            'User-Agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            ),
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+        }
+        request = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(request, timeout=15, context=_SSL_CONTEXT) as resp:
+            raw = resp.read()
+            # 尝试多种编码
+            for enc in ('utf-8', 'gbk', 'gb2312', 'latin-1'):
+                try:
+                    html_text = raw.decode(enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            else:
+                html_text = raw.decode('utf-8', errors='replace')
+
+        parser = _TextExtractor()
+        parser.feed(html_text)
+        text = parser.get_text()
+
+        # 截断过长内容（保留前 8000 字符）
+        if len(text) > 8000:
+            text = text[:8000]
+
+        logger.info(f"文章抓取: {url}, 提取 {len(text)} 字符")
+        return {'success': True, 'content': text, 'length': len(text)}
+
+    except Exception as e:
+        logger.error(f"文章抓取失败 {url}: {e}")
+        return {'success': False, 'error': str(e), 'content': ''}
+
+
 @app.post("/api/news/rss")
 async def fetch_rss(req: RssRequest):
     """
@@ -508,6 +595,7 @@ async def fetch_rss(req: RssRequest):
         raise HTTPException(status_code=400, detail="RSS 源为空")
 
     all_articles = []
+    failed_sources = []
     headers = {
         'User-Agent': (
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -525,6 +613,7 @@ async def fetch_rss(req: RssRequest):
             all_articles.extend(articles)
         except Exception as e:
             logger.warning(f"RSS 源抓取失败 {source}: {e}")
+            failed_sources.append({'url': source, 'error': str(e)})
 
     # 去重：按标题去重
     seen = set()
@@ -535,7 +624,7 @@ async def fetch_rss(req: RssRequest):
             seen.add(key)
             unique.append(a)
 
-    return {'success': True, 'data': unique, 'count': len(unique)}
+    return {'success': True, 'data': unique, 'count': len(unique), 'failedSources': failed_sources}
 
 
 @app.on_event("startup")

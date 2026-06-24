@@ -4,6 +4,13 @@
   接口层：src/js/news.js (已在 components.css 中引入)
   =========================================== -->
 
+<!-- 【Issue 4 修复】主标签移到内容区，与review/plan等页面风格一致 -->
+<div class="sub-tabs">
+  <div class="sub-tab active" onclick="switchNewsMainTab('recommend')">AI推荐清单</div>
+  <div class="sub-tab" onclick="switchNewsMainTab('history')">资讯历史</div>
+  <div class="sub-tab" onclick="switchNewsMainTab('stats')">统计概览</div>
+</div>
+
 <div class="news-page-section active" id="newsSectionRecommend">
   <!-- 统计卡片 -->
   <div class="news-stat-cards">
@@ -33,7 +40,9 @@
   <div class="news-action-bar">
     <input class="news-search-box" placeholder="搜索资讯标题或内容..." id="newsSearchInput" oninput="filterNewsCards()">
     <button class="btn btn-secondary btn-sm" onclick="toggleNewsBatchMode()" id="newsBatchBtn">☑ 批量操作</button>
-    <button class="btn btn-secondary btn-sm" onclick="openNewsModal('newsSourceModal')">🤖 AI 推荐信息源</button>
+    <button class="btn btn-secondary btn-sm" onclick="openNewsModal('newsRssManageModal')">📡 RSS源管理</button>
+    <button class="btn btn-secondary btn-sm" onclick="openNewsModal('newsSourceModal')">🤖 AI 推荐</button>
+    <button class="btn btn-primary btn-sm" onclick="triggerCrawlNews()">🔄 抓取资讯</button>
     <button class="btn btn-primary btn-sm" onclick="openNewsModal('newsManualModal')">+ 手动录入</button>
     <span style="font-size:12px;color:var(--gray-400);margin-left:auto;">💡 点击资讯卡片查看评分详情</span>
   </div>
@@ -107,6 +116,45 @@
 
 <!-- ========== 悬浮按钮 ========== -->
 <button class="news-quick-add" onclick="openNewsModal('newsManualModal')" title="手动录入">+</button>
+
+<!-- ================================================================
+  弹窗: RSS源管理 — Issue 1 新增
+  ================================================================ -->
+<div class="modal-overlay" id="newsRssManageModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title">📡 RSS源管理</span>
+      <button class="modal-close" onclick="closeNewsModal('newsRssManageModal')">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:500px;overflow-y:auto;">
+      <!-- 添加新源 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;">
+        <div class="form-group" style="flex:1;margin-bottom:0;">
+          <label class="form-label">源名称</label>
+          <input class="form-input" id="rssAddName" placeholder="例如：36氪" style="height:36px;">
+        </div>
+        <div class="form-group" style="flex:2;margin-bottom:0;">
+          <label class="form-label">RSS地址</label>
+          <input class="form-input" id="rssAddUrl" placeholder="https://example.com/rss" style="height:36px;">
+        </div>
+        <div class="form-group" style="flex:1;margin-bottom:0;">
+          <label class="form-label">分类</label>
+          <select class="form-select" id="rssAddCategory" style="height:36px;">
+            <option>技术资讯</option><option>AI/ML</option><option>前端开发</option><option>后端开发</option><option>科技前沿</option><option>科技新闻</option><option>技术博客</option><option>效率工具</option><option>其他</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addNewRssSource()" style="height:36px;white-space:nowrap;">+ 添加</button>
+      </div>
+      <!-- 源列表 -->
+      <div id="rssSourceList">
+        <div style="text-align:center;padding:20px;color:var(--gray-400);">加载中...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNewsModal('newsRssManageModal')">关闭</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================================================================
   弹窗 0: AI 推荐信息源 — AI-015
@@ -362,7 +410,8 @@
    状态管理
    ================================================================ */
 
-const newsState = {
+/* 【修复】news.js 未被 index.html 加载，newsState 必须在此定义 */
+var newsState = {
   mainTab: 'recommend',       // 'recommend' | 'history' | 'stats'
   recSubTab: 'all',           // 'all' | 'high' | 'mid' | 'low' | 'ignored'
   historySubTab: 'imported',  // 'imported' | 'ignored' | 'trash'
@@ -381,6 +430,10 @@ async function initNewsPage() {
   try {
     if (window.DB && window.DB.init) await window.DB.init();
   } catch (e) { /* 降级 */ }
+  /* 【Issue 1 修复】首次加载时初始化预设RSS源 */
+  try {
+    if (window.DB && window.DB.initDefaultRssSources) await window.DB.initDefaultRssSources();
+  } catch (e) { console.warn('[News] RSS源初始化失败:', e.message); }
   await loadNewsStats();
   await renderRecommendCards();
   bindNewsEvents();
@@ -626,12 +679,12 @@ async function renderNewsHistory() {
 
 function switchNewsMainTab(tab) {
   newsState.mainTab = tab;
-  // 更新顶栏子标签
+  /* 【Issue 4 修复】选择器改为页面内容区的sub-tabs */
+  var subTabs = document.querySelectorAll('.news-page-section ~ .sub-tabs .sub-tab, .sub-tabs .sub-tab');
   var tabMap = { recommend: 0, history: 1, stats: 2 };
-  var topbarSubTabs = document.querySelectorAll('#topbar-center .sub-tab');
-  topbarSubTabs.forEach(function(t) { t.classList.remove('active'); });
+  subTabs.forEach(function(t) { t.classList.remove('active'); });
   var idx = tabMap[tab];
-  if (idx !== undefined && topbarSubTabs[idx]) topbarSubTabs[idx].classList.add('active');
+  if (idx !== undefined && subTabs[idx]) subTabs[idx].classList.add('active');
 
   document.getElementById('newsSectionRecommend').classList.toggle('active', tab === 'recommend');
   document.getElementById('newsSectionHistory').classList.toggle('active', tab === 'history');
@@ -1424,6 +1477,139 @@ window.permanentDeleteNewsItem = permanentDeleteNewsItem;
 window.restoreNewsItem = restoreNewsItem;
 window.toggleNewsEntryMode = toggleNewsEntryMode;
 window.loadNewsOverview = loadNewsOverview;
+
+/* ================================================================
+   RSS源管理函数 (Issue 1 新增)
+   ================================================================ */
+
+/**
+ * 加载RSS源列表到管理弹窗
+ * 从数据库读取所有RSS源并渲染列表
+ */
+async function loadRssSourceList() {
+  var container = document.getElementById('rssSourceList');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);">加载中...</div>';
+  try {
+    var res = await DB.getRssSources();
+    if (!res.success || !res.data || res.data.length === 0) {
+      container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);">暂无RSS源，请添加或等待预设源初始化</div>';
+      return;
+    }
+    var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+    html += '<thead><tr style="border-bottom:1px solid var(--gray-200);text-align:left;">';
+    html += '<th style="padding:8px 4px;">启用</th><th style="padding:8px 4px;">名称</th><th style="padding:8px 4px;">分类</th><th style="padding:8px 4px;">地址</th><th style="padding:8px 4px;">操作</th>';
+    html += '</tr></thead><tbody>';
+    res.data.forEach(function(src) {
+      var id = src._id || src.id;
+      var checkedAttr = src.enabled ? 'checked' : '';
+      var nameHtml = src.isPreset ? src.name : '<input class="form-input" value="' + (src.name || '') + '" style="height:28px;font-size:12px;padding:2px 6px;" onchange="updateRssSourceField(\'' + id + '\',\'name\',this.value)">';
+      html += '<tr style="border-bottom:1px solid var(--gray-100);">';
+      html += '<td style="padding:8px 4px;"><input type="checkbox" ' + checkedAttr + ' onchange="toggleRssSourceEnabled(\'' + id + '\',this.checked)"></td>';
+      html += '<td style="padding:8px 4px;">' + nameHtml + '</td>';
+      html += '<td style="padding:8px 4px;color:var(--gray-500);font-size:12px;">' + (src.category || '') + '</td>';
+      html += '<td style="padding:8px 4px;font-size:12px;color:var(--gray-500);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (src.url || '') + '">' + (src.url || '') + '</td>';
+      html += '<td style="padding:8px 4px;">';
+      if (!src.isPreset) {
+        html += '<button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:11px;padding:2px 6px;" onclick="deleteRssSourceItem(\'' + id + '\')">删除</button>';
+      } else {
+        html += '<span style="font-size:11px;color:var(--gray-400);">预设</span>';
+      }
+      html += '</td></tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  } catch (error) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">加载失败: ' + error.message + '</div>';
+  }
+}
+
+/** 添加新的RSS源 */
+async function addNewRssSource() {
+  var name = (document.getElementById('rssAddName') || {}).value || '';
+  var url = (document.getElementById('rssAddUrl') || {}).value || '';
+  var category = (document.getElementById('rssAddCategory') || {}).value || '其他';
+  name = name.trim();
+  url = url.trim();
+  if (!url) { showNewsToast('请输入RSS地址', 'warning'); return; }
+  try {
+    var res = await DB.addRssSource({ name: name, url: url, category: category, enabled: true });
+    if (res.success) {
+      showNewsToast('RSS源已添加', 'success');
+      document.getElementById('rssAddName').value = '';
+      document.getElementById('rssAddUrl').value = '';
+      loadRssSourceList();
+    } else {
+      showNewsToast('添加失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    showNewsToast('添加失败: ' + error.message, 'error');
+  }
+}
+
+/** 切换RSS源启用/禁用 */
+async function toggleRssSourceEnabled(id, enabled) {
+  try {
+    await DB.toggleRssSource(id, enabled);
+    showNewsToast(enabled ? '已启用' : '已禁用', 'info');
+  } catch (error) {
+    showNewsToast('操作失败: ' + error.message, 'error');
+  }
+}
+
+/** 更新RSS源字段 */
+async function updateRssSourceField(id, field, value) {
+  try {
+    var data = {};
+    data[field] = value;
+    await DB.updateRssSource(id, data);
+  } catch (error) {
+    showNewsToast('更新失败: ' + error.message, 'error');
+  }
+}
+
+/** 删除RSS源 */
+async function deleteRssSourceItem(id) {
+  if (!confirm('确定删除此RSS源？')) return;
+  try {
+    await DB.deleteRssSource(id);
+    showNewsToast('已删除', 'info');
+    loadRssSourceList();
+  } catch (error) {
+    showNewsToast('删除失败: ' + error.message, 'error');
+  }
+}
+
+/** 触发爬取资讯（替代原来的startDailyCrawl） */
+async function triggerCrawlNews() {
+  showNewsToast('正在抓取资讯，请稍候...', 'info');
+  try {
+    var res = await DB.dailyCrawlAndScore();
+    if (res.success) {
+      var saved = (res.data && res.data.saved) || 0;
+      if (saved > 0) {
+        showNewsToast('抓取完成！新增 ' + saved + ' 条资讯', 'success');
+      } else if (res.message) {
+        /* 【修复】展示具体失败原因 */
+        showNewsToast('抓取完成但无新内容：' + res.message, 'info');
+      } else {
+        showNewsToast('抓取完成！新增 0 条资讯', 'info');
+      }
+      renderRecommendCards();
+    } else {
+      showNewsToast('抓取失败: ' + res.error, 'error');
+    }
+  } catch (error) {
+    showNewsToast('抓取失败: ' + error.message, 'error');
+  }
+}
+
+/** 打开RSS管理弹窗时自动加载列表 */
+var _origOpenNewsModal = window.openNewsModal;
+window.openNewsModal = function(modalId) {
+  _origOpenNewsModal(modalId);
+  if (modalId === 'newsRssManageModal') loadRssSourceList();
+};
 
 /* ================================================================
    自动启动（SPA 模式由 framework.js 调用 window.initNewsPage）

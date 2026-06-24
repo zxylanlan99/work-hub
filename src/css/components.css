@@ -913,7 +913,7 @@
   background: var(--gray-100);
   padding: 4px;
   border-radius: var(--radius);
-  margin-top: 20px;
+  margin-top: 0;
 }
 
 .sub-tab {

@@ -293,17 +293,45 @@ function initOutputPage() {
 }
 
 // 渲染热力图
-function renderHeatmap() {
+async function renderHeatmap() {
   const heatmapContainer = document.getElementById('heatmap-container');
   if (!heatmapContainer) return;
-  
-  const data = mockData.home.heatmap;
+
+  /* 使用真实数据替代 mockData，调用 DB.getStudyHeatmap 获取近 90 天学习记录 */
+  let data = [];
+  try {
+    if (window.DB) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 90);
+      const result = await window.DB.getStudyHeatmap(startDate.toISOString());
+      if (result.success && result.data) {
+        /* 将 review_history 记录转换为 {date, level} 格式 */
+        const dateMap = {};
+        result.data.forEach(function(record) {
+          const d = new Date(record.reviewedAt);
+          const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          dateMap[dateStr] = (dateMap[dateStr] || 0) + 1;
+        });
+        /* 生成最近 84 天（12 周）的数据 */
+        for (let i = 83; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+          const count = dateMap[dateStr] || 0;
+          data.push({ date: dateStr, level: Math.min(count, 4) });
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[Framework] 加载热力图数据失败:', error);
+  }
+
   const weeks = [];
-  
+
   for (let i = 0; i < data.length; i += 7) {
     weeks.push(data.slice(i, Math.min(i + 7, data.length)));
   }
-  
+
   let html = '<div class="heatmap-wrapper">';
   weeks.forEach((week, weekIndex) => {
     html += '<div class="heatmap-week">';
@@ -314,7 +342,7 @@ function renderHeatmap() {
     html += '</div>';
   });
   html += '</div>';
-  
+
   heatmapContainer.innerHTML = html;
 }
 

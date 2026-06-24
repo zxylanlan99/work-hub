@@ -261,9 +261,9 @@ const DB = {
     }
 
     // 回退：尝试通过 CloudBase 云函数调用
-    if (app) {
+    if (window.app) {
       try {
-        const result = await app.callFunction({ name: 'ai-proxy', data });
+        const result = await window.app.callFunction({ name: 'ai-proxy', data });
         if (result && result.result) {
           return { success: true, ...result.result };
         }
@@ -1141,7 +1141,7 @@ const DB = {
   /** DB-R-016: 搜索分类 */
   async searchCategories(keyword) {
     return this._exec(
-      this._collection('categories').where({ name: db.RegExp({ regexp: keyword, options: 'i' }) }).get()
+      this._collection('categories').where({ name: window.db.RegExp({ regexp: keyword, options: 'i' }) }).get()
     );
   },
 
@@ -1378,7 +1378,7 @@ const DB = {
   /** DB-R-019: 搜索知识 */
   async searchKnowledge(keyword, page = 1, pageSize = 20) {
     try {
-      const where = { isDeleted: false, title: db.RegExp({ regexp: keyword, options: 'i' }) };
+      const where = { isDeleted: false, title: window.db.RegExp({ regexp: keyword, options: 'i' }) };
       return this._paginate('knowledge_items', where, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
     } catch {
       return this._paginate('knowledge_items', { isDeleted: false }, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
@@ -1785,13 +1785,23 @@ const DB = {
 
   /** AI-012: 发送消息并获取 AI 回复 */
   async sendMessageAndReply(chatId, content, model = 'mimo') {
-    await this._collection('messages').add({
-      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
-    });
+    /* 参数校验：chatId 和 content 不能为空 */
+    if (!chatId) throw new Error('chatId 不能为空');
+    if (!content || !content.trim()) throw new Error('消息内容不能为空');
+
+    /* 先调用 AI，成功后再写入消息，避免 AI 失败时产生孤立用户消息 */
     const aiResult = await this._aiProxy({
       action: 'chat', messages: [{ role: 'user', content }], model
     });
-    const reply = aiResult.success ? aiResult.content : '抱歉,AI 暂时无法回复';
+    if (!aiResult.success) {
+      throw new Error(aiResult.error || 'AI 调用失败');
+    }
+    const reply = aiResult.content;
+
+    /* AI 调用成功后，批量写入用户消息和 AI 回复 */
+    await this._collection('messages').add({
+      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
+    });
     await this._collection('messages').add({
       chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
     });
@@ -1807,9 +1817,13 @@ const DB = {
    * @param {string} model
    */
   async sendMessageWithKnowledge(chatId, content, knowledgeIds, model = 'mimo') {
+    /* 参数校验 */
+    if (!chatId) throw new Error('chatId 不能为空');
+    if (!content || !content.trim()) throw new Error('消息内容不能为空');
+
     console.log('[DB] 📡 发送带资料引用的消息:', { chatId, knowledgeCount: (knowledgeIds || []).length });
 
-    // 1. 读取知识条目内容
+    /* 1. 读取知识条目内容 */
     let materialText = '';
     if (knowledgeIds && knowledgeIds.length > 0) {
       try {
@@ -1825,24 +1839,25 @@ const DB = {
       }
     }
 
-    // 2. 构造带上下文的用户消息
+    /* 2. 构造带上下文的用户消息 */
     const contextPrefix = materialText
       ? '请参考以下资料回答问题：\n\n' + materialText + '\n\n---\n\n用户问题：'
       : '';
     const fullContent = contextPrefix + content;
 
-    // 3. 保存用户消息（原始问题）
-    await this._collection('messages').add({
-      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
-    });
-
-    // 4. 调用 AI
+    /* 3. 先调用 AI，成功后再写入消息，避免 AI 失败时产生孤立用户消息 */
     const aiResult = await this._aiProxy({
       action: 'chat', messages: [{ role: 'user', content: fullContent }], model
     });
-    const reply = aiResult.success ? aiResult.content : '抱歉,AI 暂时无法回复';
+    if (!aiResult.success) {
+      throw new Error(aiResult.error || 'AI 调用失败');
+    }
+    const reply = aiResult.content;
 
-    // 5. 保存 AI 回复
+    /* 4. AI 调用成功后，批量写入用户消息和 AI 回复 */
+    await this._collection('messages').add({
+      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
+    });
     await this._collection('messages').add({
       chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
     });
@@ -2572,9 +2587,9 @@ const DB = {
 
   /** CF-001: 立即备份 (云函数触发) */
   async triggerBackup() {
-    if (!app) return { success: false, error: 'CloudBase 未初始化' };
+    if (!window.app) return { success: false, error: 'CloudBase 未初始化' };
     try {
-      const result = await app.callFunction({ name: 'data-cleanup', data: { action: 'backup' } });
+      const result = await window.app.callFunction({ name: 'data-cleanup', data: { action: 'backup' } });
       return { success: true, data: result };
     } catch (error) {
       return { success: false, error: error.message || '备份失败' };
@@ -2585,19 +2600,19 @@ const DB = {
      十一、CloudBase 查询操作符辅助
      ================================================================ */
 
-  _gte(val) { return db.command.gte(val); },
-  _lte(val) { return db.command.lte(val); },
-  _lt(val) { return db.command.lt(val); },
-  _gt(val) { return db.command.gt(val); },
-  _between(start, end) { return db.command.and(db.command.gte(start), db.command.lte(end)); },
+  _gte(val) { return window.db.command.gte(val); },
+  _lte(val) { return window.db.command.lte(val); },
+  _lt(val) { return window.db.command.lt(val); },
+  _gt(val) { return window.db.command.gt(val); },
+  _between(start, end) { return window.db.command.and(window.db.command.gte(start), window.db.command.lte(end)); },
 
   /* ================================================================
      十二、初始化 (确保与 cloudbase.js 协作)
      ================================================================ */
 
   async init() {
-    if (!app) await initCloudbase();
-    return !!app;
+    if (!window.app) await initCloudbase();
+    return !!window.app;
   }
 };
 

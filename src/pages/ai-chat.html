@@ -177,9 +177,8 @@ async function loadChatList() {
   if (!list) return;
   
   try {
-    var result = window.DB
-      ? await window.DB.getChats(1, 50)
-      : { success: true, data: [] };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    var result = await window.DB.getChats(1, 50);
     
     chatState.conversations = result.data || [];
     
@@ -223,9 +222,8 @@ async function loadChatList() {
 
 async function createNewChat() {
   try {
-    var result = window.DB
-      ? await window.DB.createChat({ title: '新对话', model: chatState.currentModel })
-      : { success: true, data: { id: 'local-' + Date.now() } };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    var result = await window.DB.createChat({ title: '新对话', model: chatState.currentModel });
     
     if (result.success) {
       var chatId = result.data ? (result.data.id || result.data._id) : null;
@@ -250,18 +248,26 @@ async function createNewChat() {
 // ================================================================
 
 async function selectChat(chatId, title) {
-  chatState.currentChatId = chatId;
-  
-  // 更新 UI 选中状态
-  document.querySelectorAll('.conversation-item').forEach(function(el) {
-    el.classList.remove('active');
-  });
-  var item = document.getElementById('chat-item-' + chatId);
-  if (item) item.classList.add('active');
-  
-  document.getElementById('chat-title').textContent = title || 'AI助手';
-  
-  await loadMessages(chatId);
+  /* 参数校验 */
+  if (!chatId) return;
+
+  try {
+    chatState.currentChatId = chatId;
+
+    /* 更新 UI 选中状态 */
+    document.querySelectorAll('.conversation-item').forEach(function(el) {
+      el.classList.remove('active');
+    });
+    var item = document.getElementById('chat-item-' + chatId);
+    if (item) item.classList.add('active');
+
+    document.getElementById('chat-title').textContent = title || 'AI助手';
+
+    await loadMessages(chatId);
+  } catch (error) {
+    console.error('[AIChat] 选择对话失败:', error);
+    chatToast('加载对话失败: ' + error.message, 'error');
+  }
 }
 
 async function loadMessages(chatId) {
@@ -269,9 +275,8 @@ async function loadMessages(chatId) {
   if (!container) return;
   
   try {
-    var result = window.DB
-      ? await window.DB.getMessages(chatId)
-      : { success: true, data: [] };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    var result = await window.DB.getMessages(chatId);
     
     var messages = (result.data || []).sort(function(a, b) {
       return new Date(a.createdAt) - new Date(b.createdAt);
@@ -356,22 +361,26 @@ function renderMessageHtml(msg) {
 function renderMarkdownLite(text) {
   if (!text) return '';
   var html = escapeChatHtml(text);
-  // 代码块
+  /* 代码块 */
   html = html.replace(/```([\w]*)\n?([\s\S]*?)```/g, function(_, lang, code) {
     return '<pre style="background:#1e1e1e;color:#d4d4d4;padding:12px;border-radius:8px;' +
       'overflow-x:auto;font-size:13px;margin:8px 0;"><code>' + code.trim() + '</code></pre>';
   });
-  // 行内代码
+  /* 行内代码 */
   html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.08);padding:1px 5px;border-radius:4px;font-size:13px;">$1</code>');
-  // 加粗
+  /* 加粗 */
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  // 斜体
+  /* 斜体 */
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  // 无序列表（以 - 或 • 开头）
+  /* 无序列表（以 - 或 • 开头）*/
   html = html.replace(/^[-•] (.+)$/gm, '<li style="margin:2px 0;">$1</li>');
   html = html.replace(/(<li[^>]*>[\s\S]+?<\/li>)/g, '<ul style="padding-left:16px;margin:4px 0;">$1</ul>');
-  // 换行
+  /* 换行 */
   html = html.replace(/\n/g, '<br>');
+  /* DOMPurify XSS 清理：防止 AI 回复中包含恶意 HTML */
+  if (typeof window.DOMPurify !== 'undefined' && typeof window.DOMPurify.sanitize === 'function') {
+    html = window.DOMPurify.sanitize(html);
+  }
   return html;
 }
 
@@ -458,9 +467,8 @@ async function sendMessage() {
   try {
     console.log('[AIChat] 📡 发送消息:', { chatId: chatState.currentChatId, model: chatState.currentModel, hasAttachments: pendingFiles.length > 0 });
     
-    var result = window.DB
-      ? await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel)
-      : { success: false, error: 'DB 不可用' };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    var result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
     
     // 移除 typing indicator
     var typing = document.getElementById('typing-indicator');
@@ -515,9 +523,8 @@ async function deleteChatConfirm() {
   if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
   
   try {
-    var result = window.DB
-      ? await window.DB.deleteChat(chatState.currentChatId)
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    var result = await window.DB.deleteChat(chatState.currentChatId);
     
     if (result.success) {
       chatToast('对话已删除', 'success');
@@ -557,9 +564,10 @@ function exportChat() {
   var lines = [];
   messages.forEach(function(msgEl) {
     var isUser = msgEl.classList.contains('user');
-    var pre = msgEl.querySelector('pre');
-    var content = pre ? pre.textContent : '';
-    lines.push((isUser ? '我' : 'AI') + ': ' + content);
+    /* 提取消息气泡的完整文本内容（不仅限于 <pre> 标签） */
+    var bubble = msgEl.querySelector('div[style*="border-radius"]');
+    var msgContent = bubble ? bubble.textContent : msgEl.textContent;
+    lines.push((isUser ? '我' : 'AI') + ': ' + msgContent);
   });
   
   var content = lines.join('\n\n---\n\n');

@@ -153,9 +153,8 @@ async function _loadKnowledgeItemsForSelector() {
   panel.innerHTML = '<div style="padding:8px;color:#6b7280;font-size:13px;">加载资料中…</div>';
 
   try {
-    const result = window.DB
-      ? await window.DB._exec(window.DB._collection('knowledge_items').where({ isDeleted: false }).limit(50).get())
-      : { success: true, data: [] };
+    if (!window.DB) throw new Error('数据库服务未初始化');
+    const result = await window.DB._exec(window.DB._collection('knowledge_items').where({ isDeleted: false }).limit(50).get());
     const items = result.data || [];
 
     if (items.length === 0) {
@@ -207,7 +206,8 @@ async function loadModelOptions() {
   if (!select) return;
 
   try {
-    const models = window.DB ? window.DB.getAvailableModels() : [];
+    if (!window.DB) throw new Error('数据库服务未初始化');
+    const models = window.DB.getAvailableModels();
     if (models.length > 0) {
       select.innerHTML = models.map(m =>
         `<option value="${m.id}">${m.name}</option>`
@@ -215,6 +215,7 @@ async function loadModelOptions() {
     }
   } catch (error) {
     console.error('加载模型列表失败:', error);
+    showToast('加载模型列表失败: ' + error.message, 'error');
   }
 }
 
@@ -227,9 +228,8 @@ async function loadChats() {
   if (!list) return;
 
   try {
-    const result = window.DB
-      ? await window.DB.getChats(chatState.currentPage, chatState.pageSize)
-      : { success: true, data: [] };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.getChats(chatState.currentPage, chatState.pageSize);
     const chats = result.data || [];
 
     if (chats.length === 0) {
@@ -270,9 +270,8 @@ async function loadChats() {
 
 async function createNewChat() {
   try {
-    const result = window.DB
-      ? await window.DB.createChat({ title: '新对话' })
-      : { success: true, data: { id: 'local-' + Date.now() } };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.createChat({ title: '新对话' });
 
     if (result.success) {
       const chatId = result.data ? result.data.id || result.data._id : null;
@@ -310,9 +309,8 @@ async function loadMessages(chatId) {
   if (!container) return;
 
   try {
-    const result = window.DB
-      ? await window.DB.getMessages(chatId)
-      : { success: true, data: [] };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.getMessages(chatId);
     const messages = (result.data || []).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     if (messages.length === 0) {
@@ -400,12 +398,11 @@ async function sendMessage() {
     const modelSelect = document.getElementById('model-select');
     const model = modelSelect ? modelSelect.value : 'mimo';
 
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
     const hasKnowledge = chatState.selectedKnowledgeIds && chatState.selectedKnowledgeIds.length > 0;
-    const result = window.DB
-      ? (hasKnowledge
-          ? await window.DB.sendMessageWithKnowledge(chatState.currentChatId, content, chatState.selectedKnowledgeIds, model)
-          : await window.DB.sendMessageAndReply(chatState.currentChatId, content, model))
-      : { success: true, data: { reply: '这是一个模拟的AI回复。实际部署后将连接真实AI服务。' } };
+    const result = hasKnowledge
+      ? await window.DB.sendMessageWithKnowledge(chatState.currentChatId, content, chatState.selectedKnowledgeIds, model)
+      : await window.DB.sendMessageAndReply(chatState.currentChatId, content, model);
 
     // 发送后清空已选资料
     chatState.selectedKnowledgeIds = [];
@@ -451,9 +448,8 @@ async function deleteChatConfirm(chatId) {
   if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
 
   try {
-    const result = window.DB
-      ? await window.DB.deleteChat(chatId)
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.deleteChat(chatId);
     if (result.success) {
       showToast('对话已删除', 'success');
       if (chatState.currentChatId === chatId) {
@@ -479,9 +475,8 @@ async function renameChat(chatId) {
   if (!title || !title.trim()) return;
 
   try {
-    const result = window.DB
-      ? await window.DB.updateChat(chatId, { title: title.trim() })
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.updateChat(chatId, { title: title.trim() });
     if (result.success) {
       showToast('标题已更新', 'success');
       loadChats();
@@ -500,9 +495,8 @@ async function renameChat(chatId) {
 
 async function toggleStarMessage(messageId, isStarred) {
   try {
-    const result = window.DB
-      ? (isStarred ? await window.DB.unstarMessage(messageId) : await window.DB.starMessage(messageId))
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = isStarred ? await window.DB.unstarMessage(messageId) : await window.DB.starMessage(messageId);
     if (result.success) {
       showToast(isStarred ? '已取消收藏' : '已收藏', 'success');
       if (chatState.currentChatId) loadMessages(chatState.currentChatId);
@@ -521,9 +515,8 @@ async function toggleStarMessage(messageId, isStarred) {
 
 async function messageToKnowledge(messageId) {
   try {
-    const result = window.DB
-      ? await window.DB.messageToKnowledge(messageId)
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.messageToKnowledge(messageId);
     if (result.success) {
       showToast('已转为知识条目', 'success');
     } else {
@@ -589,9 +582,8 @@ async function startCompareMode() {
 
 async function adoptCompareAnswer(model, content) {
   try {
-    const result = window.DB
-      ? await window.DB.mergeCompareAnswers(chatState.currentChatId, `[${model}] ${content}`)
-      : { success: true };
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB.mergeCompareAnswers(chatState.currentChatId, `[${model}] ${content}`);
     if (result.success) {
       showToast('已采纳回答', 'success');
       if (chatState.currentChatId) loadMessages(chatState.currentChatId);
@@ -632,11 +624,13 @@ window._toggleKnowledgeItem = _toggleKnowledgeItem;
 /* 兼容旧 plan.html 中 callAI 函数 */
 if (typeof window.callAI === 'undefined') {
   window.callAI = async function (message, model) {
-    const result = await (window.DB ? window.DB._aiProxy({
+    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
+    const result = await window.DB._aiProxy({
       action: 'chat',
       messages: [{ role: 'user', content: message }],
       model: model || 'mimo'
-    }) : { success: true, content: '模拟回复' });
+    });
+    if (!result.success) throw new Error(result.error || 'AI 调用失败');
     return result.content || '抱歉，无法获取回复';
   };
 }

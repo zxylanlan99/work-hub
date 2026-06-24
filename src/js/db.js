@@ -1098,6 +1098,8 @@ const DB = {
 
   /* ---------- 复习卡片创建 (无编号) ---------- */
   async createReviewCard(data) {
+    // 【Issue 7 修复】使用调用方传入的 nextReview，若未传入则默认+2天
+    var nextReviewTime = data.nextReview || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     return this._exec(
       this._collection('review_cards').add({
         question: data.question,
@@ -1106,7 +1108,7 @@ const DB = {
         knowledgeId: data.knowledgeId || '',
         mastery: 1.0,
         interval: 1,
-        nextReview: new Date(),
+        nextReview: nextReviewTime,
         lastQuality: null,
         reviewCount: 0,
         lastReviewAt: null,

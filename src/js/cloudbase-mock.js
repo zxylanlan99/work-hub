@@ -287,6 +287,10 @@
 
     async callFunction({ name, data }) {
       console.log(`Mock: callFunction(${name})`, data);
+      // 【Issue 6 修复】AI相关云函数禁止返回模拟数据，直接返回错误
+      if (name === 'ai-proxy' || name === 'ai' || (data && data.action && data.action.startsWith && (data.action.startsWith('goal-') || data.action.startsWith('chat') || data.action === 'quiz-generate'))) {
+        return { result: { success: false, error: 'Mock SDK 不支持 AI 调用，请配置真实 CloudBase SDK 和 AI 模型' } };
+      }
       return { result: { success: true, content: 'Mock response' } };
     }
   }

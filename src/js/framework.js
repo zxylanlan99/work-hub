@@ -17,9 +17,9 @@ const topbarConfigs = {
             <span class="topbar-date" id="topbarDate"></span>`,
     center: ''
   },
+  /* 【Issue 5 修复】列表页去掉AI诊断按钮，仅保留新建目标 */
   plan: {
-    right: `<button class="btn btn-secondary btn-sm" onclick="openDiagModal()">🤖 AI诊断</button>
-            <button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
+    right: `<button class="btn btn-primary btn-sm" id="planCreateBtn" onclick="openCreateModal()">+ 新建目标</button>`,
     center: ''
   },
   news: {

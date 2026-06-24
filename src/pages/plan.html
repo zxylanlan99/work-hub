@@ -228,23 +228,27 @@
         </div>
         <div class="form-group" style="margin-top:16px;">
           <label class="form-label">目标名称</label>
-          <input class="form-input" id="genGoalTitle" value="" placeholder="输入目标名称" style="font-weight:600;">
+          <!-- 【Issue 3 修复】目标名称宽度限定300px -->
+          <input class="form-input" id="genGoalTitle" value="" placeholder="输入目标名称" style="font-weight:600;width:300px">
         </div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">所属领域</label>
-            <select class="form-select" id="genGoalDomain">
+            <!-- 【Issue 3 修复】所属领域宽度限定300px，丰富枚举选项 -->
+            <select class="form-select" id="genGoalDomain" style="width:300px">
               <option value="">不选择</option>
-              <option>后端开发</option>
-              <option>前端开发</option>
-              <option>DevOps</option>
-              <option>数据科学</option>
-              <option>编程语言</option>
+              <optgroup label="编程开发"><option>前端开发</option><option>后端开发</option><option>全栈开发</option><option>移动开发(iOS)</option><option>移动开发(Android)</option><option>跨平台开发(Flutter/RN)</option><option>游戏开发</option><option>嵌入式开发</option></optgroup>
+              <optgroup label="数据与AI"><option>数据科学</option><option>机器学习</option><option>深度学习</option><option>大数据</option><option>数据分析</option></optgroup>
+              <optgroup label="基础设施"><option>DevOps</option><option>云计算</option><option>网络安全</option><option>数据库管理</option></optgroup>
+              <optgroup label="编程语言"><option>JavaScript/TypeScript</option><option>Python</option><option>Java</option><option>Go</option><option>Rust</option><option>C/C++</option><option>Swift</option><option>Kotlin</option></optgroup>
+              <optgroup label="设计与产品"><option>UI/UX设计</option><option>产品管理</option></optgroup>
+              <optgroup label="其他"><option>区块链</option><option>物联网</option><option>其他</option></optgroup>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">当前基础</label>
-            <select class="form-select" id="genGoalTopic">
+            <!-- 【Issue 3 修复】当前基础宽度限定300px -->
+            <select class="form-select" id="genGoalTopic" style="width:300px">
               <option value="">不选择</option>
               <option>零基础</option>
               <option>入门</option>
@@ -575,20 +579,32 @@ var currentDetailGoalId = null;
 var createStep = 1;
 
 // 初始化
+// 【Issue 8 修复】优先渲染目标卡片，暖身/续接/统计数据改为非阻塞加载
 async function initPlanPage() {
   console.log('[Plan] 🚀 开始初始化学习计划页面...');
-  // 初始化 CloudBase（使用 mock SDK 或真实 SDK）
+  // 初始化 CloudBase
   try {
     await initCloudbase();
     console.log('[Plan] ✅ CloudBase 初始化成功');
   } catch (e) {
     console.error('[Plan] ❌ CloudBase 初始化失败:', e);
   }
-  await loadWarmupData();
-  await loadResumeData();
-  await loadGoalStats();
+  // 优先渲染目标卡片（用户最关心的内容）
   await renderGoalCards(planFilter);
-  console.log('[Plan] ✅ 学习计划页面初始化完成');
+  console.log('[Plan] ✅ 目标卡片已渲染');
+  // 非关键数据异步加载，不阻塞页面渲染
+  Promise.allSettled([
+    loadWarmupData(),
+    loadResumeData(),
+    loadGoalStats()
+  ]).then(function(results) {
+    results.forEach(function(r, i) {
+      if (r.status === 'rejected') {
+        console.warn('[Plan] 非关键数据加载失败:', ['暖身数据', '续接数据', '统计数据'][i], r.reason);
+      }
+    });
+    console.log('[Plan] ✅ 学习计划页面全部初始化完成');
+  });
 }
 
 // 加载暖身数据
@@ -694,6 +710,7 @@ function sortPlanGoals(type) {
 }
 
 // 渲染目标卡片
+// 【Issue 4 修复】批量查询所有目标的任务数据，确保卡片进度与详情页一致
 async function renderGoalCards(filter, sortBy = 'recent') {
   console.log('[Plan] 📡 开始加载目标列表...', { filter, sortBy });
   try {
@@ -702,6 +719,28 @@ async function renderGoalCards(filter, sortBy = 'recent') {
     
     let goals = res.success ? res.data : [];
     console.log('[Plan] 📊 目标数量:', goals.length);
+    
+    // 【Issue 4 修复】批量查询所有目标的任务，计算真实进度
+    if (goals.length > 0) {
+      const taskPromises = goals.map(g => {
+        var goalId = g._id || g.id;
+        return DB.getGoalDetail(goalId).catch(function() { return { success: false }; });
+      });
+      const taskResults = await Promise.all(taskPromises);
+      goals.forEach(function(g, i) {
+        var detail = taskResults[i];
+        if (detail && detail.success && detail.data && detail.data.tasks) {
+          var tasks = detail.data.tasks;
+          var completed = tasks.filter(function(t) { return t.status === 'completed'; }).length;
+          var total = tasks.filter(function(t) { return t.status !== 'skipped'; }).length;
+          g._completedTasks = completed;
+          g._totalTasks = total;
+        } else {
+          g._completedTasks = 0;
+          g._totalTasks = 0;
+        }
+      });
+    }
     
     // 本地排序
     if (sortBy === 'progress') {
@@ -727,9 +766,10 @@ async function renderGoalCards(filter, sortBy = 'recent') {
           : (g.status === 'paused' ? '<span class="badge badge-paused">⏸️ 暂停中</span>'
           : '<span class="badge badge-completed">✅ 已完成</span>');
         const progressColor = g.status === 'completed' ? 'success' : (g.status === 'paused' ? 'warning' : 'primary');
-        const completedTasks = (g.tasks || []).filter(t => t.status === 'completed').length;
-        const totalTasks = g.tasks ? g.tasks.length : (g.totalTasks || 0);
-        const progress = Math.round((completedTasks / Math.max(totalTasks, 1)) * 100);
+        // 【Issue 4 修复】使用批量查询的任务数据计算进度
+        const completedTasks = g._completedTasks || 0;
+        const totalTasks = g._totalTasks || 0;
+        const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
         const metaHtml = g.status === 'completed'
           ? `<span>✅ 完成于 ${g.completedAt || g.deadline}</span><span>📋 ${completedTasks}/${totalTasks} 任务</span>`
           : `<span>📅 截止 ${g.deadline}</span><span>📋 ${completedTasks}/${totalTasks} 任务</span><span>⏱️ 约${g.estimatedHours || 42}小时</span>`;
@@ -1467,6 +1507,96 @@ document.addEventListener('click', function(e) {
 var isManualCreateMode = false;
 var editorMilestones = []; // 第3步编辑器数据（AI和手动共用）
 
+/**
+ * 【Issue 1 修复】收集第2步AI对话记录
+ * 遍历 aiChatWrap 中的对话气泡，提取用户和AI的消息内容
+ * @returns {string} 对话摘要文本
+ */
+function _collectChatHistory() {
+  var wrap = document.getElementById('aiChatWrap');
+  if (!wrap) return '';
+  var bubbles = wrap.querySelectorAll('.chat-bubble');
+  var lines = [];
+  bubbles.forEach(function(b) {
+    var contentEl = b.querySelector('.chat-content');
+    if (!contentEl) return;
+    var text = contentEl.textContent.trim();
+    if (!text) return;
+    if (b.classList.contains('user') || contentEl.classList.contains('user')) {
+      lines.push('用户：' + text);
+    } else if (contentEl.classList.contains('ai')) {
+      lines.push('AI：' + text);
+    }
+  });
+  return lines.join('\n');
+}
+
+/**
+ * 【Issue 1 修复】自动将第1步内容发送给AI
+ * 读取第1步的学习目标、描述、截止时间、每周投入时间，组合为初始消息发送给AI
+ * 用户无需在第2步再次录入信息
+ */
+async function _autoSendStep1ToAI() {
+  var title = (document.getElementById('goalTitleInput') || {}).value || '';
+  var background = (document.getElementById('goalBackground') || {}).value || '';
+  var deadline = (document.getElementById('goalDeadline') || {}).value || '';
+  var weeklyHours = (document.getElementById('goalWeeklyHours') || {}).value || '';
+
+  title = title.trim();
+  background = background.trim();
+
+  if (!title && !background) return; // 无内容则不发送
+
+  // 组合初始消息
+  var parts = [];
+  if (title) parts.push('我想学习：' + title);
+  if (background) parts.push('当前基础：' + background);
+  if (deadline) parts.push('期望完成时间：' + deadline);
+  if (weeklyHours) parts.push('每周可投入时间：' + weeklyHours);
+  var initMsg = parts.join('。') + '。请根据以上信息帮我分析学习路径，给出澄清建议。';
+
+  // 清除AI欢迎气泡，显示用户消息
+  var wrap = document.getElementById('aiChatWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+
+  // 显示用户消息气泡
+  wrap.innerHTML += '<div class="chat-bubble user"><div class="chat-avatar user">👤</div><div class="chat-content user">' + renderMarkdown(initMsg) + '</div></div>';
+
+  // 显示AI输入中指示器
+  wrap.innerHTML += '<div class="chat-bubble" id="aiTypingBubble"><div class="chat-avatar ai">🤖</div><div class="typing-indicator"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div></div>';
+  wrap.scrollTop = wrap.scrollHeight;
+
+  try {
+    // 调用真实AI服务获取澄清建议
+    var aiReply = '抱歉，AI 暂时无法回复。';
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      var res = await window.AIService.callAI({
+        action: 'chat',
+        messages: [{ role: 'user', content: initMsg }]
+      });
+      if (res.success && res.content) {
+        aiReply = res.content;
+      } else {
+        aiReply = 'AI 回复失败：' + (res.error || '未知错误');
+      }
+    } else {
+      aiReply = 'AI 服务未初始化，请先在设置页面配置 AI 模型。';
+    }
+
+    var typingBubble = document.getElementById('aiTypingBubble');
+    if (typingBubble) {
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">' + renderMarkdown(aiReply) + '</div>';
+    }
+    wrap.scrollTop = wrap.scrollHeight;
+  } catch (error) {
+    var typingBubble = document.getElementById('aiTypingBubble');
+    if (typingBubble) {
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">AI 回复出错：' + renderMarkdown(error.message) + '</div>';
+    }
+  }
+}
+
 function createNextStep() {
   createStep++;
   document.getElementById('createSteps').querySelectorAll('.step').forEach((s, i) => {
@@ -1479,6 +1609,8 @@ function createNextStep() {
   if (createStep === 2) {
     document.getElementById('createPrevBtn').style.display = 'inline-flex';
     document.getElementById('createManualBtn').style.display = 'none';
+    // 【Issue 1 修复】自动将第1步内容发送给AI，无需用户再录入
+    _autoSendStep1ToAI();
   }
 
   if (createStep === 3) {
@@ -1537,6 +1669,7 @@ function manualCreateToStep3() {
 }
 
 // AI 拆解：调用接口生成里程碑和任务
+// 【Issue 1 修复】将第2步AI对话内容也纳入生成上下文
 async function aiGeneratePlan() {
   var titleEl = document.getElementById('goalTitleInput');
   var bgEl = document.getElementById('goalBackground');
@@ -1553,6 +1686,9 @@ async function aiGeneratePlan() {
   var genTitleEl = document.getElementById('genGoalTitle');
   if (genTitleEl && title) genTitleEl.value = title;
 
+  // 收集第2步的AI对话记录，作为生成计划的上下文
+  var chatContext = _collectChatHistory();
+
   // 显示加载中
   var listEl = document.getElementById('milestoneEditorList');
   if (listEl) {
@@ -1565,8 +1701,12 @@ async function aiGeneratePlan() {
   if (step3Source) step3Source.textContent = 'AI 模式';
 
   try {
+    // 组合第1步信息 + 第2步AI对话上下文，生成完整描述
     var aiDesc = title + (description ? '。背景：' + description : '');
-    console.log('[Plan] 📡 调用 AI 创建目标...', { description: aiDesc });
+    if (chatContext) {
+      aiDesc += '\n\n【AI澄清对话摘要】\n' + chatContext;
+    }
+    console.log('[Plan] 📡 调用 AI 创建目标...', { description: aiDesc.substring(0, 100) + '...' });
     var res = await DB.aiCreateGoal(aiDesc);
     console.log('[Plan] 📥 AI 响应:', res);
 
@@ -1908,10 +2048,8 @@ async function sendChatReply() {
   if (!input.value.trim()) return;
   const wrap = document.getElementById('aiChatWrap');
   const userMsg = input.value.trim();
-  wrap.innerHTML += `<div class="chat-bubble user">
-    <div class="chat-avatar user">👤</div>
-    <div class="chat-content user">${userMsg}</div>
-  </div>`;
+  // 【安全】用户输入需要转义后插入HTML，防止XSS
+  wrap.innerHTML += '<div class="chat-bubble user"><div class="chat-avatar user">👤</div><div class="chat-content user">' + renderMarkdown(userMsg) + '</div></div>';
   input.value = '';
 
   // 显示 AI 正在输入
@@ -1937,13 +2075,14 @@ async function sendChatReply() {
 
     var typingBubble = document.getElementById('aiTypingBubble');
     if (typingBubble) {
-      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">' + aiReply + '</div>';
+      // 【安全】AI回复通过renderMarkdown转义后插入
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">' + renderMarkdown(aiReply) + '</div>';
     }
     wrap.scrollTop = wrap.scrollHeight;
   } catch (error) {
     var typingBubble = document.getElementById('aiTypingBubble');
     if (typingBubble) {
-      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">AI 回复出错：' + error.message + '</div>';
+      typingBubble.innerHTML = '<div class="chat-avatar ai">🤖</div><div class="chat-content ai">AI 回复出错：' + renderMarkdown(error.message) + '</div>';
     }
   }
 }
@@ -2080,32 +2219,8 @@ async function resumeGoal(goalId) {
   if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
 }
 
-// 任务完成后续
-async function completeWith(type) {
-  const taskId = document.getElementById('taskCompleteModal').getAttribute('data-task-id');
-  console.log('[Plan] 📡 开始完成任务...', { taskId, type });
-  try {
-    const res = await DB.completeTask(taskId);
-    console.log('[Plan] 📥 完成任务响应:', res);
-    if (res.success) {
-      toast('任务已完成', 'success');
-      console.log('[Plan] ✅ 任务已完成');
-    } else {
-      toast('完成失败: ' + res.error, 'error');
-      console.log('[Plan] ⚠️ 完成失败:', res.error);
-    }
-  } catch (error) {
-    console.error('[Plan] ❌ 完成任务失败:', error);
-    toast('完成失败', 'error');
-  }
-  closePlanModal('taskCompleteModal');
-  if (type === 'note') {
-    toast('已打开笔记编辑器', 'info');
-  } else {
-    toast('复习卡片已生成', 'success');
-  }
-  if (currentDetailGoalId) await openPlanDetail(currentDetailGoalId);
-}
+// 【Issue 7 修复】删除重复的 completeWith 定义（原2187行简化版）
+// 保留第1236行的完整版，该版本包含 DB.createReviewCard 调用
 
 async function confirmAddTask() {
   const name = document.getElementById('taskName').value;

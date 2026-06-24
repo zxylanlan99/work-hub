@@ -1673,13 +1673,13 @@
   color: #fff;
 }
 
-/* AI对话 */
+/* 【Issue 2 修复】AI对话区域高度增加60px (280→340) */
 .ai-chat-wrap {
   display: flex;
   flex-direction: column;
   gap: 12px;
   margin-bottom: 16px;
-  max-height: 280px;
+  max-height: 340px;
   overflow-y: auto;
 }
 
@@ -1738,6 +1738,7 @@
   gap: 8px;
 }
 
+/* 【Issue 2 修复】输入框高度增加到80px，内容过多时可滚动 */
 .chat-input {
   flex: 1;
   padding: 8px 12px;
@@ -1747,6 +1748,9 @@
   font-family: inherit;
   resize: none;
   transition: border-color 0.15s;
+  min-height: 80px;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .chat-input:focus {

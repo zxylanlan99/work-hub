@@ -20,7 +20,7 @@ from datetime import datetime
 from typing import Optional
 from html.parser import HTMLParser
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -242,6 +242,81 @@ async def upload_file(
             'item_id': item_id,
             'file_name': file.filename,
             'file_size': file_size,
+            'status': 'processing'
+        }
+    }
+
+
+@app.post("/api/knowledge/chunk-text")
+async def chunk_text_endpoint(
+    background_tasks: BackgroundTasks,
+    request: Request
+):
+    """
+    文本内容切片与矢量化 — 用于资讯入库时的切片处理
+    接收纯文本内容，异步执行切片→向量化→存储
+    """
+    import uuid
+    body = await request.json()
+    text = body.get('text', '')
+    title = body.get('title', '')
+    item_id = body.get('itemId', '') or f"kb_{uuid.uuid4().hex[:12]}"
+    category_id = body.get('categoryId', '')
+
+    if not text or len(text.strip()) < 50:
+        return {'success': True, 'data': {'status': 'skipped', 'message': '内容过短，跳过切片'}}
+
+    task_id = f"task_{uuid.uuid4().hex[:12]}"
+
+    _register_item(item_id, {
+        'item_id': item_id,
+        'title': title or '未命名',
+        'file_name': '',
+        'file_type': 'text',
+        'file_size': len(text),
+        'file_path': '',
+        'category_id': category_id,
+        'status': 'processing',
+        'chunk_count': 0,
+        'created_at': datetime.now().isoformat()
+    })
+
+    _task_status[task_id] = {
+        'status': 'pending', 'progress': 0, 'item_id': item_id,
+        'created_at': datetime.now().isoformat()
+    }
+
+    def run_text_chunk():
+        try:
+            _task_status[task_id] = {'status': 'chunking', 'progress': 30, 'item_id': item_id}
+            chunks = chunk_document(text, {'source_doc_id': item_id, 'title': title, 'category_path': category_id})
+            if not chunks:
+                _task_status[task_id] = {'status': 'completed', 'progress': 100, 'item_id': item_id, 'chunk_count': 0}
+                _update_item(item_id, status='completed', chunk_count=0)
+                return
+
+            _task_status[task_id] = {'status': 'embedding', 'progress': 60, 'item_id': item_id, 'chunk_count': len(chunks)}
+            texts_list = [c['content'] for c in chunks]
+            embeddings = embed_texts(texts_list)
+
+            _task_status[task_id] = {'status': 'storing', 'progress': 85, 'item_id': item_id}
+            stored = store_chunks(item_id, chunks, embeddings)
+
+            _task_status[task_id] = {'status': 'completed', 'progress': 100, 'item_id': item_id, 'chunk_count': stored}
+            _update_item(item_id, status='completed', chunk_count=stored)
+            logger.info(f"[Text-Task {task_id}] 文本切片完成: {stored} 个切片")
+        except Exception as e:
+            logger.error(f"[Text-Task {task_id}] 切片失败: {e}", exc_info=True)
+            _task_status[task_id] = {'status': 'failed', 'progress': 0, 'item_id': item_id, 'error': str(e)}
+            _update_item(item_id, status='failed', error=str(e))
+
+    background_tasks.add_task(run_text_chunk)
+
+    return {
+        'success': True,
+        'data': {
+            'task_id': task_id,
+            'item_id': item_id,
             'status': 'processing'
         }
     }

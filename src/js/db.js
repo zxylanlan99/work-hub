@@ -1387,10 +1387,11 @@ const DB = {
     }
   },
 
-  /** DB-R-020: AI 推荐清单 */
+  /** DB-R-020: AI 推荐清单 — 从 news_items 中获取 AI 评分 >= 60 且未入库的资讯 */
   async getAIRecommendedItems() {
+    /* 【修复】查询 news_items 而非 knowledge_items，按 PRD 定义：AI评分>=60 → AI推荐清单 */
     return this._exec(
-      this._collection('knowledge_items').where({ isDeleted: false }).orderBy('createdAt', 'desc').limit(20).get()
+      this._collection('news_items').where({ isSaved: false }).orderBy('createdAt', 'desc').limit(50).get()
     );
   },
 
@@ -1473,6 +1474,146 @@ const DB = {
     return { success: true };
   },
 
+  /**
+   * 知识库批量指令执行 — 供 AI 返回的结构化指令调用
+   * 支持 create / rename / delete / move / retag / delete-item / rechunk 七种操作
+   * @param {Array<Object>} commands - 指令数组，每项含 action 及操作参数
+   * @returns {Object} { success, results[], message }
+   */
+  async executeKbCommand(commands) {
+    if (!Array.isArray(commands) || commands.length === 0) {
+      return { success: false, error: '无有效指令' };
+    }
+
+    var results = [];
+    var categories = null;
+    var items = null;
+
+    for (var i = 0; i < commands.length; i++) {
+      var cmd = commands[i];
+      try {
+        switch (cmd.action) {
+          case 'create':
+            // 创建分类
+            var createResult = await this.createCategory({
+              name: cmd.name,
+              parentId: cmd.parentId || '',
+              level: cmd.level || 1,
+              icon: cmd.icon || '📁',
+              color: '#6366f1'
+            });
+            results.push({ action: 'create', target: cmd.name, success: createResult.success !== false });
+            break;
+
+          case 'rename':
+            // 重命名分类 - 先查找分类ID
+            if (!categories) {
+              var catRes = await this.getCategories();
+              categories = catRes.data || catRes || [];
+            }
+            var cat = categories.find(function(c) { return c.name === cmd.target; });
+            if (cat) {
+              var renameResult = await this.updateCategory(cat._id || cat.id, { name: cmd.newName });
+              results.push({ action: 'rename', target: cmd.target, newName: cmd.newName, success: renameResult.success !== false });
+            } else {
+              results.push({ action: 'rename', target: cmd.target, success: false, error: '分类未找到' });
+            }
+            break;
+
+          case 'delete':
+            // 删除分类
+            if (!categories) {
+              var catRes2 = await this.getCategories();
+              categories = catRes2.data || catRes2 || [];
+            }
+            var delCat = categories.find(function(c) { return c.name === cmd.target; });
+            if (delCat) {
+              var delResult = await this.deleteCategory(delCat._id || delCat.id);
+              results.push({ action: 'delete', target: cmd.target, success: delResult.success !== false });
+            } else {
+              results.push({ action: 'delete', target: cmd.target, success: false, error: '分类未找到' });
+            }
+            break;
+
+          case 'move':
+            // 移动分类
+            if (!categories) {
+              var catRes3 = await this.getCategories();
+              categories = catRes3.data || catRes3 || [];
+            }
+            var moveCat = categories.find(function(c) { return c.name === cmd.target; });
+            var parentCat = categories.find(function(c) { return c.name === cmd.newParent; });
+            if (moveCat && parentCat) {
+              var moveResult = await this.moveCategory(moveCat._id || moveCat.id, parentCat._id || parentCat.id);
+              results.push({ action: 'move', target: cmd.target, newParent: cmd.newParent, success: moveResult.success !== false });
+            } else {
+              results.push({ action: 'move', target: cmd.target, success: false, error: !moveCat ? '源分类未找到' : '目标父分类未找到' });
+            }
+            break;
+
+          case 'retag':
+            // 重新打标签
+            if (!items) {
+              var itemRes = await this._exec(this._collection('knowledge_items').where({ isDeleted: false }).limit(100).get());
+              items = itemRes.data || [];
+            }
+            var retagItem = items.find(function(item) { return item.title === cmd.itemTitle; });
+            if (retagItem) {
+              var retagResult = await this.updateKnowledgeItem(retagItem._id || retagItem.id, { tags: cmd.tags });
+              results.push({ action: 'retag', target: cmd.itemTitle, success: retagResult.success !== false });
+            } else {
+              results.push({ action: 'retag', target: cmd.itemTitle, success: false, error: '知识条目未找到' });
+            }
+            break;
+
+          case 'delete-item':
+            // 删除知识条目
+            if (!items) {
+              var itemRes2 = await this._exec(this._collection('knowledge_items').where({ isDeleted: false }).limit(100).get());
+              items = itemRes2.data || [];
+            }
+            var delItem = items.find(function(item) { return item.title === cmd.itemTitle; });
+            if (delItem) {
+              var delItemResult = await this.softDeleteKnowledgeItem(delItem._id || delItem.id);
+              results.push({ action: 'delete-item', target: cmd.itemTitle, success: delItemResult.success !== false });
+            } else {
+              results.push({ action: 'delete-item', target: cmd.itemTitle, success: false, error: '知识条目未找到' });
+            }
+            break;
+
+          case 'rechunk':
+            // 重新切片
+            if (!items) {
+              var itemRes3 = await this._exec(this._collection('knowledge_items').where({ isDeleted: false }).limit(100).get());
+              items = itemRes3.data || [];
+            }
+            var rechunkItem = items.find(function(item) { return item.title === cmd.itemTitle; });
+            if (rechunkItem && rechunkItem.content) {
+              var rechunkResult = await this.chunkKnowledgeText(
+                rechunkItem.content, rechunkItem.title, rechunkItem._id || rechunkItem.id, rechunkItem.categoryId
+              );
+              results.push({ action: 'rechunk', target: cmd.itemTitle, success: rechunkResult.success !== false });
+            } else {
+              results.push({ action: 'rechunk', target: cmd.itemTitle, success: false, error: !rechunkItem ? '知识条目未找到' : '条目无内容' });
+            }
+            break;
+
+          default:
+            results.push({ action: cmd.action, success: false, error: '未知指令类型' });
+        }
+      } catch (e) {
+        results.push({ action: cmd.action, target: cmd.target || cmd.name || cmd.itemTitle, success: false, error: e.message });
+      }
+    }
+
+    var successCount = results.filter(function(r) { return r.success; }).length;
+    return {
+      success: successCount > 0,
+      results: results,
+      message: '执行完成：' + successCount + '/' + results.length + ' 成功'
+    };
+  },
+
   /** DB-U-022: 批量入库 */
   async batchImportItems(itemIds) {
     return this._batchUpdate('knowledge_items', itemIds, { isDeleted: false, updatedAt: new Date() });
@@ -1546,6 +1687,33 @@ const DB = {
     } catch (error) {
       console.error('[DB] 上传文件失败:', error);
       return { success: false, error: error.message || '上传失败' };
+    }
+  },
+
+  /**
+   * 文本内容切片与矢量化（资讯入库时调用）
+   * @param {string} text - 文本内容
+   * @param {string} title - 标题
+   * @param {string} itemId - 知识条目 ID
+   * @param {string} categoryId - 分类 ID
+   * @returns {success, data: {taskId, itemId, status}}
+   */
+  async chunkKnowledgeText(text, title, itemId, categoryId) {
+    try {
+      const response = await fetch(this._kbBackendURL() + '/api/knowledge/chunk-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text, title: title, itemId: itemId, categoryId: categoryId || '' })
+      });
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || 'HTTP ' + response.status);
+      }
+      const result = await response.json();
+      return { success: true, data: result.data };
+    } catch (error) {
+      console.warn('[DB] 文本切片失败（非阻塞）:', error.message);
+      return { success: false, error: error.message };
     }
   },
 

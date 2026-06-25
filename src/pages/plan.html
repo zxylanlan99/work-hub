@@ -610,38 +610,47 @@ async function initPlanPage() {
 // 加载暖身数据
 async function loadWarmupData() {
   console.log('[Plan] 📡 开始加载暖身数据...');
+  var yesterdayEl = document.getElementById('planYesterdayText');
+  var quizEl = document.getElementById('planQuizQuestion');
+  var answerEl = document.getElementById('planQuizAnswer');
+  if (!yesterdayEl || !quizEl) {
+    console.warn('[Plan] 暖身 DOM 元素未找到，跳过');
+    return;
+  }
   try {
-    const [reviewRes, quizRes] = await Promise.all([
+    var results = await Promise.all([
       DB.getYesterdayReview(),
       DB.getQuiz('学习')
     ]);
+    var reviewRes = results[0];
+    var quizRes = results[1];
     
     console.log('[Plan] 📥 昨日回顾响应:', reviewRes);
     console.log('[Plan] 📥 快问快答响应:', quizRes);
     
     if (reviewRes.success && reviewRes.data.length > 0) {
-      const summary = reviewRes.data[0].summary || '暂无昨日学习记录';
-      document.getElementById('planYesterdayText').textContent = summary;
+      var summary = reviewRes.data[0].summary || '暂无昨日学习记录';
+      yesterdayEl.textContent = summary;
       console.log('[Plan] ✅ 昨日回顾已渲染:', summary);
     } else {
-      document.getElementById('planYesterdayText').textContent = '暂无昨日学习记录';
+      yesterdayEl.textContent = '暂无昨日学习记录';
       console.log('[Plan] ⚠️ 昨日回顾为空');
     }
     
     if (quizRes.success) {
-      const question = quizRes.content || '暂无快问快答';
-      document.getElementById('planQuizQuestion').textContent = question;
+      var question = quizRes.content || '暂无快问快答';
+      quizEl.textContent = question;
       console.log('[Plan] ✅ 快问快答已渲染:', question);
     } else {
-      document.getElementById('planQuizQuestion').textContent = '暂无快问快答';
+      quizEl.textContent = '暂无快问快答';
       console.log('[Plan] ⚠️ 快问快答为空');
     }
-    document.getElementById('planQuizAnswer').textContent = '';
+    if (answerEl) answerEl.textContent = '';
     console.log('[Plan] ✅ 暖身数据加载完成');
   } catch (error) {
     console.error('[Plan] ❌ 加载暖身数据失败:', error);
-    document.getElementById('planYesterdayText').textContent = '暂无昨日学习记录';
-    document.getElementById('planQuizQuestion').textContent = '暂无快问快答';
+    yesterdayEl.textContent = '暂无昨日学习记录';
+    quizEl.textContent = '暂无快问快答';
   }
 }
 

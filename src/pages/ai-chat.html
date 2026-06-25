@@ -10,12 +10,6 @@
       <div class="conversation-list" id="chat-list">
       </div>
       
-      <div class="model-selector">
-        <label>选择模型</label>
-        <div class="model-options" id="model-options">
-        </div>
-      </div>
-      
       <div class="usage-info">
         <div class="usage-label">本月已使用</div>
         <div class="usage-amount" id="usage-amount">¥0.00</div>
@@ -39,30 +33,492 @@
       <div class="messages-container" id="chat-messages">
       </div>
 
+      <!-- 输入区改造：包含知识引用标签 + textarea + 工具栏 -->
       <div class="chat-input-area">
+        <!-- 知识引用标签区（选中知识条目后显示） -->
+        <div id="knowledge-ref-tags" style="display:none;padding:4px 0;flex-wrap:wrap;gap:4px;"></div>
+        <!-- 输入框 -->
         <textarea id="message-input" placeholder="输入你的问题..." rows="3"></textarea>
-        <div class="input-actions">
-          <button class="btn btn-outline" onclick="handleFileUpload()">📎 上传文件</button>
+        <!-- 工具栏：附件 | 知识库 | 模型下拉 | 智能体下拉 -->
+        <div class="input-toolbar">
+          <button class="toolbar-btn" onclick="handleFileUpload()" title="上传附件">📎 附件</button>
           <input type="file" id="file-input" style="display:none" accept=".txt,.md,.pdf,.doc,.docx,.xls,.xlsx,.csv,.json,.xml,.html,.htm,.js,.ts,.py,.java,.cpp,.c,.h,.css,.jpg,.jpeg,.png,.gif,.webp,.svg" onchange="processFileUpload(event)" multiple>
           <div id="attached-files" style="display:none;padding:4px 0;"></div>
+          <!-- 知识库选择按钮 -->
+          <button class="toolbar-btn" onclick="toggleKnowledgeSelector()" title="选择知识库条目">📚 知识库<span id="knowledge-selected-count" class="badge-count" style="display:none;"></span></button>
+          <!-- 输入区模型下拉 -->
+          <div class="model-dropdown" id="input-model-dropdown">
+            <button class="toolbar-btn model-dropdown-trigger" onclick="toggleInputModelDropdown()" id="input-model-btn">
+              <span id="input-model-name">选择模型</span> ▾
+            </button>
+            <div class="model-dropdown-menu" id="input-model-menu" style="display:none;"></div>
+          </div>
+          <!-- 智能体下拉 -->
+          <div class="agent-selector" id="agent-selector-wrap">
+            <button class="toolbar-btn agent-dropdown-trigger" onclick="toggleAgentDropdown()" id="agent-trigger-btn">
+              <span id="agent-trigger-icon">🤖</span>
+              <span id="agent-trigger-name">通用助手</span> ▾
+            </button>
+            <div class="agent-dropdown-menu" id="agent-dropdown-menu" style="display:none;"></div>
+          </div>
+          <!-- 发送按钮 -->
           <button class="btn btn-primary" onclick="sendMessage()">发送</button>
+        </div>
+        <!-- 知识库选择面板（弹出面板） -->
+        <div class="knowledge-panel" id="knowledge-selector-panel" style="display:none;">
+          <div class="knowledge-panel-header">
+            <span>选择引用资料</span>
+            <button class="knowledge-panel-close" onclick="toggleKnowledgeSelector()">×</button>
+          </div>
+          <div class="knowledge-panel-body" id="knowledge-panel-body">
+            <div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;">加载中...</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
+<style>
+/* ================================================================
+   智能体选择器样式
+   ================================================================ */
+
+.agent-selector {
+  position: relative;
+  display: inline-block;
+}
+
+.agent-dropdown-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--gray-200, #e4e4e7);
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--gray-700, #374151);
+  transition: background 0.15s;
+}
+
+.agent-dropdown-trigger:hover {
+  background: var(--gray-100, #f4f4f5);
+}
+
+.agent-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 260px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--gray-200, #e4e4e7);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  padding: 4px;
+}
+
+.agent-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.agent-option:hover {
+  background: var(--gray-100, #f4f4f5);
+}
+
+.agent-option.selected {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.agent-option-icon {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gray-100, #f4f4f5);
+  border-radius: 8px;
+}
+
+.agent-option.selected .agent-option-icon {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.agent-option-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-option-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-800, #1f2937);
+}
+
+.agent-option-desc {
+  font-size: 11px;
+  color: var(--gray-400, #9ca3af);
+  margin-top: 2px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ================================================================
+   知识库选择面板样式
+   ================================================================ */
+
+.knowledge-panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  max-height: 380px;
+  background: #fff;
+  border: 1px solid var(--gray-200, #e4e4e7);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.knowledge-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--gray-100, #f4f4f5);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-700, #374151);
+}
+
+.knowledge-panel-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--gray-400, #9ca3af);
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.knowledge-panel-close:hover {
+  color: var(--gray-700, #374151);
+}
+
+.knowledge-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.knowledge-panel-search {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--gray-100, #f4f4f5);
+}
+
+.knowledge-panel-search input {
+  width: 100%;
+  border: 1px solid var(--gray-200, #e4e4e7);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  outline: none;
+}
+
+.knowledge-panel-search input:focus {
+  border-color: var(--primary, #6366f1);
+}
+
+/* 知识库分类树节点 */
+.kb-cat-node {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--gray-700, #374151);
+  transition: background 0.15s;
+}
+
+.kb-cat-node:hover {
+  background: var(--gray-100, #f4f4f5);
+}
+
+.kb-cat-node.active {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary, #6366f1);
+  font-weight: 500;
+}
+
+.kb-cat-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.kb-cat-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-cat-count {
+  font-size: 11px;
+  color: var(--gray-400, #9ca3af);
+  flex-shrink: 0;
+}
+
+.kb-cat-children {
+  padding-left: 18px;
+}
+
+/* 知识条目列表项 */
+.kb-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.kb-item-row:hover {
+  background: var(--gray-100, #f4f4f5);
+}
+
+.kb-item-row.checked {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.kb-item-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--gray-300, #d1d5db);
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #fff;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+
+.kb-item-checkbox.checked {
+  background: var(--primary, #6366f1);
+  border-color: var(--primary, #6366f1);
+}
+
+.kb-item-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--gray-700, #374151);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-item-summary {
+  font-size: 11px;
+  color: var(--gray-400, #9ca3af);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================================================================
+   输入区容器（知识库弹出面板定位基准）
+   ================================================================ */
+
+.chat-input-area {
+  position: relative;
+}
+
+/* ================================================================
+   知识引用标签样式
+   ================================================================ */
+
+.knowledge-ref-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 16px;
+  padding: 2px 10px 2px 8px;
+  font-size: 12px;
+  color: var(--primary, #6366f1);
+  white-space: nowrap;
+}
+
+.knowledge-ref-tag .ref-icon {
+  font-size: 12px;
+}
+
+.knowledge-ref-tag .ref-remove {
+  cursor: pointer;
+  color: var(--gray-400, #9ca3af);
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+.knowledge-ref-tag .ref-remove:hover {
+  color: var(--danger, #ef4444);
+}
+
+/* ================================================================
+   输入区工具栏样式
+   ================================================================ */
+
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 0 2px;
+  flex-wrap: wrap;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--gray-600, #4b5563);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+  background: var(--gray-100, #f4f4f5);
+  border-color: var(--gray-200, #e4e4e7);
+}
+
+.toolbar-btn .badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--primary, #6366f1);
+  color: #fff;
+  font-size: 10px;
+  padding: 0 4px;
+  margin-left: 3px;
+}
+
+/* ================================================================
+   模型下拉样式
+   ================================================================ */
+
+.model-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.model-dropdown-trigger {
+  font-size: 13px;
+}
+
+.model-dropdown-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--gray-200, #e4e4e7);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 100;
+  padding: 4px;
+}
+
+.model-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--gray-700, #374151);
+  transition: background 0.15s;
+}
+
+.model-menu-item:hover {
+  background: var(--gray-100, #f4f4f5);
+}
+
+.model-menu-item.selected {
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--primary, #6366f1);
+  font-weight: 500;
+}
+
+.model-menu-item .model-status {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+/* Issue 3b: 对话列表项悬浮时显示删除按钮 */
+.conversation-item:hover .conv-delete-btn {
+  opacity: 1;
+}
+.conv-delete-btn:hover {
+  background: var(--gray-100, #f4f4f5);
+  color: var(--danger, #ef4444);
+}</style>
+
 <script>
 // ================================================================
-// AI 对话页面 — 使用真实 DB + AIService
+// AI 对话页面 — 智能体架构改造版
 // ================================================================
 
+/* 对话状态扩展：新增 currentAgent 字段 */
 var chatState = {
   currentChatId: null,
   currentModel: null,
+  currentAgent: 'general',
   inflightCount: 0,
   conversations: [],
-  pendingFiles: []  // 待发送的附件列表 [{file, name, type}]
+  pendingFiles: [],       // 待发送的附件列表 [{file, name, category}]
+  selectedKnowledgeIds: [] // 选中的知识条目 ID 列表
 };
 
 // ================================================================
@@ -105,8 +561,11 @@ async function initAiChatPage() {
       await window.DB.init();
     }
     
-    // 渲染模型选择器
-    renderModelSelector();
+    // 渲染输入区模型下拉
+    renderInputModelSelector();
+    
+    // 渲染智能体选择器
+    renderAgentSelector();
     
     // 加载对话列表
     await loadChatList();
@@ -125,53 +584,432 @@ async function initAiChatPage() {
 }
 
 // ================================================================
-// 模型选择器
+// 输入区模型下拉选择器
 // ================================================================
 
-function renderModelSelector() {
-  var container = document.getElementById('model-options');
-  if (!container) return;
-  
+function renderInputModelSelector() {
+  var nameEl = document.getElementById('input-model-name');
+  if (!nameEl) return;
+
   var models = [];
   if (window.AIService && typeof window.AIService.getAvailableModels === 'function') {
     models = window.AIService.getAvailableModels();
   }
-  
+
+  /* 更新触发按钮上显示的模型名称 */
+  var currentModel = models.find(function(m) { return m.id === chatState.currentModel; });
+  nameEl.textContent = currentModel ? currentModel.name : '选择模型';
+
+  /* 渲染下拉菜单内容 */
+  var menu = document.getElementById('input-model-menu');
+  if (!menu) return;
+
   if (models.length === 0) {
-    container.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray-400);text-align:center;">' +
-      '⚠️ 未配置模型<br><a href="#settings" style="color:var(--primary);">去设置页面配置</a>' +
-      '</div>';
+    menu.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--gray-400);text-align:center;">' +
+      '⚠️ 未配置模型</div>';
     return;
   }
-  
-  // 设置默认选中
-  if (!chatState.currentModel) {
-    var settings = window.AIService.getAISettings();
-    chatState.currentModel = settings.defaultModelId || models[0].id;
-  }
-  
-  container.innerHTML = models.map(function(model) {
+
+  menu.innerHTML = models.map(function(model) {
     var isSelected = model.id === chatState.currentModel;
-    return '<button class="model-option ' + (isSelected ? 'selected' : '') + '" ' +
-      'onclick="selectModel(\'' + model.id + '\')" title="' + escapeChatHtml(model.description || '') + '">' +
-      escapeChatHtml(model.name) +
-      (model.status === 'ok' ? ' ✅' : (model.status === 'error' ? ' ❌' : '')) +
-      '</button>';
+    return '<div class="model-menu-item ' + (isSelected ? 'selected' : '') + '" ' +
+      'onclick="selectInputModel(\'' + escapeChatHtml(model.id) + '\')">' +
+      '<span>' + escapeChatHtml(model.name) + '</span>' +
+      '<span class="model-status">' + (model.status === 'ok' ? '✅' : (model.status === 'error' ? '❌' : '')) + '</span>' +
+      '</div>';
   }).join('');
 }
 
-function selectModel(modelId) {
+/* 切换输入区模型下拉的显示/隐藏 */
+function toggleInputModelDropdown() {
+  var menu = document.getElementById('input-model-menu');
+  if (!menu) return;
+  var isVisible = menu.style.display !== 'none';
+  closeAllDropdowns();
+  if (!isVisible) {
+    menu.style.display = 'block';
+  }
+}
+
+/* 选择输入区模型 */
+function selectInputModel(modelId) {
   chatState.currentModel = modelId;
-  renderModelSelector();
+  renderInputModelSelector();
+  var menu = document.getElementById('input-model-menu');
+  if (menu) menu.style.display = 'none';
   var models = window.AIService ? window.AIService.getAvailableModels() : [];
   var model = models.find(function(m) { return m.id === modelId; });
   chatToast('已选择 ' + (model ? model.name : modelId), 'success');
 }
 
 // ================================================================
+// 智能体选择器
+// ================================================================
+
+/**
+ * 渲染智能体选择器下拉列表
+ * 从 AIService.getAgents() 获取智能体列表
+ */
+function renderAgentSelector() {
+  var agents = [];
+  if (window.AIService && typeof window.AIService.getAgents === 'function') {
+    agents = window.AIService.getAgents();
+  }
+
+  /* 更新触发按钮显示 */
+  var currentAgent = agents.find(function(a) { return a.id === chatState.currentAgent; });
+  var iconEl = document.getElementById('agent-trigger-icon');
+  var nameEl = document.getElementById('agent-trigger-name');
+  if (iconEl) iconEl.textContent = currentAgent ? currentAgent.icon : '🤖';
+  if (nameEl) nameEl.textContent = currentAgent ? currentAgent.name : '通用助手';
+
+  /* 渲染下拉菜单 */
+  var menu = document.getElementById('agent-dropdown-menu');
+  if (!menu) return;
+
+  if (agents.length === 0) {
+    menu.innerHTML = '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;">暂无可用智能体</div>';
+    return;
+  }
+
+  menu.innerHTML = agents.map(function(agent) {
+    var isSelected = agent.id === chatState.currentAgent;
+    return '<div class="agent-option ' + (isSelected ? 'selected' : '') + '" ' +
+      'onclick="selectAgent(\'' + escapeChatHtml(agent.id) + '\')">' +
+      '<div class="agent-option-icon">' + escapeChatHtml(agent.icon) + '</div>' +
+      '<div class="agent-option-info">' +
+        '<div class="agent-option-name">' + escapeChatHtml(agent.name) + '</div>' +
+        '<div class="agent-option-desc">' + escapeChatHtml(agent.description || '') + '</div>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+/**
+ * 切换智能体下拉的显示/隐藏
+ */
+function toggleAgentDropdown() {
+  var menu = document.getElementById('agent-dropdown-menu');
+  if (!menu) return;
+  var isVisible = menu.style.display !== 'none';
+  closeAllDropdowns();
+  if (!isVisible) {
+    menu.style.display = 'block';
+  }
+}
+
+/**
+ * 选择智能体，更新 UI 和当前对话的 agentId
+ * @param {string} agentId - 智能体 ID
+ */
+function selectAgent(agentId) {
+  chatState.currentAgent = agentId;
+  renderAgentSelector();
+
+  /* 关闭下拉菜单 */
+  var menu = document.getElementById('agent-dropdown-menu');
+  if (menu) menu.style.display = 'none';
+
+  /* 如果当前有对话，更新对话的 agentId */
+  if (chatState.currentChatId && window.DB && typeof window.DB.updateChat === 'function') {
+    window.DB.updateChat(chatState.currentChatId, { agentId: agentId }).catch(function(e) {
+      console.warn('[AIChat] 更新对话智能体失败:', e.message);
+    });
+  }
+
+  /* toast 提示 */
+  var agents = window.AIService ? window.AIService.getAgents() : [];
+  var agent = agents.find(function(a) { return a.id === agentId; });
+  chatToast('已切换智能体: ' + (agent ? agent.name : agentId), 'success');
+}
+
+/**
+ * 关闭所有下拉菜单（工具栏通用）
+ */
+function closeAllDropdowns() {
+  var modelMenu = document.getElementById('input-model-menu');
+  if (modelMenu) modelMenu.style.display = 'none';
+  var agentMenu = document.getElementById('agent-dropdown-menu');
+  if (agentMenu) agentMenu.style.display = 'none';
+}
+
+// ================================================================
+// 知识库选择面板（增强版：支持分类树导航）
+// ================================================================
+
+/**
+ * 切换知识库选择面板的显示/隐藏
+ */
+async function toggleKnowledgeSelector() {
+  var panel = document.getElementById('knowledge-selector-panel');
+  if (!panel) return;
+
+  if (panel.style.display === 'none' || !panel.style.display) {
+    panel.style.display = 'flex';
+    await renderKnowledgePanel();
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+/**
+ * 渲染知识库选择面板内容
+ * 显示分类树（递归渲染）+ 条目列表，每个条目前有 checkbox
+ */
+async function renderKnowledgePanel() {
+  var body = document.getElementById('knowledge-panel-body');
+  if (!body) return;
+
+  body.innerHTML = '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:13px;">加载中...</div>';
+
+  try {
+    if (!window.DB) throw new Error('数据库服务未初始化');
+
+    /* 并行加载分类树和知识条目 */
+    var catResult = await window.DB.getCategories();
+    var cats = (catResult.success ? catResult.data : catResult.data) || [];
+
+    var itemResult = await window.DB._exec(
+      window.DB._collection('knowledge_items').where({ isDeleted: false }).limit(200).get()
+    );
+    var items = (itemResult.data || []);
+
+    /* 构建分类父子关系 */
+    var childMap = {};
+    var rootCats = [];
+    cats.forEach(function(c) {
+      if (c.parentId) {
+        if (!childMap[c.parentId]) childMap[c.parentId] = [];
+        childMap[c.parentId].push(c);
+      } else {
+        rootCats.push(c);
+      }
+    });
+
+    /* 统计每个分类下的条目数 */
+    var catItemCount = {};
+    items.forEach(function(item) {
+      if (item.categoryId) {
+        catItemCount[item.categoryId] = (catItemCount[item.categoryId] || 0) + 1;
+      }
+    });
+
+    /* 递归渲染分类树节点 */
+    function renderCatNode(cat, depth) {
+      var count = catItemCount[cat._id] || 0;
+      var hasChildren = childMap[cat._id] && childMap[cat._id].length > 0;
+      var indent = 'padding-left:' + (depth * 16) + 'px;';
+      var html = '<div class="kb-cat-node" style="' + indent + '" onclick="filterKnowledgeByCategory(\'' +
+        escapeChatHtml(cat._id) + '\', this)">' +
+        '<span class="kb-cat-icon">' + escapeChatHtml(cat.icon || '📁') + '</span>' +
+        '<span class="kb-cat-name">' + escapeChatHtml(cat.name) + '</span>' +
+        '<span class="kb-cat-count">' + count + '</span>' +
+        '</div>';
+      if (hasChildren) {
+        html += '<div class="kb-cat-children">';
+        childMap[cat._id].forEach(function(child) {
+          html += renderCatNode(child, depth + 1);
+        });
+        html += '</div>';
+      }
+      return html;
+    }
+
+    /* 构建面板 HTML */
+    var html = '';
+
+    /* 搜索框 */
+    html += '<div class="knowledge-panel-search">' +
+      '<input type="text" placeholder="搜索知识条目..." oninput="searchKnowledgeInPanel(this.value)">' +
+      '</div>';
+
+    /* "全部" 分类入口 */
+    html += '<div class="kb-cat-node active" onclick="filterKnowledgeByCategory(null, this)">' +
+      '<span class="kb-cat-icon">📚</span>' +
+      '<span class="kb-cat-name">全部条目</span>' +
+      '<span class="kb-cat-count">' + items.length + '</span>' +
+      '</div>';
+
+    /* 分类树（递归渲染） */
+    html += '<div id="kb-panel-cat-tree">';
+    rootCats.forEach(function(cat) {
+      html += renderCatNode(cat, 0);
+    });
+    html += '</div>';
+
+    /* 条目列表区 */
+    html += '<div id="kb-panel-items-list" style="margin-top:8px;border-top:1px solid var(--gray-100,#f4f4f5);padding-top:8px;">';
+    html += renderKnowledgePanelItems(items);
+    html += '</div>';
+
+    body.innerHTML = html;
+
+    /* 存储条目缓存供过滤使用 */
+    chatState._kbPanelItems = items;
+    chatState._kbPanelCats = cats;
+
+  } catch (error) {
+    console.error('[AIChat] 渲染知识库面板失败:', error);
+    body.innerHTML = '<div style="padding:16px;text-align:center;color:var(--danger,#ef4444);font-size:13px;">加载失败: ' +
+      escapeChatHtml(error.message) + '</div>';
+  }
+}
+
+/**
+ * 渲染知识条目列表（带 checkbox）
+ * @param {Array} items - 知识条目数组
+ * @returns {string} HTML 字符串
+ */
+function renderKnowledgePanelItems(items) {
+  if (!items || items.length === 0) {
+    return '<div style="padding:16px;text-align:center;color:var(--gray-400);font-size:12px;">暂无条目</div>';
+  }
+  return items.map(function(item) {
+    var isSelected = chatState.selectedKnowledgeIds.indexOf(item._id) !== -1;
+    return '<div class="kb-item-row ' + (isSelected ? 'checked' : '') + '" ' +
+      'onclick="toggleKnowledgeItem(\'' + escapeChatHtml(item._id) + '\')">' +
+      '<div class="kb-item-checkbox ' + (isSelected ? 'checked' : '') + '">' +
+        (isSelected ? '✓' : '') +
+      '</div>' +
+      '<div class="kb-item-title">' + escapeChatHtml(item.title || '未命名') + '</div>' +
+      '<div class="kb-item-summary">' + escapeChatHtml((item.summary || '').substring(0, 30)) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+/**
+ * 按分类过滤知识条目
+ * @param {string|null} categoryId - 分类 ID，null 表示全部
+ * @param {HTMLElement} el - 点击的节点元素
+ */
+function filterKnowledgeByCategory(categoryId, el) {
+  /* 更新分类节点高亮 */
+  var allNodes = document.querySelectorAll('#knowledge-panel-body .kb-cat-node');
+  allNodes.forEach(function(n) { n.classList.remove('active'); });
+  if (el) el.classList.add('active');
+
+  /* 过滤条目 */
+  var items = chatState._kbPanelItems || [];
+  var filtered = categoryId
+    ? items.filter(function(item) { return item.categoryId === categoryId; })
+    : items;
+
+  var listContainer = document.getElementById('kb-panel-items-list');
+  if (listContainer) {
+    listContainer.innerHTML = renderKnowledgePanelItems(filtered);
+  }
+}
+
+/**
+ * 在知识库面板内搜索条目
+ * @param {string} query - 搜索关键词
+ */
+function searchKnowledgeInPanel(query) {
+  var items = chatState._kbPanelItems || [];
+  var q = (query || '').trim().toLowerCase();
+  var filtered = q
+    ? items.filter(function(item) {
+        var title = (item.title || '').toLowerCase();
+        var summary = (item.summary || '').toLowerCase();
+        return title.indexOf(q) !== -1 || summary.indexOf(q) !== -1;
+      })
+    : items;
+
+  var listContainer = document.getElementById('kb-panel-items-list');
+  if (listContainer) {
+    listContainer.innerHTML = renderKnowledgePanelItems(filtered);
+  }
+}
+
+/**
+ * 切换知识条目的选中状态
+ * @param {string} itemId - 知识条目 ID
+ */
+function toggleKnowledgeItem(itemId) {
+  var idx = chatState.selectedKnowledgeIds.indexOf(itemId);
+  if (idx === -1) {
+    chatState.selectedKnowledgeIds.push(itemId);
+  } else {
+    chatState.selectedKnowledgeIds.splice(idx, 1);
+  }
+  /* 重新渲染条目列表 checkbox 状态 */
+  var listContainer = document.getElementById('kb-panel-items-list');
+  if (listContainer && chatState._kbPanelItems) {
+    /* 获取当前过滤状态 */
+    var activeNode = document.querySelector('#knowledge-panel-body .kb-cat-node.active');
+    var catId = null;
+    if (activeNode) {
+      var onclickAttr = activeNode.getAttribute('onclick') || '';
+      var match = onclickAttr.match(/filterKnowledgeByCategory\('([^']*)'/);
+      if (match && match[1]) catId = match[1];
+    }
+    var filtered = catId
+      ? chatState._kbPanelItems.filter(function(item) { return item.categoryId === catId; })
+      : chatState._kbPanelItems;
+    listContainer.innerHTML = renderKnowledgePanelItems(filtered);
+  }
+  /* 更新引用标签区 */
+  renderKnowledgeRefTags();
+}
+
+/**
+ * 移除选中的知识引用
+ * @param {string} itemId - 知识条目 ID
+ */
+function removeKnowledgeRef(itemId) {
+  var idx = chatState.selectedKnowledgeIds.indexOf(itemId);
+  if (idx !== -1) {
+    chatState.selectedKnowledgeIds.splice(idx, 1);
+  }
+  renderKnowledgeRefTags();
+}
+
+/**
+ * 渲染输入框上方的知识引用标签
+ */
+function renderKnowledgeRefTags() {
+  var container = document.getElementById('knowledge-ref-tags');
+  if (!container) return;
+
+  var count = chatState.selectedKnowledgeIds.length;
+
+  /* 更新 badge 计数 */
+  var badge = document.getElementById('knowledge-selected-count');
+  if (badge) {
+    badge.textContent = count > 0 ? String(count) : '';
+    badge.style.display = count > 0 ? 'inline-flex' : 'none';
+  }
+
+  if (count === 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  container.style.display = 'flex';
+
+  /* 从缓存中获取条目名称 */
+  var items = chatState._kbPanelItems || [];
+  var html = chatState.selectedKnowledgeIds.map(function(id) {
+    var item = items.find(function(it) { return it._id === id; });
+    var name = item ? (item.title || '未命名') : id;
+    return '<span class="knowledge-ref-tag">' +
+      '<span class="ref-icon">📄</span>' +
+      escapeChatHtml(name.substring(0, 20)) +
+      '<span class="ref-remove" onclick="removeKnowledgeRef(\'' + escapeChatHtml(id) + '\')" title="移除引用">×</span>' +
+      '</span>';
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+// ================================================================
 // 对话列表
 // ================================================================
 
+/**
+ * 加载对话列表，列表项显示智能体图标
+ */
 async function loadChatList() {
   var list = document.getElementById('chat-list');
   if (!list) return;
@@ -190,6 +1028,24 @@ async function loadChatList() {
         '</div>';
       return;
     }
+
+    /* 获取智能体列表用于显示图标 */
+    var agents = [];
+    if (window.AIService && typeof window.AIService.getAgents === 'function') {
+      agents = window.AIService.getAgents();
+    }
+
+    /* 获取知识条目缓存（如果需要显示引用标签名称） */
+    var kbItems = chatState._kbPanelItems || [];
+    if (kbItems.length === 0 && window.DB) {
+      try {
+        var kbResult = await window.DB._exec(
+          window.DB._collection('knowledge_items').where({ isDeleted: false }).limit(200).get()
+        );
+        kbItems = kbResult.data || [];
+        chatState._kbPanelItems = kbItems;
+      } catch (e) { /* 非阻塞 */ }
+    }
     
     list.innerHTML = chatState.conversations.map(function(chat) {
       var isActive = chatState.currentChatId === (chat._id || chat.id);
@@ -198,16 +1054,25 @@ async function loadChatList() {
       var time = chat.updatedAt || chat.createdAt;
       var timeStr = time ? formatChatTime(time) : '';
       var chatId = chat._id || chat.id;
+
+      /* 根据对话的 agentId 显示智能体图标 */
+      var agentId = chat.agentId || 'general';
+      var agent = agents.find(function(a) { return a.id === agentId; });
+      var agentIcon = agent ? agent.icon : '🤖';
       
       return '<div class="conversation-item ' + (isActive ? 'active' : '') + '" ' +
         'onclick="selectChat(\'' + chatId + '\', \'' + title.replace(/'/g, "\\'") + '\')" ' +
         'id="chat-item-' + chatId + '" style="cursor:pointer;">' +
-        '<div class="conv-icon">🤖</div>' +
+        '<div class="conv-icon">' + escapeChatHtml(agentIcon) + '</div>' +
         '<div class="conv-info">' +
         '<div class="conv-title">' + title + '</div>' +
         '<div class="conv-preview">' + preview + '</div>' +
         '</div>' +
+        '<div style="display:flex;align-items:center;gap:4px;">' +
         '<div class="conv-time">' + timeStr + '</div>' +
+        '<span class="conv-delete-btn" onclick="event.stopPropagation();deleteChatFromList(\'' + chatId + '\')" title="删除对话" ' +
+          'style="cursor:pointer;font-size:14px;color:var(--gray-400);padding:2px 4px;border-radius:4px;opacity:0;transition:opacity 0.15s;">🗑️</span>' +
+        '</div>' +
         '</div>';
     }).join('');
   } catch (error) {
@@ -220,10 +1085,17 @@ async function loadChatList() {
 // 创建新对话
 // ================================================================
 
+/**
+ * 创建新对话，传入 agentId 和 model
+ */
 async function createNewChat() {
   try {
     if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
-    var result = await window.DB.createChat({ title: '新对话', model: chatState.currentModel });
+    var result = await window.DB.createChat({
+      title: '新对话',
+      model: chatState.currentModel,
+      agentId: chatState.currentAgent
+    });
     
     if (result.success) {
       var chatId = result.data ? (result.data.id || result.data._id) : null;
@@ -247,8 +1119,12 @@ async function createNewChat() {
 // 选择对话 & 加载消息
 // ================================================================
 
+/**
+ * 选择对话，恢复对话的 agentId
+ * @param {string} chatId - 对话 ID
+ * @param {string} title - 对话标题
+ */
 async function selectChat(chatId, title) {
-  /* 参数校验 */
   if (!chatId) return;
 
   try {
@@ -262,6 +1138,15 @@ async function selectChat(chatId, title) {
     if (item) item.classList.add('active');
 
     document.getElementById('chat-title').textContent = title || 'AI助手';
+
+    /* 恢复对话的 agentId */
+    var chat = chatState.conversations.find(function(c) {
+      return (c._id || c.id) === chatId;
+    });
+    if (chat && chat.agentId) {
+      chatState.currentAgent = chat.agentId;
+      renderAgentSelector();
+    }
 
     await loadMessages(chatId);
   } catch (error) {
@@ -385,9 +1270,15 @@ function renderMarkdownLite(text) {
 }
 
 // ================================================================
-// 发送消息 & 获取 AI 回复
+// 发送消息 & 获取 AI 回复（智能体架构改造）
 // ================================================================
 
+/**
+ * 发送消息 — 关键改造：
+ * 1. 如果有选中的智能体，使用 AIService.buildAgentSystemPrompt(agentId) 构建 system prompt
+ * 2. 如果有选中的知识条目，使用 DB.sendMessageWithKnowledge() 发送
+ * 3. AI 回复后检查是否包含 <kb-commands> 标签，解析并执行
+ */
 async function sendMessage() {
   var input = document.getElementById('message-input');
   var content = input ? input.value.trim() : '';
@@ -463,12 +1354,86 @@ async function sendMessage() {
   }
   
   chatState.inflightCount++;
+
+  // 复制当前选中的知识条目 ID（发送后会清空）
+  var selectedKnowledgeIds = chatState.selectedKnowledgeIds.slice();
   
   try {
-    console.log('[AIChat] 📡 发送消息:', { chatId: chatState.currentChatId, model: chatState.currentModel, hasAttachments: pendingFiles.length > 0 });
+    console.log('[AIChat] 📡 发送消息:', {
+      chatId: chatState.currentChatId,
+      model: chatState.currentModel,
+      agent: chatState.currentAgent,
+      hasAttachments: pendingFiles.length > 0,
+      knowledgeCount: selectedKnowledgeIds.length
+    });
     
     if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
-    var result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
+
+    var result;
+
+    /* 关键改造：如果有选中的知识条目，使用 sendMessageWithKnowledge */
+    if (selectedKnowledgeIds.length > 0) {
+      result = await window.DB.sendMessageWithKnowledge(
+        chatState.currentChatId, finalContent, selectedKnowledgeIds, chatState.currentModel
+      );
+    } else {
+      /* 关键改造：如果有选中的智能体，先构建 agent system prompt */
+      if (chatState.currentAgent && chatState.currentAgent !== 'general' &&
+          window.AIService && typeof window.AIService.buildAgentSystemPrompt === 'function') {
+        try {
+          var agentPrompt = await window.AIService.buildAgentSystemPrompt(chatState.currentAgent);
+          if (agentPrompt) {
+            /* 使用带 agent prompt 的 AI 调用 */
+            var aiResult = await window.AIService.callAI({
+              action: 'chat',
+              messages: [
+                { role: 'system', content: agentPrompt },
+                { role: 'user', content: finalContent }
+              ],
+              model: chatState.currentModel
+            });
+            if (aiResult.success) {
+              /* 手动写入消息到 DB */
+              await window.DB._collection('messages').add({
+                chatId: chatState.currentChatId,
+                role: 'user',
+                content: finalContent,
+                model: null,
+                tokens: 0,
+                cost: 0,
+                isStarred: false,
+                createdAt: new Date()
+              });
+              await window.DB._collection('messages').add({
+                chatId: chatState.currentChatId,
+                role: 'assistant',
+                content: aiResult.content,
+                model: chatState.currentModel,
+                tokens: aiResult.tokens || 0,
+                cost: aiResult.cost || 0,
+                isStarred: false,
+                createdAt: new Date()
+              });
+              await window.DB._collection('chats').doc(chatState.currentChatId).update({ updatedAt: new Date() });
+              result = { success: true, data: { reply: aiResult.content } };
+            } else {
+              throw new Error(aiResult.error || 'AI 调用失败');
+            }
+          } else {
+            result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
+          }
+        } catch (agentErr) {
+          console.warn('[AIChat] 智能体 prompt 构建失败，使用默认方式:', agentErr.message);
+          result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
+        }
+      } else {
+        result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
+      }
+    }
+
+    // 发送后清空已选知识条目
+    chatState.selectedKnowledgeIds = [];
+    renderKnowledgeRefTags();
     
     // 移除 typing indicator
     var typing = document.getElementById('typing-indicator');
@@ -485,6 +1450,23 @@ async function sendMessage() {
         container.scrollTop = container.scrollHeight;
       }
       console.log('[AIChat] ✅ AI 回复成功');
+
+      /* Issue 3a: 如果对话标题是「新对话」，用用户第一条消息内容更新标题（取前20个字符） */
+      try {
+        var chatItem = chatState.conversations.find(function(c) {
+          return (c._id || c.id) === chatState.currentChatId;
+        });
+        if (chatItem && (chatItem.title === '新对话' || !chatItem.title)) {
+          var newTitle = content.substring(0, 20) || '新对话';
+          await window.DB.updateChat(chatState.currentChatId, { title: newTitle });
+          document.getElementById('chat-title').textContent = newTitle;
+        }
+      } catch (titleErr) {
+        console.warn('[AIChat] 更新对话标题失败:', titleErr.message);
+      }
+
+      /* 关键改造：解析 AI 回复中的 <kb-commands> 标签并执行 */
+      await parseAndExecuteKbCommands(result.data.reply);
     } else {
       chatToast('AI 回复失败: ' + (result.error || '未知错误'), 'error');
       // 显示错误消息
@@ -507,6 +1489,64 @@ async function sendMessage() {
     chatToast('发送失败: ' + error.message, 'error');
   } finally {
     chatState.inflightCount--;
+  }
+}
+
+// ================================================================
+// 解析并执行 AI 回复中的知识库命令
+// ================================================================
+
+/**
+ * 解析 AI 回复中的 <kb-commands> 标签，提取 JSON 并逐条执行
+ * @param {string} reply - AI 回复文本
+ */
+async function parseAndExecuteKbCommands(reply) {
+  if (!reply) return;
+
+  /* 正则提取 <kb-commands>...</kb-commands> 中的内容 */
+  var cmdRegex = /<kb-commands>([\s\S]*?)<\/kb-commands>/g;
+  var match;
+  var hasCommands = false;
+
+  while ((match = cmdRegex.exec(reply)) !== null) {
+    var jsonStr = match[1].trim();
+    if (!jsonStr) continue;
+
+    try {
+      var commands = JSON.parse(jsonStr);
+      if (!Array.isArray(commands)) {
+        console.warn('[AIChat] kb-commands 不是数组格式:', commands);
+        continue;
+      }
+
+      hasCommands = true;
+      console.log('[AIChat] 🔧 解析到 ' + commands.length + ' 条知识库命令');
+
+      /* 逐条调用 DB.executeKbCommand() 执行 */
+      if (window.DB && typeof window.DB.executeKbCommand === 'function') {
+        var execResult = await window.DB.executeKbCommand(commands);
+        if (execResult.success) {
+          var successCount = (execResult.results || []).filter(function(r) { return r.success; }).length;
+          var failCount = (execResult.results || []).length - successCount;
+          if (failCount > 0) {
+            chatToast('知识库操作完成：成功 ' + successCount + ' 条，失败 ' + failCount + ' 条', 'warning');
+          } else {
+            chatToast('知识库操作完成：成功执行 ' + successCount + ' 条命令', 'success');
+          }
+        } else {
+          chatToast('知识库操作失败: ' + (execResult.error || '未知错误'), 'error');
+        }
+      } else {
+        chatToast('知识库命令执行服务不可用', 'error');
+      }
+    } catch (e) {
+      console.error('[AIChat] 解析 kb-commands JSON 失败:', e);
+      chatToast('知识库命令解析失败: ' + e.message, 'error');
+    }
+  }
+
+  if (!hasCommands) {
+    console.log('[AIChat] AI 回复中无 kb-commands 标签');
   }
 }
 
@@ -542,6 +1582,38 @@ async function deleteChatConfirm() {
 }
 
 // ================================================================
+// 从对话列表中删除对话（Issue 3b）
+// ================================================================
+
+/**
+ * 从对话列表中删除指定对话，二次确认后调用 DB.deleteChat()
+ * @param {string} chatId - 要删除的对话 ID
+ */
+async function deleteChatFromList(chatId) {
+  if (!chatId) return;
+  if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
+  try {
+    if (!window.DB) throw new Error('数据库服务未初始化');
+    var result = await window.DB.deleteChat(chatId);
+    if (result.success) {
+      chatToast('对话已删除', 'success');
+      /* 如果删除的是当前选中的对话，清空右侧消息区 */
+      if (chatState.currentChatId === chatId) {
+        chatState.currentChatId = null;
+        document.getElementById('chat-messages').innerHTML = '';
+        document.getElementById('chat-title').textContent = 'AI助手';
+      }
+      await loadChatList();
+    } else {
+      chatToast('删除失败: ' + (result.error || '未知错误'), 'error');
+    }
+  } catch (error) {
+    console.error('[AIChat] 删除对话失败:', error);
+    chatToast('删除失败: ' + error.message, 'error');
+  }
+}
+
+// ================================================================
 // 导出对话
 // ================================================================
 
@@ -564,7 +1636,6 @@ function exportChat() {
   var lines = [];
   messages.forEach(function(msgEl) {
     var isUser = msgEl.classList.contains('user');
-    /* 提取消息气泡的完整文本内容（不仅限于 <pre> 标签） */
     var bubble = msgEl.querySelector('div[style*="border-radius"]');
     var msgContent = bubble ? bubble.textContent : msgEl.textContent;
     lines.push((isUser ? '我' : 'AI') + ': ' + msgContent);
@@ -585,7 +1656,7 @@ function exportChat() {
 }
 
 // ================================================================
-// 文件上传（基础实现）
+// 文件上传
 // ================================================================
 
 function handleFileUpload() {
@@ -603,13 +1674,17 @@ var FILE_TYPE_SUPPORT = {
 function getFileCategory(file) {
   var name = file.name.toLowerCase();
   if (file.type.startsWith('text/')) return 'text';
-  for (var ext of FILE_TYPE_SUPPORT.text) {
+  var ext;
+  for (var i = 0; i < FILE_TYPE_SUPPORT.text.length; i++) {
+    ext = FILE_TYPE_SUPPORT.text[i];
     if (name.endsWith(ext)) return 'text';
   }
-  for (var ext of FILE_TYPE_SUPPORT.image) {
+  for (var j = 0; j < FILE_TYPE_SUPPORT.image.length; j++) {
+    ext = FILE_TYPE_SUPPORT.image[j];
     if (name.endsWith(ext)) return 'image';
   }
-  for (var ext of FILE_TYPE_SUPPORT.doc) {
+  for (var k = 0; k < FILE_TYPE_SUPPORT.doc.length; k++) {
+    ext = FILE_TYPE_SUPPORT.doc[k];
     if (name.endsWith(ext)) return 'doc';
   }
   return 'unknown';
@@ -683,13 +1758,11 @@ function readFileContent(fileObj) {
     var category = fileObj.category;
 
     if (category === 'image') {
-      // 图片转 base64 描述（纯客户端无法 OCR，仅告知 AI 文件名）
       resolve('[图片文件: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + 'KB)]');
       return;
     }
 
     if (category === 'doc') {
-      // PDF/Word 等二进制文件，前端无法直接解析，告知 AI 文件名和大小
       resolve('[附件: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + 'KB) — 请注意此为二进制文档格式，内容解析需后端支持]');
       return;
     }
@@ -736,6 +1809,7 @@ function renderUsageInfo() {
 // 绑定事件
 // ================================================================
 
+/* 绑定事件：键盘快捷键 + 点击外部关闭下拉 */
 function bindChatEvents() {
   var input = document.getElementById('message-input');
   if (input) {
@@ -746,6 +1820,23 @@ function bindChatEvents() {
       }
     });
   }
+
+  /* 点击页面其他区域时关闭所有下拉菜单 */
+  document.addEventListener('click', function(e) {
+    var agentWrap = document.getElementById('agent-selector-wrap');
+    var modelWrap = document.getElementById('input-model-dropdown');
+    var kbPanel = document.getElementById('knowledge-selector-panel');
+
+    /* 如果点击不在下拉区域内，关闭所有下拉 */
+    if (agentWrap && !agentWrap.contains(e.target)) {
+      var agentMenu = document.getElementById('agent-dropdown-menu');
+      if (agentMenu) agentMenu.style.display = 'none';
+    }
+    if (modelWrap && !modelWrap.contains(e.target)) {
+      var modelMenu = document.getElementById('input-model-menu');
+      if (modelMenu) modelMenu.style.display = 'none';
+    }
+  });
 }
 
 // ================================================================
@@ -755,11 +1846,35 @@ function bindChatEvents() {
 window.initAiChatPage = initAiChatPage;
 window.createNewChat = createNewChat;
 window.selectChat = selectChat;
-window.selectModel = selectModel;
 window.sendMessage = sendMessage;
 window.deleteChatConfirm = deleteChatConfirm;
+window.deleteChatFromList = deleteChatFromList;
 window.exportChat = exportChat;
 window.handleFileUpload = handleFileUpload;
 window.processFileUpload = processFileUpload;
 window.removeAttachment = removeAttachment;
+
+/* 智能体相关 */
+window.renderAgentSelector = renderAgentSelector;
+window.toggleAgentDropdown = toggleAgentDropdown;
+window.selectAgent = selectAgent;
+window.closeAllDropdowns = closeAllDropdowns;
+
+/* 模型下拉相关 */
+window.renderInputModelSelector = renderInputModelSelector;
+window.toggleInputModelDropdown = toggleInputModelDropdown;
+window.selectInputModel = selectInputModel;
+
+/* 知识库选择面板相关 */
+window.toggleKnowledgeSelector = toggleKnowledgeSelector;
+window.renderKnowledgePanel = renderKnowledgePanel;
+window.renderKnowledgePanelItems = renderKnowledgePanelItems;
+window.filterKnowledgeByCategory = filterKnowledgeByCategory;
+window.searchKnowledgeInPanel = searchKnowledgeInPanel;
+window.toggleKnowledgeItem = toggleKnowledgeItem;
+window.removeKnowledgeRef = removeKnowledgeRef;
+window.renderKnowledgeRefTags = renderKnowledgeRefTags;
+
+/* 知识库命令解析执行 */
+window.parseAndExecuteKbCommands = parseAndExecuteKbCommands;
 </script>

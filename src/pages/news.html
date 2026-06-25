@@ -1485,6 +1485,7 @@ window.loadNewsOverview = loadNewsOverview;
 /**
  * 加载RSS源列表到管理弹窗
  * 从数据库读取所有RSS源并渲染列表
+ * 【修复】操作列使用toggle开关，新增来源列，所有源支持删除
  */
 async function loadRssSourceList() {
   var container = document.getElementById('rssSourceList');
@@ -1498,24 +1499,31 @@ async function loadRssSourceList() {
     }
     var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
     html += '<thead><tr style="border-bottom:1px solid var(--gray-200);text-align:left;">';
-    html += '<th style="padding:8px 4px;">启用</th><th style="padding:8px 4px;">名称</th><th style="padding:8px 4px;">分类</th><th style="padding:8px 4px;">地址</th><th style="padding:8px 4px;">操作</th>';
+    html += '<th style="padding:8px 4px;">名称</th><th style="padding:8px 4px;">URL</th><th style="padding:8px 4px;">来源</th><th style="padding:8px 4px;">状态与操作</th>';
     html += '</tr></thead><tbody>';
     res.data.forEach(function(src) {
       var id = src._id || src.id;
-      var checkedAttr = src.enabled ? 'checked' : '';
-      var nameHtml = src.isPreset ? src.name : '<input class="form-input" value="' + (src.name || '') + '" style="height:28px;font-size:12px;padding:2px 6px;" onchange="updateRssSourceField(\'' + id + '\',\'name\',this.value)">';
+      /* 来源标签：预设=蓝色，人工=灰色 */
+      var sourceTag = src.isPreset
+        ? '<span style="background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:4px;font-size:11px;">预设</span>'
+        : '<span style="background:var(--gray-100);color:var(--gray-600);padding:2px 8px;border-radius:4px;font-size:11px;">人工</span>';
+      /* Toggle开关样式 */
+      var toggleBg = src.enabled ? 'var(--success)' : 'var(--gray-300)';
+      var toggleDot = src.enabled ? '16px' : '2px';
+      var toggleTitle = src.enabled ? '点击禁用' : '点击启用';
+      var toggleHtml = '<div onclick="toggleRssSourceEnabled(\'' + id + '\',' + (!src.enabled) + ')" title="' + toggleTitle + '" style="cursor:pointer;display:inline-flex;align-items:center;width:36px;height:20px;border-radius:10px;background:' + toggleBg + ';position:relative;vertical-align:middle;">'
+        + '<div style="width:16px;height:16px;border-radius:50%;background:#fff;margin-left:' + toggleDot + ';box-shadow:0 1px 3px rgba(0,0,0,.2);transition:margin .2s;"></div></div>';
+      /* 操作区：开关 + 删除按钮 */
+      var actionsHtml = '<div style="display:flex;align-items:center;gap:8px;">'
+        + toggleHtml
+        + '<button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:11px;padding:2px 6px;" onclick="deleteRssSourceItem(\'' + id + '\')">删除</button>'
+        + '</div>';
       html += '<tr style="border-bottom:1px solid var(--gray-100);">';
-      html += '<td style="padding:8px 4px;"><input type="checkbox" ' + checkedAttr + ' onchange="toggleRssSourceEnabled(\'' + id + '\',this.checked)"></td>';
-      html += '<td style="padding:8px 4px;">' + nameHtml + '</td>';
-      html += '<td style="padding:8px 4px;color:var(--gray-500);font-size:12px;">' + (src.category || '') + '</td>';
+      html += '<td style="padding:8px 4px;font-weight:500;">' + (src.name || '未命名') + '</td>';
       html += '<td style="padding:8px 4px;font-size:12px;color:var(--gray-500);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (src.url || '') + '">' + (src.url || '') + '</td>';
-      html += '<td style="padding:8px 4px;">';
-      if (!src.isPreset) {
-        html += '<button class="btn btn-ghost btn-sm" style="color:var(--danger);font-size:11px;padding:2px 6px;" onclick="deleteRssSourceItem(\'' + id + '\')">删除</button>';
-      } else {
-        html += '<span style="font-size:11px;color:var(--gray-400);">预设</span>';
-      }
-      html += '</td></tr>';
+      html += '<td style="padding:8px 4px;">' + sourceTag + '</td>';
+      html += '<td style="padding:8px 4px;">' + actionsHtml + '</td>';
+      html += '</tr>';
     });
     html += '</tbody></table>';
     container.innerHTML = html;

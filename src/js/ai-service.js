@@ -420,6 +420,466 @@ async function callAI(params) {
   }
 
   // ================================================================
+  // 智能体管理器 (AgentManager)
+  // ================================================================
+
+  const STORAGE_KEY_AGENTS = 'studymind_agents';
+  const STORAGE_KEY_SKILLS = 'studymind_skills';
+
+  /** 内置智能体配置 */
+  const BUILTIN_AGENTS = [
+    {
+      id: 'general',
+      name: '通用助手',
+      icon: '🤖',
+      description: '通用 AI 学习助手，解答各类学习问题',
+      skills: [],
+      contextInject: null,
+      isBuiltin: true
+    },
+    {
+      id: 'kb-butler',
+      name: '知识库管家',
+      icon: '📚',
+      description: '帮你整理知识库分类、标签、切片',
+      skills: ['kb-manage'],
+      contextInject: 'injectKnowledgeContext',
+      isBuiltin: true
+    },
+    {
+      id: 'news-butler',
+      name: '资讯管家',
+      icon: '📰',
+      description: 'RSS源管理、资讯抓取、AI评分入库',
+      skills: ['news-manage'],
+      contextInject: 'injectNewsContext',
+      isBuiltin: true
+    },
+    {
+      id: 'learning-coach',
+      name: '学习教练',
+      icon: '🎯',
+      description: '管理学习目标、诊断进度、制定计划',
+      skills: ['learn-manage'],
+      contextInject: 'injectLearningContext',
+      isBuiltin: true
+    },
+    {
+      id: 'review-coach',
+      name: '复习教练',
+      icon: '🔄',
+      description: '管理复习计划、生成卡片、知识健康诊断',
+      skills: ['review-manage'],
+      contextInject: 'injectReviewContext',
+      isBuiltin: true
+    }
+  ];
+
+  /** 内置智能体 System Prompt */
+  const AGENT_PROMPTS = {
+    'general': '你是 StudyMind 的 AI 学习助手，帮助用户解答学习相关问题。请用中文回答，保持友好和专业。',
+
+    'kb-butler': `你是 StudyMind 知识库管家，专门帮助用户整理和管理知识库。
+
+## 你的能力
+1. 查看知识库分类树和知识条目列表
+2. 创建/重命名/删除/移动知识分类
+3. 为知识条目重新打标签
+4. 删除知识条目
+5. 对知识条目重新切片和矢量化
+
+## 工作流程
+当用户要求整理知识库时：
+1. 先读取当前分类树和条目列表（系统会自动注入）
+2. 分析现有结构的问题
+3. 提出详细的整理方案，包括：
+   - 哪些分类需要创建/重命名/删除/移动
+   - 哪些条目需要重新打标签/移动分类/删除
+   - 整理后的预期效果（用树形结构展示）
+4. 等待用户确认方案
+5. 用户确认后，输出结构化指令执行
+
+## 输出格式
+当你需要执行操作时，必须在回复末尾输出以下格式（不要省略）：
+<kb-commands>
+[{"action":"create","name":"新分类名","parentId":"","level":1,"icon":"📁"},
+ {"action":"rename","target":"旧分类名","newName":"新分类名"},
+ {"action":"delete","target":"分类名"},
+ {"action":"move","target":"分类名","newParent":"父分类名"},
+ {"action":"retag","itemTitle":"文章标题","tags":["tag1","tag2"]},
+ {"action":"delete-item","itemTitle":"文章标题"},
+ {"action":"rechunk","itemTitle":"文章标题"}]
+</kb-commands>
+
+## 注意事项
+- 删除操作前必须二次确认
+- 方案要清晰列出每一步操作，用表格或列表展示
+- 先给方案，用户确认后再输出 <kb-commands>
+- parentId 为空字符串表示顶级分类
+- level: 1=一级, 2=二级, 3=三级`,
+
+    'news-butler': `你是 StudyMind 资讯管家，专门帮助用户管理资讯信息。
+
+## 你的能力
+1. 查看和管理 RSS 源（添加/删除/启用/禁用）
+2. 触发资讯抓取
+3. 查看抓取到的资讯列表和 AI 评分
+4. 将高评分资讯推荐入库
+
+## 工作流程
+1. 用户要求管理资讯时，先查看当前 RSS 源配置和最近抓取结果
+2. 分析资讯质量和覆盖度
+3. 给出优化建议（添加哪些源、删除哪些源、哪些资讯值得入库）
+4. 用户确认后执行操作
+
+## 注意事项
+- RSS 源需要可访问的 URL
+- 资讯 AI 评分 ≥60 的才值得入库
+- 优先推荐与用户学习目标相关的资讯`,
+
+    'learning-coach': `你是 StudyMind 学习教练，专门帮助用户管理学习目标和进度。
+
+## 你的能力
+1. 查看和分析学习目标、里程碑、任务
+2. 诊断学习进度（完成率、卡点分析）
+3. 制定和调整学习计划
+4. 预估任务完成时间
+5. 生成学习总结报告
+
+## 工作流程
+1. 用户请求时，先查看当前学习目标和进度数据
+2. 分析完成率、时间分配、卡点
+3. 给出具体的改进建议或计划调整方案
+4. 用户确认后执行调整
+
+## 注意事项
+- 建议要具体可执行
+- 考虑用户的时间预算
+- 优先解决卡点问题`,
+
+    'review-coach': `你是 StudyMind 复习教练，专门帮助用户管理复习计划和知识巩固。
+
+## 你的能力
+1. 查看待复习卡片和复习计划
+2. 分析遗忘曲线数据
+3. 生成复习卡片和练习题
+4. 诊断知识健康度
+5. 制定补强计划
+
+## 工作流程
+1. 用户请求时，先查看当前复习状态和薄弱知识点
+2. 分析遗忘率、复习完成率、知识关联度
+3. 给出复习策略建议或补强计划
+4. 用户确认后执行
+
+## 注意事项
+- 复习间隔要符合遗忘曲线
+- 优先复习高遗忘率的卡片
+- 补强计划要针对具体薄弱点`
+  };
+
+  /** 内置 Skills 配置 */
+  const BUILTIN_SKILLS = [
+    {
+      id: 'kb-manage',
+      name: '知识库管理',
+      icon: '📚',
+      description: '读取、整理、切片知识库',
+      agentId: 'kb-butler',
+      actions: ['kb-read', 'kb-rename', 'kb-delete', 'kb-move', 'kb-retag', 'kb-rechunk', 'kb-delete-item'],
+      isBuiltin: true,
+      isInstalled: true
+    },
+    {
+      id: 'news-manage',
+      name: '资讯管理',
+      icon: '📰',
+      description: 'RSS源管理、资讯抓取、AI评分',
+      agentId: 'news-butler',
+      actions: ['news-read', 'news-crawl', 'news-score'],
+      isBuiltin: true,
+      isInstalled: true
+    },
+    {
+      id: 'learn-manage',
+      name: '学习管理',
+      icon: '🎯',
+      description: '学习目标管理、进度诊断',
+      agentId: 'learning-coach',
+      actions: ['learn-read', 'learn-diagnose', 'learn-plan'],
+      isBuiltin: true,
+      isInstalled: true
+    },
+    {
+      id: 'review-manage',
+      name: '复习管理',
+      icon: '🔄',
+      description: '复习计划、卡片生成、知识健康',
+      agentId: 'review-coach',
+      actions: ['review-read', 'review-generate', 'review-diagnose'],
+      isBuiltin: true,
+      isInstalled: true
+    }
+  ];
+
+  /**
+   * 获取所有智能体（内置 + 自定义）
+   */
+  function getAgents() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_AGENTS);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    // 首次使用，初始化内置智能体
+    localStorage.setItem(STORAGE_KEY_AGENTS, JSON.stringify(BUILTIN_AGENTS));
+    return BUILTIN_AGENTS;
+  }
+
+  /**
+   * 根据 ID 获取智能体配置
+   */
+  function getAgent(agentId) {
+    const agents = getAgents();
+    return agents.find(a => a.id === agentId) || agents.find(a => a.id === 'general');
+  }
+
+  /**
+   * 获取智能体的 system prompt
+   */
+  function getAgentPrompt(agentId) {
+    return AGENT_PROMPTS[agentId] || AGENT_PROMPTS['general'];
+  }
+
+  /**
+   * 获取所有 Skills
+   */
+  function getSkills() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_SKILLS);
+      if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    localStorage.setItem(STORAGE_KEY_SKILLS, JSON.stringify(BUILTIN_SKILLS));
+    return BUILTIN_SKILLS;
+  }
+
+  /**
+   * 安装 Skill（预留接口）
+   */
+  function installSkill(skillConfig) {
+    const skills = getSkills();
+    const existing = skills.find(s => s.id === skillConfig.id);
+    if (existing) {
+      Object.assign(existing, skillConfig, { isInstalled: true });
+    } else {
+      skills.push({ ...skillConfig, isInstalled: true, installedAt: new Date().toISOString() });
+    }
+    localStorage.setItem(STORAGE_KEY_SKILLS, JSON.stringify(skills));
+    return true;
+  }
+
+  /**
+   * 卸载 Skill（内置不可卸载）
+   */
+  function uninstallSkill(skillId) {
+    const skills = getSkills();
+    const skill = skills.find(s => s.id === skillId);
+    if (!skill || skill.isBuiltin) return false;
+    skill.isInstalled = false;
+    localStorage.setItem(STORAGE_KEY_SKILLS, JSON.stringify(skills));
+    return true;
+  }
+
+  // ================================================================
+  // 上下文注入函数
+  // ================================================================
+
+  /**
+   * 注入知识库上下文（分类树 + 最近条目摘要）
+   */
+  async function injectKnowledgeContext() {
+    try {
+      if (!window.DB) return '';
+      const categories = await window.DB.getCategories();
+      const items = await window.DB._exec(
+        window.DB._collection('knowledge_items')
+          .where({ isDeleted: false })
+          .orderBy('updatedAt', 'desc')
+          .limit(20)
+          .get()
+      );
+      const cats = categories.data || categories || [];
+      const itemList = items.data || [];
+
+      let ctx = '\n\n## 当前知识库状态\n\n### 分类树\n';
+      if (cats.length === 0) {
+        ctx += '（暂无分类）\n';
+      } else {
+        const catMap = {};
+        cats.forEach(c => { catMap[c._id] = c; });
+        const roots = cats.filter(c => !c.parentId);
+        function renderTree(cat, depth) {
+          let line = '  '.repeat(depth) + '- ' + (cat.icon || '📁') + ' ' + cat.name;
+          ctx += line + '\n';
+          cats.filter(c => c.parentId === cat._id).forEach(c => renderTree(c, depth + 1));
+        }
+        roots.forEach(c => renderTree(c, 0));
+      }
+
+      ctx += '\n### 最近知识条目（前20条）\n';
+      if (itemList.length === 0) {
+        ctx += '（暂无知识条目）\n';
+      } else {
+        itemList.forEach(item => {
+          const catName = cats.find(c => c._id === item.categoryId)?.name || '未分类';
+          const tags = (item.tags || []).join('、') || '无标签';
+          ctx += `- ${item.title}（分类：${catName}，标签：${tags}）\n`;
+        });
+      }
+      return ctx;
+    } catch (e) {
+      console.error('[AIService] 注入知识库上下文失败:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 注入资讯上下文（RSS源 + 最近抓取结果）
+   */
+  async function injectNewsContext() {
+    try {
+      if (!window.DB) return '';
+      const sources = await window.DB.getRssSources();
+      const news = await window.DB._exec(
+        window.DB._collection('news_items')
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .get()
+      );
+      const srcList = sources.data || sources || [];
+      const newsList = news.data || [];
+
+      let ctx = '\n\n## 当前资讯状态\n\n### RSS 源配置\n';
+      if (srcList.length === 0) {
+        ctx += '（暂无 RSS 源）\n';
+      } else {
+        srcList.forEach(s => {
+          ctx += `- ${s.name}（${s.enabled ? '已启用' : '已禁用'}）: ${s.url}\n`;
+        });
+      }
+
+      ctx += '\n### 最近抓取资讯（前10条）\n';
+      if (newsList.length === 0) {
+        ctx += '（暂无抓取的资讯）\n';
+      } else {
+        newsList.forEach(n => {
+          const score = n.aiScore ? `评分:${n.aiScore}` : '未评分';
+          ctx += `- ${n.title}（${score}）\n`;
+        });
+      }
+      return ctx;
+    } catch (e) {
+      console.error('[AIService] 注入资讯上下文失败:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 注入学习上下文（目标 + 任务进度）
+   */
+  async function injectLearningContext() {
+    try {
+      if (!window.DB) return '';
+      const goals = await window.DB._exec(
+        window.DB._collection('goals')
+          .orderBy('createdAt', 'desc')
+          .limit(5)
+          .get()
+      );
+      const goalList = goals.data || [];
+
+      let ctx = '\n\n## 当前学习状态\n\n### 学习目标\n';
+      if (goalList.length === 0) {
+        ctx += '（暂无学习目标）\n';
+      } else {
+        for (const goal of goalList) {
+          ctx += `- ${goal.title}（状态：${goal.status || '进行中'}）\n`;
+          const tasks = await window.DB._exec(
+            window.DB._collection('tasks')
+              .where({ goalId: goal._id })
+              .limit(10)
+              .get()
+          );
+          const taskList = tasks.data || [];
+          taskList.forEach(t => {
+            ctx += `  - ${t.title}（${t.completed ? '已完成' : '未完成'}）\n`;
+          });
+        }
+      }
+      return ctx;
+    } catch (e) {
+      console.error('[AIService] 注入学习上下文失败:', e);
+      return '';
+    }
+  }
+
+  /**
+   * 注入复习上下文（待复习卡片 + 薄弱知识点）
+   */
+  async function injectReviewContext() {
+    try {
+      if (!window.DB) return '';
+      const cards = await window.DB._exec(
+        window.DB._collection('review_cards')
+          .where({ nextReview: { $lte: new Date() } })
+          .limit(20)
+          .get()
+      );
+      const cardList = cards.data || [];
+
+      let ctx = '\n\n## 当前复习状态\n\n### 待复习卡片\n';
+      if (cardList.length === 0) {
+        ctx += '（暂无待复习卡片）\n';
+      } else {
+        cardList.forEach(c => {
+          ctx += `- ${c.title || c.question || '未命名'}（难度：${c.difficulty || '中'}）\n`;
+        });
+      }
+      return ctx;
+    } catch (e) {
+      console.error('[AIService] 注入复习上下文失败:', e);
+      return '';
+    }
+  }
+
+  /** 上下文注入函数映射表 */
+  const CONTEXT_INJECTORS = {
+    injectKnowledgeContext: injectKnowledgeContext,
+    injectNewsContext: injectNewsContext,
+    injectLearningContext: injectLearningContext,
+    injectReviewContext: injectReviewContext
+  };
+
+  /**
+   * 获取智能体的完整 system prompt（含上下文注入）
+   * @param {string} agentId - 智能体 ID
+   * @returns {Promise<string>} 完整的 system prompt
+   */
+  async function buildAgentSystemPrompt(agentId) {
+    const agent = getAgent(agentId);
+    let prompt = getAgentPrompt(agentId);
+
+    // 注入上下文
+    if (agent.contextInject && CONTEXT_INJECTORS[agent.contextInject]) {
+      const context = await CONTEXT_INJECTORS[agent.contextInject]();
+      if (context) {
+        prompt += context;
+      }
+    }
+
+    return prompt;
+  }
+
+  // ================================================================
   // 导出全局
   // ================================================================
 
@@ -430,8 +890,22 @@ async function callAI(params) {
     getModel: getModel,
     getDefaultModel: getDefaultModel,
     getAvailableModels: getAvailableModels,
-    getAISettings: getAISettings
+    getAISettings: getAISettings,
+    // 智能体
+    getAgents: getAgents,
+    getAgent: getAgent,
+    getAgentPrompt: getAgentPrompt,
+    buildAgentSystemPrompt: buildAgentSystemPrompt,
+    // Skills
+    getSkills: getSkills,
+    installSkill: installSkill,
+    uninstallSkill: uninstallSkill,
+    // 上下文注入
+    injectKnowledgeContext: injectKnowledgeContext,
+    injectNewsContext: injectNewsContext,
+    injectLearningContext: injectLearningContext,
+    injectReviewContext: injectReviewContext
   };
 
-  console.log('✅ StudyMind AI Service loaded');
+  console.log('✅ StudyMind AI Service loaded (with AgentManager)');
 })();

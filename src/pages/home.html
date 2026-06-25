@@ -28,7 +28,7 @@
       </div>
     </div>
     <div class="warmup-right">
-      <button class="warmup-continue" onclick="navigateTo('plan')">继续上次学习 →</button>
+      <button class="warmup-continue" onclick="window.navigateTo&&navigateTo('plan')">继续上次学习 →</button>
       <button class="warmup-skip" id="skip-warmup" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
     </div>
   </div>
@@ -42,7 +42,7 @@
   【AGG-005】知识沉淀统计  → db.collection('output_docs').where({ status:'draft' }).count()
 -->
 <div class="quick-grid">
-  <div class="quick-card" onclick="navigateTo('plan')">
+  <div class="quick-card" onclick="window.navigateTo&&navigateTo('plan')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-plan">🎯</div>
       <span class="quick-card-badge qbadge-active">进行中</span>
@@ -51,7 +51,7 @@
     <div class="quick-card-sub">个学习目标进行中</div>
     <div class="quick-card-link">查看详情 →</div>
   </div>
-  <div class="quick-card" onclick="navigateTo('review')">
+  <div class="quick-card" onclick="window.navigateTo&&navigateTo('review')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-review">🔁</div>
       <span class="quick-card-badge" id="review-badge">待复习</span>
@@ -60,7 +60,7 @@
     <div class="quick-card-sub">张卡片待复习</div>
     <div class="quick-card-link">开始复习 →</div>
   </div>
-  <div class="quick-card" onclick="navigateTo('news')">
+  <div class="quick-card" onclick="window.navigateTo&&navigateTo('news')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-news">📡</div>
       <span class="quick-card-badge qbadge-info">🤖 AI推荐</span>
@@ -69,7 +69,7 @@
     <div class="quick-card-sub">条AI推荐资讯待处理</div>
     <div class="quick-card-link">查看推荐 →</div>
   </div>
-  <div class="quick-card" onclick="navigateTo('output')">
+  <div class="quick-card" onclick="window.navigateTo&&navigateTo('output')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-output">✍️</div>
       <span class="quick-card-badge qbadge-edit">编辑中</span>
@@ -99,7 +99,7 @@
         <span id="resume-progress">-</span>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="navigateTo('plan')">开始学习 →</button>
+    <button class="btn btn-primary btn-block" onclick="window.navigateTo&&navigateTo('plan')">开始学习 →</button>
     <div class="resume-buttons">
       <button class="btn btn-ghost btn-sm" onclick="generateContextSummary()">查看上下文摘要</button>
       <button class="btn btn-ghost btn-sm" onclick="showRelatedKnowledge()">关联知识点</button>

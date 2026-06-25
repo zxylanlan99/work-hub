@@ -396,6 +396,59 @@
   </div>
 </div>
 
+<style>
+/* Issue 6: 分类管理 — 操作按钮与下拉菜单样式 */
+.cat-actions {
+  margin-left: auto;
+  position: relative;
+}
+.cat-more-btn {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--gray-400);
+  font-size: 14px;
+  letter-spacing: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.cat-item:hover .cat-more-btn {
+  opacity: 1;
+}
+.cat-more-btn:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+.cat-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: #fff;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 50;
+  min-width: 100px;
+  padding: 4px;
+}
+.cat-menu-item {
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.cat-menu-item:hover {
+  background: var(--gray-100);
+}
+.cat-menu-danger {
+  color: var(--danger);
+}
+.cat-menu-danger:hover {
+  background: #fef2f2;
+}
+</style>
+
 <script>
 // ============================================
 // 知识库页面 — 全部接通 DB 接口，无模拟数据
@@ -780,7 +833,16 @@ async function loadCategoryTree() {
       var hasChildren = children.length > 0;
       var html2 = '<div class="cat-item" onclick="selectCategory(\'' + cat._id + '\')">' +
         (hasChildren ? '<span class="cat-toggle" onclick="toggleCategory(\'' + cat._id + '\', event)">▶</span>' : '') +
-        '<span class="cat-icon">📁</span><span class="cat-name">' + kbEscapeHtml(cat.name) + '</span><span class="cat-count">' + count + '</span></div>';
+        '<span class="cat-icon">📁</span><span class="cat-name">' + kbEscapeHtml(cat.name) + '</span>' +
+        '<span class="cat-count">' + count + '</span>' +
+        '<span class="cat-actions">' +
+          '<span class="cat-more-btn" onclick="event.stopPropagation();toggleCatMenu(\'' + cat._id + '\')" title="更多操作">⋯</span>' +
+          '<div class="cat-menu" id="cat-menu-' + cat._id + '" style="display:none;">' +
+            '<div class="cat-menu-item" onclick="event.stopPropagation();editCategory(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')">✏️ 编辑</div>' +
+            '<div class="cat-menu-item cat-menu-danger" onclick="event.stopPropagation();deleteCategoryConfirm(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')">🗑️ 删除</div>' +
+          '</div>' +
+        '</span>' +
+        '</div>';
       if (hasChildren) {
         html2 += '<div id="cat-' + cat._id + '" class="cat-children cat-hidden">';
         children.forEach(function(child) { html2 += renderCatNode(child); });
@@ -937,8 +999,10 @@ async function renderKnowledgeItems() {
     }
 
     if (isAI) {
+      /* 【修复】AI推荐清单从 news_items 读取，过滤 AI 评分 >= 60 的资讯 */
       var aiRes = await window.DB.getAIRecommendedItems();
-      items = (aiRes.success ? aiRes.data : []) || [];
+      var allNews = (aiRes.success ? aiRes.data : []) || [];
+      items = allNews.filter(function(n) { return (n.aiScore || 0) >= 60; });
     } else if (isTrash) {
       var trashRes = await window.DB.getTrashItems();
       items = (trashRes.success ? trashRes.data : []) || [];
@@ -974,12 +1038,14 @@ async function renderKnowledgeItems() {
 
     if (isAI) {
       container.innerHTML = items.map(function(item) {
+        var score = item.aiScore || 0;
+        var scoreColor = score >= 80 ? 'var(--success)' : (score >= 60 ? 'var(--warning)' : 'var(--gray-400)');
         return '<div class="knowledge-card" style="border-left:3px solid var(--primary)">' +
           '<div class="kc-header"><div class="cb" onclick="toggleBatchSelect(\'' + item._id + '\', event)" style="margin-right:8px"></div>' +
           '<div style="flex:1"><div class="kc-title">' + kbEscapeHtml(item.title) + '</div></div>' +
-          '<div class="kc-badges"><span class="kc-badge badge-recommend">🤖 推荐</span></div></div>' +
+          '<div class="kc-badges"><span class="kc-badge" style="background:' + scoreColor + ';color:#fff;">🤖 ' + score + '分</span></div></div>' +
           '<div class="kc-excerpt">' + kbEscapeHtml((item.summary || item.content || '').substring(0, 150)) + '</div>' +
-          '<div class="kc-meta"><span class="kc-meta-item">🔗 ' + kbEscapeHtml(item.sourceUrl || '资讯模块') + '</span>' +
+          '<div class="kc-meta"><span class="kc-meta-item">🔗 ' + kbEscapeHtml(item.sourceName || item.sourceUrl || '资讯模块') + '</span>' +
           '<span class="kc-meta-item">⏱️ ' + kbFormatDate(item.createdAt) + '</span></div>' +
           '<div class="kc-footer"><span class="kc-meta-item">来源: 资讯模块</span>' +
           '<div class="kc-actions"><button class="btn btn-primary btn-xs" onclick="openImportConfirm(\'' + item._id + '\')">确认入库</button>' +
@@ -1089,23 +1155,39 @@ function clearBatchSelection() {
   updateBatchBar();
 }
 
+/**
+ * 批量入库（AI推荐清单场景）
+ * 【修复】逐条调用 importNewsToKnowledge 导入资讯到知识库
+ */
 async function batchImport() {
   var ids = Array.from(kbState.selectedIds);
   if (ids.length === 0) return;
   try {
-    if (window.DB) { var r = await window.DB.batchImportItems(ids); if (!r.success) { showToast('批量入库失败', 'error'); return; } }
-    showToast('已批量入库 ' + ids.length + ' 条知识', 'success');
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    var successCount = 0;
+    for (var i = 0; i < ids.length; i++) {
+      var r = await window.DB.importNewsToKnowledge(ids[i]);
+      if (r.success) successCount++;
+    }
+    showToast('已批量入库 ' + successCount + ' 条知识', 'success');
     clearBatchSelection();
     renderKnowledgeItems();
   } catch (e) { showToast('批量入库失败: ' + e.message, 'error'); }
 }
 
+/**
+ * 批量忽略（AI推荐清单场景）
+ * 【修复】逐条调用 ignoreNews 标记已读
+ */
 async function batchIgnore() {
   var ids = Array.from(kbState.selectedIds);
   if (ids.length === 0) return;
   try {
-    if (window.DB) { var r = await window.DB.batchIgnoreItems(ids); if (!r.success) { showToast('批量忽略失败', 'error'); return; } }
-    showToast('已批量忽略 ' + ids.length + ' 条知识', 'info');
+    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
+    for (var i = 0; i < ids.length; i++) {
+      await window.DB.ignoreNews(ids[i]);
+    }
+    showToast('已批量忽略 ' + ids.length + ' 条资讯', 'info');
     clearBatchSelection();
     renderKnowledgeItems();
   } catch (e) { showToast('批量忽略失败: ' + e.message, 'error'); }
@@ -1489,23 +1571,39 @@ async function createCategory() {
   } catch (e) { showToast('创建失败: ' + e.message, 'error'); }
 }
 
+/**
+ * 打开确认入库弹窗
+ * 【修复】从 news_items 读取资讯详情（AI推荐清单数据源已改为 news_items）
+ */
 async function openImportConfirm(itemId) {
   loadCategoryOptionsInto('import-category');
   try {
     if (window.DB && itemId) {
-      var res = await window.DB.getKnowledgeItemDetail(itemId);
-      if (res.success && res.data) {
-        document.getElementById('import-source-title').textContent = res.data.title || '';
-        document.getElementById('import-source-url').textContent = res.data.sourceUrl || '';
-        document.getElementById('import-title').value = res.data.title || '';
-        document.getElementById('import-summary').value = res.data.summary || '';
+      /* 优先从 news_items 读取（AI推荐清单场景） */
+      var res = await window.DB._exec(window.DB._collection('news_items').doc(itemId).get());
+      var item = (res.success && res.data && res.data.length > 0) ? res.data[0] : null;
+      if (!item) {
+        /* 降级：从 knowledge_items 读取（已入库条目场景） */
+        var res2 = await window.DB.getKnowledgeItemDetail(itemId);
+        item = (res2.success && res2.data) ? res2.data : null;
+      }
+      if (item) {
+        document.getElementById('import-source-title').textContent = item.title || '';
+        document.getElementById('import-source-url').textContent = item.sourceUrl || '';
+        document.getElementById('import-title').value = item.title || '';
+        document.getElementById('import-summary').value = item.summary || '';
         kbState.currentItemId = itemId;
+        kbState.currentItemData = item;
       }
     }
   } catch (e) { console.error('加载推荐详情失败:', e); }
   openModal('modal-import-confirm');
 }
 
+/**
+ * 确认入库操作
+ * 【修复】调用 importNewsToKnowledge 将资讯导入知识库，并触发文本切片与矢量化
+ */
 async function confirmImport() {
   try {
     if (!window.DB || !kbState.currentItemId) { showToast('入库失败', 'error'); return; }
@@ -1517,24 +1615,47 @@ async function confirmImport() {
     document.querySelectorAll('#import-tags-wrap .tag-chip').forEach(function(chip) {
       tags.push(chip.textContent.replace(/\s×$/, '').trim());
     });
-    var result = await window.DB.updateKnowledgeItem(kbState.currentItemId, { title: title, categoryId: categoryId, level: level, summary: summary, tags: tags, isDeleted: false });
+
+    /* 调用 importNewsToKnowledge 创建知识条目并标记 news_items.isSaved=true */
+    var result = await window.DB.importNewsToKnowledge(kbState.currentItemId);
     if (!result.success) { showToast('入库失败: ' + (result.error || ''), 'error'); return; }
+
+    /* 更新知识条目的补充字段（分类、级别、标签） */
+    var knowledgeId = result.data && result.data.knowledgeId;
+    if (knowledgeId) {
+      await window.DB.updateKnowledgeItem(knowledgeId, {
+        title: title, categoryId: categoryId, level: level, summary: summary, tags: tags
+      });
+
+      /* 【Issue 6 修复】触发文本切片与矢量化 */
+      var itemData = kbState.currentItemData || {};
+      var content = itemData.content || summary || title;
+      if (content && content.length >= 50) {
+        window.DB.chunkKnowledgeText(content, title, knowledgeId, categoryId).catch(function(e) {
+          console.warn('[Knowledge] 文本切片异步失败:', e.message);
+        });
+      }
+    }
+
     showToast('入库成功', 'success');
     closeModal('modal-import-confirm');
     kbState.currentItemId = null;
+    kbState.currentItemData = null;
     await renderKnowledgeItems();
   } catch (e) { showToast('入库失败: ' + e.message, 'error'); }
 }
 
 async function confirmImportWithPlan() {
+  /* 【修复】先保存 itemId，因为 confirmImport 会将其置空 */
+  var savedItemId = kbState.currentItemId;
+  var savedItemData = kbState.currentItemData;
   await confirmImport();
-  if (kbState.currentItemId && window.DB) {
+  if (savedItemId && window.DB) {
     try {
-      var detail = await window.DB.getKnowledgeItemDetail(kbState.currentItemId);
-      if (detail.success && detail.data) {
-        await window.DB.addToStudyPlan({ title: '学习: ' + detail.data.title, description: detail.data.summary || (detail.data.content || '').substring(0, 200) });
-        showToast('已加入学习计划', 'success');
-      }
+      var title = (savedItemData && savedItemData.title) || document.getElementById('import-title').value.trim();
+      var summary = (savedItemData && savedItemData.summary) || document.getElementById('import-summary').value.trim();
+      await window.DB.addToStudyPlan({ title: '学习: ' + title, description: summary || '' });
+      showToast('已加入学习计划', 'success');
     } catch (e) { console.error('加入学习计划失败:', e); }
   }
 }
@@ -1611,9 +1732,13 @@ function toggleScoreDetail(el) {
   else { parent.classList.add('hidden'); el.textContent = '展开 ▼'; }
 }
 
+/**
+ * 忽略AI推荐的资讯
+ * 【修复】数据源已改为 news_items，调用 ignoreNews 标记已读
+ */
 async function ignoreAIItem(id) {
   try {
-    if (window.DB) await window.DB.softDeleteKnowledgeItem(id);
+    if (window.DB) await window.DB.ignoreNews(id);
     showToast('已忽略此推荐', 'info');
     kbState.selectedIds.delete(id);
     updateBatchBar();
@@ -1910,6 +2035,53 @@ async function loadExpiryModal() {
 }
 
 /* ================================================================
+   Issue 6: 分类管理 — 编辑/删除操作
+   ================================================================ */
+
+/* 切换分类操作下拉菜单的显示/隐藏 */
+function toggleCatMenu(catId) {
+  /* 关闭所有其他菜单 */
+  document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
+  var menu = document.getElementById('cat-menu-' + catId);
+  if (menu) {
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+/* 编辑分类名称：弹出 prompt 输入新名称，调用 DB.updateCategory 更新 */
+function editCategory(catId, currentName) {
+  document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
+  var newName = prompt('请输入新的分类名称：', currentName);
+  if (newName && newName.trim() && newName.trim() !== currentName) {
+    window.DB.updateCategory(catId, { name: newName.trim() }).then(function() {
+      showToast('分类已重命名', 'success');
+      loadCategoryTree();
+    }).catch(function(e) {
+      showToast('重命名失败: ' + e.message, 'error');
+    });
+  }
+}
+
+/* 删除分类：二次确认后调用 DB.deleteCategory 删除 */
+function deleteCategoryConfirm(catId, catName) {
+  document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
+  if (!confirm('确定要删除分类「' + catName + '」吗？\n该分类下的条目将变为"未分类"。')) return;
+  window.DB.deleteCategory(catId).then(function() {
+    showToast('分类已删除', 'success');
+    loadCategoryTree();
+  }).catch(function(e) {
+    showToast('删除失败: ' + e.message, 'error');
+  });
+}
+
+/* 点击页面其他区域时关闭所有分类菜单 */
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.cat-actions')) {
+    document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
+  }
+});
+
+/* ================================================================
    全局暴露
    ================================================================ */
 
@@ -1961,6 +2133,9 @@ window.generateImprovementPlan = generateImprovementPlan;
 window.generateHealthReport = generateHealthReport;
 window.loadHealthModal = loadHealthModal;
 window.loadExpiryModal = loadExpiryModal;
+window.toggleCatMenu = toggleCatMenu;
+window.editCategory = editCategory;
+window.deleteCategoryConfirm = deleteCategoryConfirm;
 
 /* ================================================================
    事件监听

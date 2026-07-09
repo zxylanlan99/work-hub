@@ -1,0 +1,55 @@
+classDiagram
+    class Config {
+        +AI_MODEL: 'Hy3'
+        +kbBackend
+        +chatPersistenceKeys
+    }
+    class AIService {
+        +callAI(params) model=Hy3
+        +getActiveModelId()
+        +buildAgentSystemPrompt(agentId)
+        +buildAgentMessages(history, sys, user)
+    }
+    class ChatSession {
+        +getChatState() singleton
+        +loadChatSession()
+        +saveChatSession(sess)
+        +restoreChatSession()
+    }
+    class RAG {
+        +shouldUseRAG(agentId)
+        +needsWebFallback(kb)
+        +formatRAGContext(kb, web)
+        +retrieveContext(agentId, query, deps)
+    }
+    class NewsScorer {
+        +evaluateNews(raw)
+        +decideDisposition(eval, raw)
+        +isAdOrPromo(text)
+        +dedupe(item, existing)
+        +authorityScore(domain)
+    }
+    class ReviewCardParser {
+        +parseReviewCards(aiText)
+    }
+    class DB {
+        +_aiProxy(data) model=Hy3
+        +searchKnowledgeChunks(q, k, s)
+        +searchWeb(q, k)
+        +getMessages(chatId)
+        +aiGenerateReviewCards(itemId)
+        +createReviewCard(data)
+        +_aiScoreNewsAsync(newsId, raw)
+        +addManualNews(data)
+        +dailyCrawlAndScore(sources)
+        +permanentDeleteNews(id)
+        +deleteNewsWithoutSource()
+    }
+    Config <.. AIService : AI_MODEL
+    Config <.. RAG : kbBackend
+    AIService ..> DB : callAI
+    ChatSession ..> DB : getMessages
+    RAG ..> DB : searchKnowledgeChunks/searchWeb
+    DB ..> NewsScorer : decideDisposition
+    DB ..> ReviewCardParser : parseReviewCards
+    ChatSession ..> Config : keys

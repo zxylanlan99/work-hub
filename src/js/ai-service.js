@@ -43,11 +43,31 @@
   }
 
   /**
+   * 获取统一默认模型 ID（硬约束：统一为 Hy3）
+   * @returns {string}
+   */
+  function getActiveModelId() {
+    return (typeof AI_MODEL !== 'undefined' && AI_MODEL) ? AI_MODEL : 'Hy3';
+  }
+
+  /**
    * 获取默认模型配置
    */
   function getDefaultModel() {
     const models = getModels();
-    if (models.length === 0) return null;
+    if (models.length === 0) {
+      // 模型列表为空时，回退到统一模型 Hy3（返回确定性模型标识，避免 null）
+      const fallbackId = getActiveModelId();
+      return {
+        id: fallbackId,
+        modelName: fallbackId,
+        provider: 'hy3',
+        baseUrl: '',
+        apiKey: '',
+        status: 'unknown',
+        isFallback: true
+      };
+    }
 
     const settings = getAISettings();
     if (settings.defaultModelId) {
@@ -264,8 +284,11 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
 async function callAI(params) {
   const { action, messages, model: modelParam, temperature, maxTokens, retry = 3 } = params;
 
+  // 模型缺省值统一收敛到 Hy3（硬约束：禁止硬编码其他模型名作为默认）
+  const resolvedModel = (modelParam && String(modelParam).trim()) ? modelParam : getActiveModelId();
+
   // 获取模型配置
-  const modelConfig = getModel(modelParam);
+  const modelConfig = getModel(resolvedModel);
   if (!modelConfig) {
     console.error('[AIService] 未找到可用的模型配置');
     return {
@@ -880,6 +903,44 @@ async function callAI(params) {
   }
 
   // ================================================================
+  // 可测纯函数：构建智能体消息列表（问题1 专家分支复用）
+  // ================================================================
+
+  /**
+   * 将历史消息 + system prompt + 当前用户消息拼成完整 messages 数组。
+   * 用于专家分支，使其携带完整对话历史（修复"专家对话无记忆"）。
+   * @param {Array<{role:string, content:string}>} history - 历史消息（来自 DB.getMessages）
+   * @param {string} systemPrompt - 系统提示词
+   * @param {string} userContent - 当前用户消息内容
+   * @returns {Array<{role:string, content:string}>}
+   */
+  function buildAgentMessages(history, systemPrompt, userContent) {
+    const messages = [];
+
+    if (systemPrompt && String(systemPrompt).trim()) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    // 历史消息：过滤掉已有的 system，避免重复
+    const hist = (history || []).filter(function(m) {
+      return m && m.role && m.role !== 'system';
+    });
+    hist.forEach(function(m) {
+      messages.push({ role: m.role, content: m.content });
+    });
+
+    // 追加当前用户消息（若与历史最后一条相同则跳过，避免重复）
+    if (userContent != null && String(userContent).trim()) {
+      const last = messages[messages.length - 1];
+      if (!last || last.role !== 'user' || last.content !== userContent) {
+        messages.push({ role: 'user', content: userContent });
+      }
+    }
+
+    return messages;
+  }
+
+  // ================================================================
   // 导出全局
   // ================================================================
 
@@ -889,8 +950,10 @@ async function callAI(params) {
     getModels: getModels,
     getModel: getModel,
     getDefaultModel: getDefaultModel,
+    getActiveModelId: getActiveModelId,
     getAvailableModels: getAvailableModels,
     getAISettings: getAISettings,
+    buildAgentMessages: buildAgentMessages,
     // 智能体
     getAgents: getAgents,
     getAgent: getAgent,

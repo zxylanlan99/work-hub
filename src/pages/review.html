@@ -17,6 +17,15 @@
       <div class="alert-actions"><button class="btn btn-primary btn-sm" onclick="generateDailyQuiz()">生成暖身测试题</button></div>
     </div>
 
+    <!-- 复习卡片生成（问题4 入口） -->
+    <div class="alert-banner alert-info" style="margin-top:12px;">
+      <span class="alert-icon">🔄</span> 生成复习卡片 — 为指定知识条目批量生成复习卡
+      <div class="alert-actions">
+        <input id="reviewCardKnowledgeId" placeholder="知识条目 ID" style="width:150px;padding:4px 8px;border-radius:6px;border:1px solid var(--gray-300);font-size:12px;" />
+        <button class="btn btn-primary btn-sm" onclick="generateReviewCardsForKnowledge()">生成复习卡片</button>
+      </div>
+    </div>
+
     <!-- 提醒条 -->
     <div class="alert-banner alert-warning" id="overdueAlert" style="display:none;">
       <span class="alert-icon">⚠️</span> 有 <strong id="overdueCount">0</strong> 张卡片已逾期，建议优先处理
@@ -236,13 +245,29 @@
 </div>
 
 <script>
-const reviewState = {
+var reviewState = {
   currentIndex: 0,
   selectedAnswer: null,
   queue: [],
   stats: null,
   riskCards: [],
   weakTopics: []
+}
+
+/**
+ * 生成可安全嵌入 HTML 属性（如 onclick="..."）的 JS 字符串字面量。
+ * 先通过 JSON.stringify 得到正确转义的双引号 JS 字符串，
+ * 再对结果做 HTML 实体转义，把双引号变成 &quot;，
+ * 从而不会突破外层双引号包裹的 HTML 属性边界。
+ * 可防御包含单引号/双引号/反斜杠/< > & 的注入数据。
+ */
+function safeAttr(value) {
+  var json = JSON.stringify(value == null ? '' : String(value));
+  return json
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 async function initReviewPage() {
@@ -315,7 +340,7 @@ function renderCurrentCard() {
   document.getElementById('cardCounter').textContent = `🔁 今日队列：${queue.length - reviewState.currentIndex} 张剩余 · 已复习 ${reviewState.currentIndex} 张`
 
   const options = card.options ? card.options.map(opt => `
-    <div class="card-option" onclick="selectOption(this,'${opt.key}')">${opt.key}. ${opt.text}</div>
+    <div class="card-option" onclick="selectOption(this,${safeAttr(opt.key)})">${opt.key}. ${opt.text}</div>
   `).join('') : ''
   document.getElementById('cardOptions').innerHTML = options
 
@@ -540,7 +565,7 @@ function renderImproveItems() {
       <div class="link-card-header"><span style="font-size:18px">📉</span><span class="link-card-title">${t.name || '未命名主题'} (${((t.mastery || 0) * 100).toFixed(0)}%)</span></div>
       <div class="link-card-meta">待复习卡片 · 建议补强</div>
       <div style="font-size:12px;color:var(--gray-500);margin-bottom:8px">📚 推荐：查阅相关资料进行补强学习</div>
-      <button class="btn btn-primary btn-sm" onclick="generateImprovementPlan('${t.name || '未知'}')">创建补强学习目标</button>
+      <button class="btn btn-primary btn-sm" onclick="generateImprovementPlan(${safeAttr(t.name || '未知')})">创建补强学习目标</button>
     </div>
   `).join('') : ''
   document.getElementById('improveItems').innerHTML = html
@@ -712,6 +737,24 @@ async function generateDailyQuiz() {
   }
 }
 
+async function generateReviewCardsForKnowledge() {
+  var input = document.getElementById('reviewCardKnowledgeId');
+  var kid = input ? input.value.trim() : '';
+  if (!kid) { utils.toast('请输入知识条目 ID', 'warning'); return; }
+  utils.toast('正在生成复习卡片...', 'info');
+  try {
+    if (!window.DB || !window.DB.aiGenerateReviewCards) throw new Error('AI 生成功能不可用');
+    var res = await window.DB.aiGenerateReviewCards(kid);
+    if (res && res.success && res.data && res.data.count > 0) {
+      utils.toast('已生成 ' + res.data.count + ' 张复习卡片', 'success');
+    } else {
+      throw new Error((res && res.error) || '未生成复习卡片');
+    }
+  } catch (e) {
+    utils.toast('生成失败: ' + e.message, 'error');
+  }
+}
+
 async function generateSerialTest() {
   utils.toast('AI 正在生成串联测试…', 'info')
   try {
@@ -780,3 +823,6 @@ async function generateImprovementPlan(topicName) {
     utils.toast('生成失败: ' + e.message, 'error')
   }
 }
+
+</script>
+</html>

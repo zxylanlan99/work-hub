@@ -124,7 +124,17 @@ async function loadPageContent(pageId, filePath) {
     
   } catch (error) {
     console.error('Error loading page:', error);
-    container.innerHTML = `<div class="empty-state"><p>页面加载失败</p></div>`;
+    const errMsg = error && error.message ? error.message : String(error || '未知错误');
+    const errStack = error && error.stack ? error.stack.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+    container.innerHTML = `<div class="empty-state" style="padding:32px;text-align:center;">
+        <p style="font-size:18px;color:var(--danger);font-weight:600;margin-bottom:12px;">⚠️ 页面加载失败</p>
+        <p style="color:var(--gray-600);margin-bottom:8px;">错误信息：<span style="color:var(--danger);font-family:monospace;font-size:13px;">${errMsg}</span></p>
+        <details style="max-width:600px;margin:0 auto;text-align:left;">
+            <summary style="cursor:pointer;color:var(--gray-500);font-size:12px;">查看详细堆栈（按 F12 控制台可查看完整日志）</summary>
+            <pre style="background:var(--gray-100);padding:12px;border-radius:8px;font-size:11px;color:var(--gray-700);overflow:auto;max-height:300px;margin-top:8px;white-space:pre-wrap;word-break:break-all;">${errStack}</pre>
+        </details>
+        <p style="color:var(--gray-400);font-size:12px;margin-top:16px;">请按 F12 打开控制台查看完整错误信息，或刷新页面重试</p>
+    </div>`;
   } finally {
     isLoading = false;
   }
@@ -237,6 +247,22 @@ function updateContentLayout(pageId) {
 
 // 初始化应用
 async function initApp() {
+  // file:// 协议检测：直接双击打开时浏览器会拦截 fetch，导致页面内容无法加载、菜单切换无效
+  if (window.location.protocol === 'file:') {
+    console.warn('[Framework] 检测到通过 file:// 打开，fetch 将被浏览器拦截，请使用本地 HTTP 服务（如 python3 -m http.server）打开本应用');
+    const tc = document.getElementById('toast-container');
+    if (tc) {
+      const t = document.createElement('div');
+      t.className = 'toast toast-warning';
+      t.textContent = '⚠️ 请通过本地服务打开（如 python3 -m http.server），直接双击文件会导致页面无法切换';
+      tc.appendChild(t);
+      setTimeout(() => t.remove(), 6000);
+    } else {
+      // toast 容器不存在时的兜底提示
+      alert('⚠️ 请通过本地服务打开（如 python3 -m http.server），直接双击文件会导致页面无法切换');
+    }
+  }
+
   // 先初始化 CloudBase
   try {
     await initCloudbase();

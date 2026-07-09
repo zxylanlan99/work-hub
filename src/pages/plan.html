@@ -590,8 +590,18 @@ async function initPlanPage() {
     console.error('[Plan] ❌ CloudBase 初始化失败:', e);
   }
   // 优先渲染目标卡片（用户最关心的内容）
-  await renderGoalCards(planFilter);
-  console.log('[Plan] ✅ 目标卡片已渲染');
+  // 【容错】核心渲染调用单独 try/catch，CloudBase 未初始化等异常时降级为空状态，避免整页崩溃
+  try {
+    await renderGoalCards(planFilter);
+    console.log('[Plan] ✅ 目标卡片已渲染');
+  } catch (e) {
+    console.error('[Plan] ⚠️ 目标卡片渲染失败:', e);
+    // 显示空状态而不是让整个页面崩掉
+    const grid = document.getElementById('planGoalsGrid');
+    const empty = document.getElementById('planEmptyState');
+    if (grid) grid.innerHTML = '';
+    if (empty) empty.style.display = 'flex';
+  }
   // 非关键数据异步加载，不阻塞页面渲染
   Promise.allSettled([
     loadWarmupData(),
@@ -1048,7 +1058,7 @@ async function confirmDeleteGoalAction() {
 }
 
 // ====== 里程碑编辑 ======
-let _editingGoalIdForMs = null;
+var _editingGoalIdForMs = null;
 
 async function openMilestoneEditModal() {
   _editingGoalIdForMs = currentDetailGoalId;
@@ -1126,7 +1136,7 @@ async function addNewMilestoneInline() {
 }
 
 // ====== 任务操作状态机 ======
-let _currentEditingTaskId = null;
+var _currentEditingTaskId = null;
 
 /** 统一任务动作入口 */
 async function handleTaskAction(taskId, action) {
@@ -1322,13 +1332,17 @@ async function completeWith(type) {
               // 创建复习卡片
               const nextReview = new Date();
               nextReview.setDate(nextReview.getDate() + 2);
-              await DB.createReviewCard({
+              // 问题4 修复：knowledgeId 必须是真实知识条目 ID，而非 taskId
+              const _cardData = {
                 question: `关于「${cardTitle}」的核心要点是什么？`,
                 answer: `来自学习目标「${goalTitle}」中「${cardTitle}」的学习内容。`,
                 questionType: 'open',
-                knowledgeId: taskId,
                 nextReview: nextReview
-              });
+              };
+              if (task && task.knowledgeId) {
+                _cardData.knowledgeId = task.knowledgeId;
+              }
+              await DB.createReviewCard(_cardData);
             }
           }
         } catch(cardErr) {

@@ -396,7 +396,7 @@ async function sendMessage() {
 
   try {
     const modelSelect = document.getElementById('model-select');
-    const model = modelSelect ? modelSelect.value : 'mimo';
+    const model = modelSelect ? modelSelect.value : (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3');
 
     if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
     const hasKnowledge = chatState.selectedKnowledgeIds && chatState.selectedKnowledgeIds.length > 0;
@@ -548,7 +548,7 @@ async function startCompareMode() {
       showToast('数据库服务未初始化', 'error');
       return;
     }
-    const models = ['mimo', 'deepseek'];
+    const models = [(typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3'), 'deepseek'];
     const result = await window.DB.aiCompare(models, content.trim());
 
     if (result.success && result.data) {
@@ -628,7 +628,7 @@ if (typeof window.callAI === 'undefined') {
     const result = await window.DB._aiProxy({
       action: 'chat',
       messages: [{ role: 'user', content: message }],
-      model: model || 'mimo'
+      model: model || (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3')
     });
     if (!result.success) throw new Error(result.error || 'AI 调用失败');
     return result.content || '抱歉，无法获取回复';

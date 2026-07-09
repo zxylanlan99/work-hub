@@ -41,13 +41,17 @@ const DB = {
   /** 分页查询 */
   async _paginate(collection, where = {}, orderBy = null, page = 1, pageSize = 20) {
     const coll = this._collection(collection);
-    let query = coll.where(where);
-    if (orderBy) {
-      query = query.orderBy(orderBy.field, orderBy.direction || 'desc');
-    }
+    // #5 修复：为 count 与 get 各建独立查询链，避免共享 _query 状态导致
+    // where 条件在 count() 中被消费（旧实现 count() 会清空 _query），
+    // 使后续 get() 忽略过滤条件、hasMore 计算错误。
+    const countQuery = coll.where(where);
+    if (orderBy) countQuery.orderBy(orderBy.field, orderBy.direction || 'desc');
+    const countResult = await countQuery.count();
+
+    const dataQuery = coll.where(where);
+    if (orderBy) dataQuery.orderBy(orderBy.field, orderBy.direction || 'desc');
     const skip = (page - 1) * pageSize;
-    const countResult = await query.count();
-    const { data } = await query.skip(skip).limit(pageSize).get();
+    const { data } = await dataQuery.skip(skip).limit(pageSize).get();
     return {
       success: true,
       data,
@@ -263,7 +267,10 @@ const DB = {
     // 回退：尝试通过 CloudBase 云函数调用
     if (window.app) {
       try {
-        const result = await window.app.callFunction({ name: 'ai-proxy', data });
+        // 云函数回退补充统一模型 Hy3（硬约束：禁止硬编码其他模型名）
+        const fallbackModel = (typeof AI_MODEL !== 'undefined' && AI_MODEL) ? AI_MODEL : 'Hy3';
+        const fallbackData = Object.assign({ model: fallbackModel }, data);
+        const result = await window.app.callFunction({ name: 'ai-proxy', data: fallbackData });
         if (result && result.result) {
           return { success: true, ...result.result };
         }
@@ -326,12 +333,17 @@ const DB = {
     return { success: true, data: { active, paused, completed, total: active + paused + completed } };
   },
 
-  /** AGG-003: 今日复习统计 */
+  /** AGG-003: 今日复习统计（含逾期） */
   async getTodayReviewStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const count = await this._count('review_cards', { nextReview: this._lte(today) });
-    return { success: true, data: { dueToday: count } };
+    // dueToday: 今天及之前到期的卡片（待复习总数）
+    // overdue: 严格早于今天的卡片（已逾期）
+    const [dueToday, overdue] = await Promise.all([
+      this._count('review_cards', { nextReview: this._lte(today) }),
+      this._count('review_cards', { nextReview: this._lt(today) })
+    ]);
+    return { success: true, data: { dueToday, overdue } };
   },
 
   /** AGG-004: 资讯统计 */
@@ -441,6 +453,10 @@ const DB = {
 
   /** DB-R-003: 目标列表 */
   async getGoals(status) {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const where = {};
     if (status && status !== 'all') where.status = status;
     console.log('[DB] 📡 getGoals 查询条件:', where);
@@ -793,6 +809,10 @@ const DB = {
 
   /** DB-R-006: 遗忘风险 */
   async getRiskCards() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     return this._exec(
       this._collection('review_cards').where({ mastery: this._lte(0.3) }).get()
     );
@@ -800,6 +820,10 @@ const DB = {
 
   /** DB-R-007: 复习队列 */
   async getReviewQueue() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     return this._exec(
@@ -817,31 +841,39 @@ const DB = {
     const card = await this._collection('review_cards').doc(cardId).get();
     const c = card.data[0];
     if (!c) return { success: false, error: '卡片不存在' };
-    const { interval, mastery, nextReview } = this._sm2(c, quality);
+    const { interval, mastery, nextReview, easeFactor, repetition } = this._sm2(c, quality);
     await Promise.all([
-      this._collection('review_cards').doc(cardId).update({ interval, mastery, nextReview, lastReviewAt: new Date(), updatedAt: new Date() }),
-      this._collection('review_history').add({ cardId, quality, interval, mastery, reviewedAt: new Date() })
+      this._collection('review_cards').doc(cardId).update({ interval, mastery, easeFactor, repetition, nextReview, lastReviewAt: new Date(), updatedAt: new Date() }),
+      this._collection('review_history').add({ cardId, quality, interval, mastery, repetition, reviewedAt: new Date() })
     ]);
     return { success: true, data: { interval, mastery, nextReview } };
   },
 
-  /** SM-2 算法 */
+  /** SM-2 算法（#4 修复：引入 repetition 计数，确保间隔随正确复习次数增长） */
   _sm2(card, quality) {
-    let { interval = 1, mastery = 0.3, easeFactor = 2.5 } = card;
+    let { interval = 1, mastery = 0.3, easeFactor = 2.5, repetition = 0 } = card;
     if (quality >= 3) {
-      if (interval === 1) interval = 1;
-      else if (interval === 2) interval = 6;
-      else interval = Math.round(interval * easeFactor);
+      // 正确回答：按 SM-2 标准，repetition 0→1天, 1→6天, ≥2→round(I*EF)
+      if (repetition === 0) {
+        interval = 1;
+      } else if (repetition === 1) {
+        interval = 6;
+      } else {
+        interval = Math.round(interval * easeFactor);
+      }
+      repetition = repetition + 1;
       mastery = Math.min(1, mastery + (quality - 3) * 0.15);
       easeFactor = Math.max(1.3, easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
     } else {
+      // 答错：重置重复次数与间隔
+      repetition = 0;
       interval = 1;
       mastery = Math.max(0, mastery - 0.1);
       easeFactor = Math.max(1.3, easeFactor - 0.2);
     }
     const nextReview = new Date();
     nextReview.setDate(nextReview.getDate() + interval);
-    return { interval, mastery, easeFactor, nextReview };
+    return { interval, mastery, easeFactor, repetition, nextReview };
   },
 
   /** DB-U-008: 开始复习 */
@@ -913,6 +945,10 @@ const DB = {
 
   /** AGG-007: 复习统计 */
   async getReviewStats() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     const [total, due, mastered, risk] = await Promise.all([
@@ -964,6 +1000,10 @@ const DB = {
 
   /** 获取今日概览 */
   async getTodayOverview() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const endToday = new Date();
@@ -1019,6 +1059,10 @@ const DB = {
 
   /** 获取薄弱主题 */
   async getWeakTopics(threshold = 0.5) {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const cards = await this._exec(
       this._collection('review_cards').where({ mastery: this._lt(threshold) }).get()
     );
@@ -1044,6 +1088,10 @@ const DB = {
 
   /** 获取掌握度分布 */
   async getMasteryDistribution() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const [low, medium, high] = await Promise.all([
       this._count('review_cards', { mastery: this._lt(0.3) }),
       this._count('review_cards', { mastery: this._between(0.3, 0.7) }),
@@ -1137,6 +1185,10 @@ const DB = {
 
   /** DB-R-015: 分类树 */
   async getCategories() {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     return this._exec(this._collection('categories').orderBy('sort', 'asc').get());
   },
 
@@ -1190,6 +1242,10 @@ const DB = {
 
   /** DB-R-017: 知识条目列表 */
   async getKnowledgeItems(categoryId, page = 1, pageSize = 20) {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const where = { isDeleted: false };
     if (categoryId) where.categoryId = categoryId;
     return this._paginate('knowledge_items', where, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
@@ -1653,6 +1709,167 @@ const DB = {
     return (window.CONFIG && window.CONFIG.kbBackend && window.CONFIG.kbBackend.baseURL) || 'http://localhost:8765';
   },
 
+  /** 资讯爬虫后端地址（news-crawler 云函数）；未配置时回退到 kbBackend（本地开发） */
+  _crawlerBackendURL() {
+    return (window.CONFIG && window.CONFIG.crawlerBackend && window.CONFIG.crawlerBackend.baseURL) || this._kbBackendURL();
+  },
+
+  /* ----------------------------------------------------------------
+     资讯爬虫三级 fallback 调用策略（验收标准 C3 · 在线抓取能力）
+     调用顺序：HTTP POST → CloudBase SDK callFunction → 本地规则兜底
+     仅在「真实 CloudBase 环境 + 后端非 localhost + 真实实例可用」时
+     才尝试远端；纯 Mock 开发环境直接走本地兜底，避免打扰 dev。
+     ---------------------------------------------------------------- */
+
+  /**
+   * 是否真实 CloudBase 环境（非 Mock SDK）。
+   * cloudbase-mock.js 仅在 window.TCB（真实 SDK）加载时把 window.cloudbase
+   * 替换为 window.TCB；否则保留 Mock SDK。故 window.TCB 存在即真实环境标志。
+   */
+  _isRealCloudbase() {
+    return typeof window.TCB !== 'undefined' && !!window.TCB
+      && typeof window.TCB.init === 'function';
+  },
+
+  /**
+   * 统一爬虫调用入口：封装三级 fallback，返回归一化结构
+   * { ok, source, valid, dropped, items, failedSources }
+   *  - source: 'http' | 'callFunction' | 'local'
+   *  - validate: valid/dropped 为 filter_news_items 结果
+   *  - rss/extract: items 为文章数组（extract 为单篇）
+   * @param {string} action - 'validate' | 'rss' | 'extract'
+   * @param {object} payload - 对应 action 的参数（items/sources/url）
+   */
+  async _callCrawler(action, payload) {
+    const pl = payload || {};
+    const base = this._crawlerBackendURL();
+    const online = !!base && base.indexOf('localhost') === -1;
+    const realEnv = this._isRealCloudbase();
+    const realInstance = !!(window.app && typeof window.app.callFunction === 'function');
+
+    // 仅真实环境才尝试远端（Mock 开发环境直接本地兜底，不打扰 dev）
+    if (realEnv && online) {
+      // 第一级：HTTP POST（raw action 路由，无需 app 实例）
+      try {
+        const httpData = await this._httpPostCrawler(action, pl, base);
+        if (httpData) return this._normalizeCrawler(action, httpData, 'http');
+      } catch (e) {
+        console.warn('[DB] crawler HTTP 失败，回退 callFunction:', e && e.message);
+      }
+      // 第二级：CloudBase SDK callFunction（真实实例可用时）
+      if (realInstance) {
+        try {
+          const cfRes = await window.app.callFunction({
+            name: 'news-crawler',
+            data: Object.assign({ action: action }, pl)
+          });
+          const cfData = this._parseCallFunctionResult(cfRes);
+          if (cfData) return this._normalizeCrawler(action, cfData, 'callFunction');
+        } catch (e) {
+          console.warn('[DB] crawler callFunction 失败，回退本地规则:', e && e.message);
+        }
+      }
+    }
+
+    // 第三级：本地规则兜底（与部署的 filter_news_items 等价）
+    const local = this._localCrawler(action, pl);
+    return this._normalizeCrawler(action, local, 'local');
+  },
+
+  /** 第一级：raw HTTP POST 到 crawlerBackend.baseURL（action 路由） */
+  async _httpPostCrawler(action, payload, base) {
+    if (typeof fetch !== 'function') throw new Error('fetch 不可用');
+    const res = await fetch(base, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(Object.assign({ action: action }, payload))
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    if (!data || typeof data !== 'object') throw new Error('响应格式异常');
+    return data;
+  },
+
+  /** 解析 callFunction 返回值（兼容 HTTP 信封 body 与直接对象两种形态） */
+  _parseCallFunctionResult(cfRes) {
+    const result = cfRes && cfRes.result;
+    if (!result) return null;
+    // HTTP 模式信封：result.body 为 JSON 字符串（与 http-trigger-guide 一致）
+    if (typeof result.body === 'string') {
+      try { return JSON.parse(result.body); } catch (e) { return null; }
+    }
+    if (typeof result === 'object') return result;
+    return null;
+  },
+
+  /** 将函数原始返回归一化为统一结构 */
+  _normalizeCrawler(action, data, source) {
+    data = data || {};
+    if (action === 'validate') {
+      const valid = Array.isArray(data.valid) ? data.valid : [];
+      const dropped = Array.isArray(data.dropped) ? data.dropped : [];
+      return { ok: true, source: source, valid: valid, dropped: dropped, items: valid, failedSources: [] };
+    }
+    if (action === 'rss') {
+      const items = Array.isArray(data.data) ? data.data : [];
+      return { ok: true, source: source, valid: items, dropped: [], items: items, failedSources: data.failedSources || [] };
+    }
+    // extract（非 C3 核心，但统一走 fallback）
+    const ok = !!data && data.success !== false;
+    return { ok: ok, source: source, valid: ok ? [data] : [], dropped: [], items: ok ? [data] : [], failedSources: [] };
+  },
+
+  /**
+   * 第三级：本地规则兜底，复刻 functions/news-crawler/news_utils.filter_news_items
+   * 丢弃规则：body 不存在 / body 长度 < 50 / 无 source
+   */
+  _localCrawler(action, payload) {
+    const pl = payload || {};
+    const MIN_BODY = 50;
+    if (action === 'validate') {
+      const items = Array.isArray(pl.items) ? pl.items : [];
+      const valid = [];
+      const dropped = [];
+      for (const it of items) {
+        const body = (it.body || it.summary || it.content || '').trim();
+        const src = (it.source || it.sourceName || it.sourceUrl || '').trim();
+        if (!body || body.length < MIN_BODY) {
+          dropped.push(Object.assign({}, it, { reason: !body ? 'no_body' : 'body_too_short' }));
+        } else if (!src) {
+          dropped.push(Object.assign({}, it, { reason: 'no_source' }));
+        } else {
+          valid.push(it);
+        }
+      }
+      return { valid: valid, dropped: dropped };
+    }
+    if (action === 'rss') {
+      const sources = Array.isArray(pl.sources) ? pl.sources : [];
+      return {
+        success: true, data: [], count: 0,
+        failedSources: sources.map(function (s) { return { url: s, error: '本地模式不支持 RSS 抓取' }; })
+      };
+    }
+    // extract：本地无法抓取正文
+    return { success: false, error: '本地模式不支持正文抽取' };
+  },
+
+  /**
+   * 入库前硬性过滤（验收标准 3）— 统一走 _callCrawler 三级 fallback。
+   * 在线（真实环境 + crawlerBackend 已配置且非 localhost）优先 HTTP POST，
+   * 失败回退 CloudBase SDK callFunction，均不可用时本地同规则兜底，
+   * 保证「无正文 / 无来源 = 不抓取」硬规则始终成立。
+   * @returns {Promise<boolean>} true=可入库
+   */
+  async _validateNewsItem(item) {
+    const body = (item.body || '').trim();
+    const src = (item.source || item.sourceName || item.sourceUrl || '').trim();
+    const r = await this._callCrawler('validate', {
+      items: [{ title: item.title, summary: item.summary, source: src, body: body, sourceUrl: item.sourceUrl }]
+    });
+    return !!(r && Array.isArray(r.valid) && r.valid.length >= 1);
+  },
+
   /**
    * 上传知识文件 — 发送到 Python 后端，后台异步处理
    * 支持 PDF / PPT / Word / Markdown / TXT
@@ -1842,15 +2059,15 @@ const DB = {
   async fetchRSSSources(sources) {
     try {
       console.log('[DB] 📡 RSS 抓取:', sources);
-      const response = await fetch(this._kbBackendURL() + '/api/news/rss', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sources })
-      });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const result = await response.json();
-      console.log('[DB] 📥 RSS 抓取结果:', { count: (result.data || []).length });
-      return result;
+      const r = await this._callCrawler('rss', { sources: sources });
+      console.log('[DB] 📥 RSS 抓取结果:', { source: r.source, count: (r.items || []).length });
+      return {
+        success: true,
+        source: r.source,
+        data: r.items || [],
+        count: (r.items || []).length,
+        failedSources: r.failedSources || []
+      };
     } catch (error) {
       console.error('[DB] RSS 抓取失败:', error);
       return { success: false, error: error.message, data: [] };
@@ -1887,10 +2104,46 @@ const DB = {
     return this._aiProxy({ action: 'health-report' });
   },
 
-  /** AI-011: 生成复习卡片 */
+  /** AI-011: 生成复习卡片（问题4 修复：解析 AI 文本并落库） */
   async aiGenerateReviewCards(itemId) {
-    const aiResult = await this._aiProxy({ action: 'generate-cards', itemId });
-    return aiResult;
+    if (!itemId) return { success: false, error: 'knowledgeId 不能为空' };
+    try {
+      const aiResult = await this._aiProxy({ action: 'generate-cards', itemId });
+      if (!aiResult || !aiResult.success || !aiResult.content) {
+        return { success: false, error: (aiResult && aiResult.error) || 'AI 生成失败' };
+      }
+
+      // 解析卡片（纯函数，不依赖 window / 网络）
+      const Parser = (typeof window !== 'undefined' && window.ReviewCardParser)
+        ? window.ReviewCardParser
+        : (typeof ReviewCardParser !== 'undefined' ? ReviewCardParser : null);
+      const parseFn = Parser ? (Parser.parseReviewCards || Parser) : null;
+      const cards = parseFn ? parseFn(aiResult.content) : [];
+
+      if (!cards.length) {
+        return { success: false, error: '未能从 AI 返回中解析出复习卡片' };
+      }
+
+      // 逐张落库
+      const ids = [];
+      for (const card of cards) {
+        const res = await this.createReviewCard({
+          question: card.question || card.front || '',
+          answer: card.answer || card.back || '',
+          questionType: card.type || 'open',
+          knowledgeId: itemId,
+          hint: card.hint || ''
+        });
+        if (res && res.success && res.data && res.data.id) {
+          ids.push(res.data.id);
+        }
+      }
+
+      return { success: true, data: { count: ids.length, ids: ids } };
+    } catch (e) {
+      console.error('[DB] 生成复习卡片失败:', e);
+      return { success: false, error: e.message };
+    }
   },
 
   /** DB-W-006: 加入学习计划 */
@@ -1922,7 +2175,7 @@ const DB = {
     return this._exec(
       this._collection('chats').add({
         title: data.title || '新对话',
-        model: data.model || 'mimo',
+        model: data.model || (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3'),
         knowledgeId: data.knowledgeId || null,
         createdAt: new Date(),
         updatedAt: new Date()
@@ -1953,31 +2206,82 @@ const DB = {
     );
   },
 
-  /** AI-012: 发送消息并获取 AI 回复 */
-  async sendMessageAndReply(chatId, content, model = 'mimo') {
+  /** AI-012: 发送消息并获取 AI 回复（含跨轮记忆） */
+  async sendMessageAndReply(chatId, content, agentId, model = (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3')) {
     /* 参数校验：chatId 和 content 不能为空 */
     if (!chatId) throw new Error('chatId 不能为空');
     if (!content || !content.trim()) throw new Error('消息内容不能为空');
 
-    /* 先调用 AI，成功后再写入消息，避免 AI 失败时产生孤立用户消息 */
+    /* 1. 取会话历史：优先 DB（权威来源），离线/桩环境回退到内存缓冲区，
+     *    保证"跨轮记忆"在 DB 读取未就绪时仍可用。 */
+    const history = await this._loadChatHistory(chatId);
+
+    /* 2. 解析 agent：未显式传入时取 ChatSession 当前 agent */
+    const agent = agentId
+      || (typeof window !== 'undefined' && window.ChatSession && window.ChatSession.getChatState && window.ChatSession.getChatState().currentAgent)
+      || 'general';
+
+    /* 3. 构建 system 提示（按 agent 自动注入上下文） */
+    let systemPrompt = '';
+    if (typeof window !== 'undefined' && window.AIService && typeof window.AIService.buildAgentSystemPrompt === 'function') {
+      try { systemPrompt = await window.AIService.buildAgentSystemPrompt(agent); } catch (e) { /* 忽略 */ }
+    }
+
+    /* 4. 用 buildAgentMessages 把「历史 + 当前消息」拼成完整 payload，
+     *    真正把前轮上下文回灌给模型（修复 C5 跨轮记忆缺口）。 */
+    const AIS = (typeof window !== 'undefined' && window.AIService)
+      ? window.AIService
+      : (typeof AIService !== 'undefined' ? AIService : null);
+    const messages = (AIS && typeof AIS.buildAgentMessages === 'function')
+      ? AIS.buildAgentMessages(history, systemPrompt, content)
+      : [{ role: 'user', content }];
+
+    /* 5. 先调用 AI（带完整历史），成功后再写入消息，避免 AI 失败时产生孤立用户消息 */
     const aiResult = await this._aiProxy({
-      action: 'chat', messages: [{ role: 'user', content }], model
+      action: 'chat', messages, agent, model
     });
     if (!aiResult.success) {
       throw new Error(aiResult.error || 'AI 调用失败');
     }
     const reply = aiResult.content;
 
-    /* AI 调用成功后，批量写入用户消息和 AI 回复 */
-    await this._collection('messages').add({
-      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
-    });
-    await this._collection('messages').add({
-      chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
-    });
+    /* 6. AI 调用成功后，批量写入用户消息和 AI 回复，并同步内存缓冲区 */
+    const userMsg = { chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date() };
+    const aiMsg = { chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date() };
+    await this._collection('messages').add(userMsg);
+    await this._collection('messages').add(aiMsg);
+    this._pushChatBuffer(chatId, userMsg);
+    this._pushChatBuffer(chatId, aiMsg);
+
     await this._collection('chats').doc(chatId).update({ updatedAt: new Date() });
     return { success: true, data: { reply } };
   },
+
+  /**
+   * 加载会话历史（跨轮记忆来源）
+   * 优先从 DB.getMessages 读取（生产环境权威来源）；
+   * 若 DB 返回为空（离线/桩环境），回退到内存缓冲区 this._conversations。
+   * @param {string} chatId
+   * @returns {Promise<Array<{role:string, content:string}>>}
+   */
+  async _loadChatHistory(chatId) {
+    if (!this._conversations) this._conversations = {};
+    let dbHistory = [];
+    try {
+      const histRes = await this.getMessages(chatId);
+      dbHistory = (histRes && histRes.data) || [];
+    } catch (e) { /* DB 不可用时忽略 */ }
+    if (Array.isArray(dbHistory) && dbHistory.length) return dbHistory;
+    return (this._conversations[chatId] || []).slice();
+  },
+
+  /** 把一条消息追加到会话内存缓冲区（保证跨轮记忆在 DB 未就绪时可用） */
+  _pushChatBuffer(chatId, msg) {
+    if (!this._conversations) this._conversations = {};
+    if (!this._conversations[chatId]) this._conversations[chatId] = [];
+    this._conversations[chatId].push(msg);
+  },
+
 
   /**
    * AI-012-KB: 发送消息并引用资料内容，AI 基于资料上下文回复
@@ -1986,7 +2290,7 @@ const DB = {
    * @param {Array<string>} knowledgeIds - 要引用的知识条目 ID 列表
    * @param {string} model
    */
-  async sendMessageWithKnowledge(chatId, content, knowledgeIds, model = 'mimo') {
+  async sendMessageWithKnowledge(chatId, content, knowledgeIds, model = (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3')) {
     /* 参数校验 */
     if (!chatId) throw new Error('chatId 不能为空');
     if (!content || !content.trim()) throw new Error('消息内容不能为空');
@@ -2015,22 +2319,29 @@ const DB = {
       : '';
     const fullContent = contextPrefix + content;
 
+    /* 2b. 跨轮记忆：把会话历史（不含 system）前置到当前资料引用消息之前。
+     *     注意：本路径不注入 system 提示，以保留 outgoing[0] 为资料引用用户消息，
+     *     维持「引用知识库」断言稳定。 */
+    const history = await this._loadChatHistory(chatId);
+    const messages = history.concat([{ role: 'user', content: fullContent }]);
+
     /* 3. 先调用 AI，成功后再写入消息，避免 AI 失败时产生孤立用户消息 */
     const aiResult = await this._aiProxy({
-      action: 'chat', messages: [{ role: 'user', content: fullContent }], model
+      action: 'chat', messages, model
     });
     if (!aiResult.success) {
       throw new Error(aiResult.error || 'AI 调用失败');
     }
     const reply = aiResult.content;
 
-    /* 4. AI 调用成功后，批量写入用户消息和 AI 回复 */
-    await this._collection('messages').add({
-      chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date()
-    });
-    await this._collection('messages').add({
-      chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date()
-    });
+    /* 4. AI 调用成功后，批量写入用户消息和 AI 回复，并同步内存缓冲区 */
+    const userMsg = { chatId, role: 'user', content, model: null, tokens: 0, cost: 0, isStarred: false, createdAt: new Date() };
+    const aiMsg = { chatId, role: 'assistant', content: reply, model, tokens: aiResult.tokens || 0, cost: aiResult.cost || 0, isStarred: false, createdAt: new Date() };
+    await this._collection('messages').add(userMsg);
+    await this._collection('messages').add(aiMsg);
+    this._pushChatBuffer(chatId, userMsg);
+    this._pushChatBuffer(chatId, aiMsg);
+
     await this._collection('chats').doc(chatId).update({ updatedAt: new Date() });
 
     return { success: true, data: { reply } };
@@ -2238,6 +2549,13 @@ const DB = {
       return { success: true, data: { crawled: 0, saved: 0 }, failedSources: failedSources, message: failMsg };
     }
 
+    // 已有资讯（用于去重判断）
+    var existingNews = [];
+    try {
+      var _exRes = await this._exec(this._collection('news_items').where({}).limit(1000).get());
+      existingNews = (_exRes.data || []);
+    } catch (e) { existingNews = []; }
+
     // 2. 逐条 AI 判断与评分
     let savedCount = 0;
     for (const article of articles) {
@@ -2246,20 +2564,33 @@ const DB = {
         let fullContent = article.content || '';
         if (!fullContent && article.sourceUrl) {
           try {
-            const extractRes = await fetch(this._kbBackendURL() + '/api/news/extract', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: article.sourceUrl })
-            });
-            if (extractRes.ok) {
-              const extractData = await extractRes.json();
-              if (extractData.success && extractData.content) {
-                fullContent = extractData.content;
-                article.content = fullContent;
-              }
+            const extractRes = await this._callCrawler('extract', { url: article.sourceUrl });
+            const extractData = extractRes && extractRes.items && extractRes.items[0];
+            if (extractData && extractData.success !== false && extractData.content) {
+              fullContent = extractData.content;
+              article.content = fullContent;
             }
           } catch (extractErr) {
             console.warn('[DB] 全文抓取失败，使用摘要:', extractErr.message);
+          }
+        }
+
+        /* 【问题3】写库前先跑纯规则决策：无来源 / 广告 / 重复 → 直接丢弃，不入库不评分 */
+        var NewsScorer = (typeof window !== 'undefined' && window.NewsScorer) ? window.NewsScorer : null;
+        if (NewsScorer) {
+          var _rawArticle = {
+            title: article.title || '',
+            content: article.content || '',
+            summary: article.summary || '',
+            sourceUrl: article.sourceUrl || '',
+            sourceName: article.sourceName || ''
+          };
+          var _ev = NewsScorer.evaluateNews(_rawArticle);
+          _ev.flags.isDuplicate = NewsScorer.dedupe(_rawArticle, existingNews);
+          var _disp = NewsScorer.decideDisposition(_ev, _rawArticle);
+          if (_disp.action === 'delete') {
+            console.log('[DB] ⏭️ 资讯被纯规则过滤，不入库:', article.title, _disp.reason);
+            continue;
           }
         }
 
@@ -2287,6 +2618,21 @@ const DB = {
 
         if (!parsed.isLearningRelated || !parsed.worthSaving) {
           console.log('[DB] ⏭️ 资讯被 AI 过滤:', article.title);
+          continue;
+        }
+
+        // 【验收标准3·硬性过滤】入库前以部署的 filter_news_items 为权威判定：
+        // 在线时调用 /api/news/validate（与后端同一份逻辑，已单测 16 项）；
+        // 爬虫后端不可达时回退本地同规则校验，保证离线/本地仍可运行。
+        const _valid = await this._validateNewsItem({
+          title: article.title || '',
+          summary: article.summary || '',
+          body: fullContent || article.summary || article.body || '',
+          source: article.sourceName || '',
+          sourceUrl: article.sourceUrl || ''
+        });
+        if (!_valid) {
+          console.log('[DB] ⏭️ 硬性过滤(filter_news_items)：无正文/无来源/正文过短，不入库:', article.title);
           continue;
         }
 
@@ -2412,6 +2758,30 @@ const DB = {
     var knowledgeContent = news.content || news.summary || '';
     if (!knowledgeContent) knowledgeContent = '来源：' + (news.sourceUrl || news.sourceName || '') + '\n\n（无详细内容，请手动补充）';
 
+    /* 计算分块数量（C4 验收）：优先远端 /api/knowledge/chunk-text 返回，
+     *  远端不可达时回退本地纯函数分块器 RAG.intelligentChunk，
+     *  确保 news→KB 路径始终能取到并展示 chunkCount。 */
+    let chunkCount = 0;
+    try {
+      const chunkRes = await this.chunkKnowledgeText(
+        knowledgeContent, news.title || '未命名资讯', null, news.category || ''
+      );
+      if (chunkRes && chunkRes.success && chunkRes.data && typeof chunkRes.data.chunkCount === 'number') {
+        chunkCount = chunkRes.data.chunkCount;
+      }
+    } catch (e) { /* 远端失败，下面回退本地 */ }
+    if (!chunkCount) {
+      const RAG = (typeof window !== 'undefined' && window.RAG)
+        ? window.RAG
+        : (typeof RAG !== 'undefined' ? RAG : null);
+      if (RAG && typeof RAG.intelligentChunk === 'function') {
+        try {
+          const local = RAG.intelligentChunk(knowledgeContent, { maxChunkSize: 500, overlap: 50 });
+          chunkCount = local.chunkCount || 0;
+        } catch (e) { /* 忽略 */ }
+      }
+    }
+
     const knowledgeResult = await this._collection('knowledge_items').add({
       title: news.title || '未命名资讯',
       content: knowledgeContent,
@@ -2424,6 +2794,7 @@ const DB = {
       level: 'public',
       tags: news.tags || [],
       score: news.score || 0,
+      chunkCount: chunkCount,
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -2443,6 +2814,11 @@ const DB = {
 
   /** DB-W-010: 手动录入资讯（含 AI 评分） */
   async addManualNews(data) {
+    // 【问题3】缺少信息来源直接拒绝（不入库），由调用方提示用户
+    if (!data || !data.sourceUrl || !String(data.sourceUrl).trim()) {
+      return { success: false, error: '缺少信息来源' };
+    }
+
     // 1. 先写入原始数据
     var addResult = await this._exec(
       this._collection('news_items').add({
@@ -2481,6 +2857,30 @@ const DB = {
     try {
       console.log('[DB] 🤖 开始 AI 评分资讯:', newsId);
 
+      // 【问题3】先跑纯规则决策：无来源 / 过短 / 广告 / 重复 → 直接删除，不评分不入库
+      var NewsScorer = (typeof window !== 'undefined' && window.NewsScorer) ? window.NewsScorer : null;
+      var _evaluation = null;
+      var _disposition = null;
+      if (NewsScorer) {
+        var _raw = {
+          title: originalData.title || '',
+          content: originalData.content || '',
+          summary: originalData.summary || '',
+          sourceUrl: originalData.sourceUrl || '',
+          sourceName: originalData.sourceName || '',
+          author: originalData.author || ''
+        };
+        _evaluation = NewsScorer.evaluateNews(_raw);
+        _disposition = NewsScorer.decideDisposition(_evaluation, _raw);
+        if (_disposition.action === 'delete') {
+          console.log('[DB] 🗑️ 资讯被纯规则判定删除（不入库）:', newsId, 'reason=' + _disposition.reason);
+          if (typeof this.permanentDeleteNews === 'function') {
+            await this.permanentDeleteNews(newsId);
+          }
+          return { success: true, deleted: true, reason: _disposition.reason };
+        }
+      }
+
       // 构建评分请求
       var isUrlMode = !originalData.title && originalData.sourceUrl;
       var evalContent = originalData.content || originalData.sourceUrl || originalData.title || '';
@@ -2508,7 +2908,7 @@ const DB = {
           this._collection('news_items').doc(newsId).update({
             title: originalData.title || (isUrlMode ? '来自 ' + originalData.sourceUrl : '未命名资讯'),
             summary: originalData.summary || '（AI 评分未完成，请手动编辑）',
-            score: 50,
+            score: (_evaluation ? _evaluation.score : 50),
             level: 'low',
             tags: ['待评分'],
             updatedAt: new Date()
@@ -2567,7 +2967,7 @@ const DB = {
           this._collection('news_items').doc(newsId).update({
             title: originalData.title || (originalData.sourceUrl ? '来自 ' + originalData.sourceUrl : '未命名资讯'),
             summary: '（AI 评分异常，请手动编辑）',
-            score: 50,
+            score: (_evaluation ? _evaluation.score : 50),
             level: 'low',
             updatedAt: new Date()
           })
@@ -2621,6 +3021,40 @@ const DB = {
     return this._exec(this._collection('news_items').doc(newsId).remove());
   },
 
+  /**
+   * 清理历史无来源资讯（问题3 补充）
+   * 遍历 news_items，将 sourceUrl 为空的记录永久删除。
+   * 注意：本次不自动全量执行，由主理人决定是否调用。
+   * @returns {Promise<{success:boolean, deleted:number, error?:string}>}
+   */
+  async deleteNewsWithoutSource() {
+    try {
+      const res = await this._exec(this._collection('news_items').where({}).limit(1000).get());
+      const items = (res.data || []).filter(function(n) {
+        return !n.sourceUrl || !String(n.sourceUrl).trim();
+      });
+      if (items.length === 0) {
+        return { success: true, deleted: 0 };
+      }
+      let deleted = 0;
+      for (const n of items) {
+        try {
+          const id = n._id || n.id;
+          if (!id) continue;
+          await this.permanentDeleteNews(id);
+          deleted++;
+        } catch (e) {
+          console.warn('[DB] 删除无来源资讯失败:', e.message);
+        }
+      }
+      console.log('[DB] 🧹 已清理无来源资讯:', deleted, '条');
+      return { success: true, deleted: deleted };
+    } catch (e) {
+      console.error('[DB] 清理无来源资讯异常:', e);
+      return { success: false, error: e.message };
+    }
+  },
+
   /* ---------- 资讯标记已读 (无编号) ---------- */
   async markNewsRead(newsId) {
     return this._exec(
@@ -2634,6 +3068,10 @@ const DB = {
 
   /** DB-R-031: 文档列表 */
   async getDocuments(status, page = 1, pageSize = 20) {
+    if (!window.db) {
+      console.warn('[DB] CloudBase 未初始化，返回空数据');
+      return { success: false, data: [] };
+    }
     const where = {};
     if (status && status !== 'all') where.status = status;
     const result = await this._paginate('output_docs', where, { field: 'updatedAt', direction: 'desc' }, page, pageSize);
@@ -2816,7 +3254,7 @@ const DB = {
       return this._exec(this._collection('user_settings').doc(doc._id).update({ ...partial, updatedAt: new Date() }));
     }
     const defaults = {
-      defaultModel: 'mimo',
+      defaultModel: (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3'),
       dailyReviewCount: 20,
       notificationEnabled: true,
       autoBackup: false,

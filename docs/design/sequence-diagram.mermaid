@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant U as 用户
+    participant AC as ai-chat.html(sendMessage)
+    participant CS as ChatSession
+    participant AI as AIService
+    participant DB as DB
+    participant KB as 知识库后端
+    participant WB as 全网搜索
+
+    U->>AC: 输入消息
+    AC->>CS: 读取 currentAgent/currentChatId(单例+持久化)
+    AC->>DB: getMessages(currentChatId) 取历史
+    alt shouldUseRAG(agentId)
+        AC->>DB: searchKnowledgeChunks(query)
+        DB->>KB: /api/knowledge/search
+        alt 命中不足(needsWebFallback)
+            AC->>DB: searchWeb(query)
+            DB->>WB: /api/search/web
+        end
+        AC->>AI: buildAgentSystemPrompt + RAG 拼接
+    end
+    AC->>AI: callAI({model:'Hy3', messages:[...history, system+RAG, user]})
+    AI-->>AC: reply
+    AC->>DB: 写入 messages(user/assistant)
+
+---
+
+sequenceDiagram
+    participant K as knowledge.html
+    participant DB as DB.aiGenerateReviewCards
+    participant P as ReviewCardParser
+    participant CB as DB.createReviewCard
+
+    K->>DB: aiGenerateReviewCards(itemId)
+    DB->>DB: _aiProxy({action:'generate-cards', model:'Hy3'})
+    DB->>P: parseReviewCards(aiText)
+    P-->>DB: [card...]
+    loop 每张 card
+        DB->>CB: createReviewCard({...card, knowledgeId:itemId})
+    end
+    DB-->>K: {success:true, count, ids}

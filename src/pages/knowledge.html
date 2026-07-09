@@ -458,7 +458,7 @@
    状态管理
    ================================================================ */
 
-const kbState = {
+var kbState = {
   currentView: 'list',
   currentSubTab: 'all',
   currentCategoryId: null,
@@ -774,9 +774,19 @@ async function initKbPage() {
   } catch (e) {
     console.error('CloudBase 初始化失败:', e);
   }
-  await loadCategoryTree();
-  await renderKnowledgeItems();
-  await loadExpiredBanner();
+  // 核心渲染调用统一 try/catch + 降级（与 plan 页面一致）
+  // 即便 loadCategoryTree / renderKnowledgeItems 内部已降级，此处再兜一层，防止 CloudBase 未初始化等未捕获异常冒泡
+  try {
+    await loadCategoryTree();
+    await renderKnowledgeItems();
+  } catch (e) {
+    console.error('[KB] ⚠️ 知识库核心渲染失败:', e);
+  }
+  try {
+    await loadExpiredBanner();
+  } catch (e) {
+    console.warn('[KB] 过期条目横幅加载失败（非关键）:', e);
+  }
   initUploadDropzone();
 }
 
@@ -1790,12 +1800,17 @@ async function generateReviewCard(id) {
   if (!targetId) { showToast('请先选择知识条目', 'warning'); return; }
   showToast('正在生成复习卡片...', 'info');
   try {
-    if (window.DB && window.DB.aiGenerateReviewCards) {
-      var res = await window.DB.aiGenerateReviewCards(targetId);
-      if (res.success) showToast('复习卡片生成成功', 'success');
-      else showToast('生成失败: ' + (res.error || ''), 'error');
-    } else { showToast('AI 生成功能不可用', 'warning'); }
-  } catch (e) { showToast('生成失败: ' + e.message, 'error'); }
+    if (!window.DB || !window.DB.aiGenerateReviewCards) throw new Error('AI 生成功能不可用');
+    var res = await window.DB.aiGenerateReviewCards(targetId);
+    /* 依据真实落库数量决定成败（问题4 修复：避免误报成功） */
+    if (res && res.success && res.data && res.data.count > 0) {
+      showToast('已生成 ' + res.data.count + ' 张复习卡片', 'success');
+    } else {
+      throw new Error((res && res.error) || '未生成复习卡片');
+    }
+  } catch (e) {
+    showToast('生成失败: ' + e.message, 'error');
+  }
 }
 
 function linkKnowledge() { showToast('关联功能开发中', 'info'); }

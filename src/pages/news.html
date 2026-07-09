@@ -736,7 +736,8 @@ function openNewsPreview(id) {
   var cachedItem = (newsState.currentItems || []).find(function(i) { return String(i._id || i.id) === String(id); });
   if (cachedItem) {
     document.getElementById('newsPreviewAiSummary').textContent = cachedItem.summary || '（无摘要）';
-    document.getElementById('newsPreviewContent').innerHTML = (cachedItem.content || cachedItem.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+    // DOMPurify 清理资讯内容中的潜在恶意 HTML（XSS 防护），保留 <br>/<strong>
+    document.getElementById('newsPreviewContent').innerHTML = window.DOMPurify.sanitize((cachedItem.content || cachedItem.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>'));
   } else {
     document.getElementById('newsPreviewAiSummary').textContent = '加载中...';
     document.getElementById('newsPreviewContent').innerHTML = '<p style="color:var(--gray-400)">加载中...</p>';
@@ -761,7 +762,8 @@ function openNewsPreview(id) {
         return;
       }
       document.getElementById('newsPreviewAiSummary').textContent = item.summary || '（无摘要）';
-      var htmlContent = (item.content || item.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>');
+      // DOMPurify 清理资讯内容中的潜在恶意 HTML（XSS 防护）
+      var htmlContent = window.DOMPurify.sanitize((item.content || item.summary || '（无内容）').replace(/\n/g, '<br>').replace(/#{1,2}\s/g, '<strong>'));
       document.getElementById('newsPreviewContent').innerHTML = htmlContent;
     } catch (e) {
       console.error('预览加载失败:', e);
@@ -801,7 +803,15 @@ async function openNewsImportConfirm(id) {
         if (modalBody) {
           var aiEl = document.createElement('div');
           aiEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;line-height:1.8;';
-          aiEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px;color:var(--primary)">🤖 AI 入库建议</div><div style="color:var(--gray-700);white-space:pre-wrap">' + res.content + '</div>';
+          // 用 createElement + textContent 写入 AI 建议，避免使用 innerHTML 引入 XSS
+          var aiLabel = document.createElement('div');
+          aiLabel.style.cssText = 'font-weight:600;margin-bottom:6px;color:var(--primary)';
+          aiLabel.textContent = '🤖 AI 入库建议';
+          var aiBody = document.createElement('div');
+          aiBody.style.cssText = 'color:var(--gray-700);white-space:pre-wrap';
+          aiBody.textContent = res.content || '';
+          aiEl.appendChild(aiLabel);
+          aiEl.appendChild(aiBody);
           modalBody.appendChild(aiEl);
         }
         showNewsToast('AI 建议已生成', 'success');
@@ -1441,7 +1451,8 @@ function escapeHtml(str) {
   if (!str) return '';
   const d = document.createElement('div');
   d.textContent = str;
-  return d.innerHTML;
+  // 补充单引号/双引号转义，避免转义结果被拼入属性或单引号 JS 字符串时造成注入
+  return d.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 /* ================================================================
@@ -1609,6 +1620,26 @@ async function triggerCrawlNews() {
     }
   } catch (error) {
     showNewsToast('抓取失败: ' + error.message, 'error');
+  }
+}
+
+/** 清理历史无来源资讯（问题3 补充，按需触发） */
+async function cleanupNoSourceNews() {
+  if (!window.DB || !window.DB.deleteNewsWithoutSource) {
+    showNewsToast('清理功能不可用', 'error');
+    return;
+  }
+  showNewsToast('正在清理无来源资讯...', 'info');
+  try {
+    var res = await window.DB.deleteNewsWithoutSource();
+    if (res && res.success) {
+      showNewsToast('已删除 ' + (res.deleted || 0) + ' 条无来源资讯', 'success');
+      renderRecommendCards();
+    } else {
+      showNewsToast('清理失败: ' + (res && res.error || '未知错误'), 'error');
+    }
+  } catch (e) {
+    showNewsToast('清理失败: ' + e.message, 'error');
   }
 }
 

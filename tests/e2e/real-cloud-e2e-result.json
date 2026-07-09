@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "base": "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com/",
+    "startedAt": "2026-07-09T08:19:07.880Z",
+    "chromium": "149.0.7827.55",
+    "url": "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com/"
+  },
+  "environment": {
+    "location": "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com/",
+    "tcbExists": false,
+    "tcbInitFn": false,
+    "cloudbaseIsTCB": false,
+    "appExists": false,
+    "dbExists": false,
+    "dbCollectionFn": false,
+    "DBexists": false,
+    "mockWarning": false,
+    "initBackendSample": [],
+    "mockMode": false,
+    "consoleErrorCount": 1,
+    "pageErrorCount": 0
+  },
+  "features": [
+    {
+      "page": "home",
+      "feature": "首页统计卡",
+      "operation": "读取",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "plan",
+      "feature": "学习计划",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "news",
+      "feature": "资讯",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "knowledge",
+      "feature": "知识库",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "ai-chat",
+      "feature": "AI对话",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "review",
+      "feature": "复习计划",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "output",
+      "feature": "知识沉淀",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "page": "settings",
+      "feature": "系统设置",
+      "operation": "整体",
+      "verdict": "fail",
+      "note": "异常: page.evaluate: TypeError: window.navigateTo is not a function\n    at eval (eval at evaluate (:303:30), <anonymous>:1:15)\n    at UtilityScript.evaluate (<anonymous>:305:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    }
+  ],
+  "summary": {
+    "total": 8,
+    "pass": 0,
+    "fail": 8,
+    "blocked": 0
+  },
+  "evidence": {
+    "script": "tests/e2e/real-cloud-e2e.mjs",
+    "json": "tests/e2e/real-cloud-e2e-result.json",
+    "shotsDir": "tests/e2e/shots"
+  },
+  "allConsoleErrors": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ],
+  "allPageErrors": [],
+  "allRequestFailures": []
+}

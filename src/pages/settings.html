@@ -329,7 +329,7 @@
 // ================================================================
 // 预设服务商配置
 // ================================================================
-const PROVIDER_PRESETS = {
+var PROVIDER_PRESETS = {
   deepseek: {
     name: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com',
@@ -448,8 +448,8 @@ const PROVIDER_PRESETS = {
 // ================================================================
 // 存储管理
 // ================================================================
-const STORAGE_KEY_MODELS = 'studymind_ai_models';
-const STORAGE_KEY_SETTINGS = 'studymind_ai_settings';
+var STORAGE_KEY_MODELS = 'studymind_ai_models';
+var STORAGE_KEY_SETTINGS = 'studymind_ai_settings';
 
 function getModels() {
   try {
@@ -495,8 +495,8 @@ function saveAISettings(settings) {
 // ================================================================
 // 当前设置
 // ================================================================
-let currentSettings = getAISettings();
-let editingModelId = null;
+var currentSettings = getAISettings();
+var editingModelId = null;
 
 // ================================================================
 // Toast 辅助
@@ -1217,7 +1217,8 @@ function escapeHtml(text) {
   if (!text) return '';
   var div = document.createElement('div');
   div.textContent = text;
-  return div.innerHTML;
+  // 补充单引号/双引号转义，避免转义结果被拼入属性或单引号 JS 字符串时造成注入
+  return div.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 function formatBytes(bytes) {

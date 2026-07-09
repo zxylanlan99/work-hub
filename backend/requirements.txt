@@ -8,3 +8,5 @@ python-pptx==0.6.23
 python-docx==1.1.2
 markdown==3.6
 numpy==1.26.4
+# 文件名消毒（F7 修复）。若安装失败，app.py 内置降级实现仍可工作。
+werkzeug>=3.0.0

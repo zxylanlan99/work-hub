@@ -161,8 +161,8 @@
         });
       }
 
-      // 重置查询条件
-      this._query = null;
+      // #5 修复：count() 不再清空 _query，避免消费查询状态。
+      // （_paginate 已为 count/get 各建独立查询链，此处保留状态亦无害。）
 
       console.log(`[MockDB] 📊 ${this.name}.count() 返回:`, { total: items.length });
       return { total: items.length };

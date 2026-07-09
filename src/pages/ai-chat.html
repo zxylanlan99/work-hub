@@ -510,10 +510,12 @@
 // AI 对话页面 — 智能体架构改造版
 // ================================================================
 
-/* 对话状态扩展：新增 currentAgent 字段 */
-var chatState = {
+/* 对话状态：跨挂载单例（问题1 修复）
+ * framework.js 重复执行内联脚本时，window.__chatState 不会重置，
+ * 离开再进入 AI 页也能保持当前智能体与对话。 */
+var chatState = window.__chatState = window.__chatState || {
   currentChatId: null,
-  currentModel: null,
+  currentModel: (typeof window.AI_MODEL !== 'undefined' && window.AI_MODEL) ? window.AI_MODEL : null,
   currentAgent: 'general',
   inflightCount: 0,
   conversations: [],
@@ -538,7 +540,8 @@ function escapeChatHtml(str) {
   if (!str) return '';
   var div = document.createElement('div');
   div.textContent = str;
-  return div.innerHTML;
+  // 补充单引号/双引号转义，避免转义结果被拼入属性或单引号 JS 字符串时造成注入
+  return div.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
 }
 
 function formatChatTime(date) {
@@ -560,22 +563,35 @@ async function initAiChatPage() {
     if (window.DB && window.DB.init) {
       await window.DB.init();
     }
-    
+
+    // 【问题1】恢复持久化的会话（agent + currentChatId），写回单例
+    if (window.ChatSession && window.ChatSession.restoreChatSession) {
+      window.ChatSession.restoreChatSession();
+    }
+
     // 渲染输入区模型下拉
     renderInputModelSelector();
-    
+
     // 渲染智能体选择器
     renderAgentSelector();
-    
+
     // 加载对话列表
     await loadChatList();
-    
+
+    // 【问题1】若存在 currentChatId，恢复到此对话（含历史）
+    if (chatState.currentChatId) {
+      var _savedChat = (chatState.conversations || []).find(function(c) {
+        return (c._id || c.id) === chatState.currentChatId;
+      });
+      selectChat(chatState.currentChatId, _savedChat ? (_savedChat.title || 'AI助手') : 'AI助手');
+    }
+
     // 渲染用量信息
     renderUsageInfo();
-    
+
     // 绑定事件
     bindChatEvents();
-    
+
     console.log('[AIChat] ✅ AI 对话页面初始化完成');
   } catch (error) {
     console.error('[AIChat] ❌ 初始化失败:', error);
@@ -715,6 +731,11 @@ function selectAgent(agentId) {
     window.DB.updateChat(chatState.currentChatId, { agentId: agentId }).catch(function(e) {
       console.warn('[AIChat] 更新对话智能体失败:', e.message);
     });
+  }
+
+  /* 持久化当前智能体 */
+  if (window.ChatSession) {
+    window.ChatSession.saveChatSession({ currentAgent: agentId, currentChatId: chatState.currentChatId });
   }
 
   /* toast 提示 */
@@ -1047,10 +1068,13 @@ async function loadChatList() {
       } catch (e) { /* 非阻塞 */ }
     }
     
-    list.innerHTML = chatState.conversations.map(function(chat) {
+    // 用 createElement + textContent + addEventListener 构建列表项，杜绝将用户数据拼入
+    // HTML 属性/内联 onclick 带来的 XSS（原 title 含 " 会突破 onclick 双引号边界）
+    list.innerHTML = '';
+    chatState.conversations.forEach(function(chat) {
       var isActive = chatState.currentChatId === (chat._id || chat.id);
-      var title = escapeChatHtml(chat.title || '未命名对话');
-      var preview = escapeChatHtml((chat.lastMessage || '暂无消息').substring(0, 40));
+      var title = chat.title || '未命名对话';
+      var preview = (chat.lastMessage || '暂无消息').substring(0, 40);
       var time = chat.updatedAt || chat.createdAt;
       var timeStr = time ? formatChatTime(time) : '';
       var chatId = chat._id || chat.id;
@@ -1059,22 +1083,61 @@ async function loadChatList() {
       var agentId = chat.agentId || 'general';
       var agent = agents.find(function(a) { return a.id === agentId; });
       var agentIcon = agent ? agent.icon : '🤖';
-      
-      return '<div class="conversation-item ' + (isActive ? 'active' : '') + '" ' +
-        'onclick="selectChat(\'' + chatId + '\', \'' + title.replace(/'/g, "\\'") + '\')" ' +
-        'id="chat-item-' + chatId + '" style="cursor:pointer;">' +
-        '<div class="conv-icon">' + escapeChatHtml(agentIcon) + '</div>' +
-        '<div class="conv-info">' +
-        '<div class="conv-title">' + title + '</div>' +
-        '<div class="conv-preview">' + preview + '</div>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:4px;">' +
-        '<div class="conv-time">' + timeStr + '</div>' +
-        '<span class="conv-delete-btn" onclick="event.stopPropagation();deleteChatFromList(\'' + chatId + '\')" title="删除对话" ' +
-          'style="cursor:pointer;font-size:14px;color:var(--gray-400);padding:2px 4px;border-radius:4px;opacity:0;transition:opacity 0.15s;">🗑️</span>' +
-        '</div>' +
-        '</div>';
-    }).join('');
+
+      var item = document.createElement('div');
+      item.className = 'conversation-item' + (isActive ? ' active' : '');
+      item.id = 'chat-item-' + chatId;
+      item.style.cursor = 'pointer';
+
+      var iconEl = document.createElement('div');
+      iconEl.className = 'conv-icon';
+      iconEl.textContent = agentIcon;
+      item.appendChild(iconEl);
+
+      var infoEl = document.createElement('div');
+      infoEl.className = 'conv-info';
+      var titleEl = document.createElement('div');
+      titleEl.className = 'conv-title';
+      titleEl.textContent = title;
+      var previewEl = document.createElement('div');
+      previewEl.className = 'conv-preview';
+      previewEl.textContent = preview;
+      infoEl.appendChild(titleEl);
+      infoEl.appendChild(previewEl);
+      item.appendChild(infoEl);
+
+      var rightEl = document.createElement('div');
+      rightEl.style.display = 'flex';
+      rightEl.style.alignItems = 'center';
+      rightEl.style.gap = '4px';
+      var timeEl = document.createElement('div');
+      timeEl.className = 'conv-time';
+      timeEl.textContent = timeStr;
+      var delBtn = document.createElement('span');
+      delBtn.className = 'conv-delete-btn';
+      delBtn.title = '删除对话';
+      delBtn.style.cursor = 'pointer';
+      delBtn.style.fontSize = '14px';
+      delBtn.style.color = 'var(--gray-400)';
+      delBtn.style.padding = '2px 4px';
+      delBtn.style.borderRadius = '4px';
+      delBtn.style.opacity = '0';
+      delBtn.style.transition = 'opacity 0.15s';
+      delBtn.textContent = '🗑️';
+      delBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        deleteChatFromList(chatId);
+      });
+      rightEl.appendChild(timeEl);
+      rightEl.appendChild(delBtn);
+      item.appendChild(rightEl);
+
+      item.addEventListener('click', function() {
+        selectChat(chatId, title);
+      });
+
+      list.appendChild(item);
+    });
   } catch (error) {
     console.error('[AIChat] 加载对话列表失败:', error);
     list.innerHTML = '<div class="empty-state" style="text-align:center;padding:30px;color:var(--gray-400);">加载失败</div>';
@@ -1103,6 +1166,10 @@ async function createNewChat() {
         chatState.currentChatId = chatId;
         document.getElementById('chat-messages').innerHTML = '';
         document.getElementById('chat-title').textContent = '新对话';
+        /* 持久化新对话 */
+        if (window.ChatSession) {
+          window.ChatSession.saveChatSession({ currentAgent: chatState.currentAgent, currentChatId: chatId });
+        }
       }
       chatToast('新对话已创建', 'success');
       await loadChatList();
@@ -1126,9 +1193,19 @@ async function createNewChat() {
  */
 async function selectChat(chatId, title) {
   if (!chatId) return;
+  // 若未显式传入 title，则从会话列表恢复真实标题（避免显示被转义的占位文本）
+  if (!title) {
+    var _c = chatState.conversations.find(function(c) { return (c._id || c.id) === chatId; });
+    title = (_c && _c.title) || 'AI助手';
+  }
 
   try {
     chatState.currentChatId = chatId;
+
+    /* 持久化当前对话 */
+    if (window.ChatSession) {
+      window.ChatSession.saveChatSession({ currentAgent: chatState.currentAgent, currentChatId: chatId });
+    }
 
     /* 更新 UI 选中状态 */
     document.querySelectorAll('.conversation-item').forEach(function(el) {
@@ -1137,7 +1214,7 @@ async function selectChat(chatId, title) {
     var item = document.getElementById('chat-item-' + chatId);
     if (item) item.classList.add('active');
 
-    document.getElementById('chat-title').textContent = title || 'AI助手';
+    document.getElementById('chat-title').textContent = title;
 
     /* 恢复对话的 agentId */
     var chat = chatState.conversations.find(function(c) {
@@ -1381,17 +1458,41 @@ async function sendMessage() {
       if (chatState.currentAgent && chatState.currentAgent !== 'general' &&
           window.AIService && typeof window.AIService.buildAgentSystemPrompt === 'function') {
         try {
-          var agentPrompt = await window.AIService.buildAgentSystemPrompt(chatState.currentAgent);
-          if (agentPrompt) {
-            /* 使用带 agent prompt 的 AI 调用 */
+          var agentId = chatState.currentAgent;
+          var agentPrompt = await window.AIService.buildAgentSystemPrompt(agentId);
+          if (!agentPrompt) {
+            result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
+          } else {
+            /* 【问题2】RAG 先 KB 后 web（专家分支与普通分支统一走同一条检索路径） */
+            if (window.RAG && typeof window.RAG.shouldUseRAG === 'function' && window.RAG.shouldUseRAG(agentId)) {
+              try {
+                var ragCtx = await window.RAG.retrieveContext(agentId, finalContent, {
+                  DB: window.DB,
+                  cfg: (window.CONFIG && window.CONFIG.kbBackend) || {}
+                });
+                if (ragCtx) agentPrompt += '\n\n' + ragCtx;
+              } catch (ragErr) {
+                console.warn('[AIChat] RAG 检索失败，继续无上下文:', ragErr.message);
+              }
+            }
+
+            /* 【问题1】专家分支携带完整历史（修复「专家对话无记忆」） */
+            var history = [];
+            try {
+              var _histRes = await window.DB.getMessages(chatState.currentChatId);
+              history = (_histRes && _histRes.data) ? _histRes.data : [];
+            } catch (hErr) {
+              console.warn('[AIChat] 读取历史失败:', hErr.message);
+            }
+
+            var msgs = window.AIService.buildAgentMessages(history, agentPrompt, finalContent);
+
             var aiResult = await window.AIService.callAI({
               action: 'chat',
-              messages: [
-                { role: 'system', content: agentPrompt },
-                { role: 'user', content: finalContent }
-              ],
+              messages: msgs,
               model: chatState.currentModel
             });
+
             if (aiResult.success) {
               /* 手动写入消息到 DB */
               await window.DB._collection('messages').add({
@@ -1419,8 +1520,6 @@ async function sendMessage() {
             } else {
               throw new Error(aiResult.error || 'AI 调用失败');
             }
-          } else {
-            result = await window.DB.sendMessageAndReply(chatState.currentChatId, finalContent, chatState.currentModel);
           }
         } catch (agentErr) {
           console.warn('[AIChat] 智能体 prompt 构建失败，使用默认方式:', agentErr.message);
@@ -1482,6 +1581,11 @@ async function sendMessage() {
     
     // 刷新对话列表
     await loadChatList();
+
+    // 持久化当前会话（智能体 + 对话）
+    if (window.ChatSession) {
+      window.ChatSession.saveChatSession({ currentAgent: chatState.currentAgent, currentChatId: chatState.currentChatId });
+    }
   } catch (error) {
     console.error('[AIChat] 发送消息失败:', error);
     var typing = document.getElementById('typing-indicator');

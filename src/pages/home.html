@@ -1,48 +1,49 @@
-<!-- 暖身卡 -->
 <!--
-  【DB-R-001】昨日学习回顾
-  调用方式: db.collection('review_history').where({ reviewedAt: yesterday }).get()
-  数据用途: 填充昨日学习回顾内容
-  【AI-001】快问快答
-  调用方式: app.callFunction('ai-proxy', { action:'quiz', topic })
-  数据用途: 生成快问快答问题+答案
-  【AGG-001】上次学习断点
-  调用方式: 多集合聚合查询（goals + tasks）
-  数据用途: 获取上次学习位置、剩余时间
+  StudyMind 首页 — 依据 prototypes/prototype-home.html 重写
+  结构顺序（5 大区块）：
+    1) warmup   暖身卡（昨日回顾 + 快问快答）
+    2) quick-grid 四宫格快捷入口（学习计划 / 复习计划 / 资讯 / 知识沉淀）
+    3) resume    智能续接
+    4) calendar  学习日历热力图（近 2 周 / 14 天 / 7 列网格 / h0–h4）
+    5) trend     本周趋势（复习完成率 + 连续学习天数）
+
+  本页只负责结构与填充所需的 id；数据与交互全部由 js/home.js 通过统计接口（window.DB）驱动。
+  所有样式复用全局类（warmup / quick-grid / resume / calendar / heatmap / trend ...）。
 -->
+
+<!-- ============ 1. 暖身卡 ============ -->
 <div class="panel warmup" id="warmupPanel">
   <div class="warmup-body">
     <div class="warmup-left">
       <div class="warmup-greeting">🌅 今日暖身 <span class="warmup-duration">（约1分钟）</span></div>
       <div class="warmup-sections">
+        <!-- 昨日回顾：DB-R-001 -->
         <div class="warmup-section">
           <div class="warmup-section-label">📝 昨日回顾</div>
-          <div class="warmup-yesterday" id="yesterday-summary">加载中...</div>
+          <div class="warmup-yesterday" id="yesterday-summary">加载中…</div>
         </div>
+        <!-- 快问快答：AI-001 -->
         <div class="warmup-section" id="quizContainer">
           <div class="warmup-section-label">❓ 快问快答</div>
-          <div class="warmup-quiz-q" id="quiz-question">加载中...</div>
+          <div class="warmup-quiz-q" id="quiz-question">加载中…</div>
           <div id="quiz-options"></div>
-          <button id="quiz-answer-btn" style="display:none;margin-top:10px" class="btn btn-secondary btn-sm" onclick="showQuizAnswer()">查看答案</button>
+          <button id="quiz-answer-btn" class="warmup-quiz-a" style="display:none" onclick="showQuizAnswer()">💡 查看答案</button>
+          <div id="quiz-answer" class="warmup-yesterday" style="display:none;margin-top:8px;white-space:pre-wrap"></div>
         </div>
       </div>
     </div>
     <div class="warmup-right">
-      <button class="warmup-continue" onclick="window.navigateTo&&navigateTo('plan')">继续上次学习 →</button>
-      <button class="warmup-skip" id="skip-warmup" onclick="document.getElementById('warmupPanel').style.display='none';toast('已跳过暖身')">跳过暖身</button>
+      <button class="warmup-continue" onclick="window.navigateTo('plan')">继续上次学习 →</button>
+      <button class="warmup-skip" id="skip-warmup" onclick="skipWarmup()">跳过暖身</button>
     </div>
   </div>
 </div>
 
-<!-- 四宫格快捷入口 -->
-<!--
-  【AGG-002】学习计划统计 → db.collection('goals').where({ status:'active' }).count()
-  【AGG-003】今日复习统计 → db.collection('review_cards').where({ nextReview: dbCmd.lte(today) }).count()
-  【AGG-004】资讯统计     → db.collection('news_items').where({ hasRead:false }).count()
-  【AGG-005】知识沉淀统计  → db.collection('output_docs').where({ status:'draft' }).count()
--->
+<!-- ============ 2. 四宫格快捷入口 ============ -->
+<!-- AGG-002 学习计划 · AGG-003 复习统计 · AGG-004 资讯统计 · AGG-005 知识沉淀统计 -->
 <div class="quick-grid">
-  <div class="quick-card" onclick="window.navigateTo&&navigateTo('plan')">
+  <!-- 学习计划 -->
+  <div class="quick-card" onclick="window.navigateTo('plan')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-plan">🎯</div>
       <span class="quick-card-badge qbadge-active">进行中</span>
@@ -51,7 +52,9 @@
     <div class="quick-card-sub">个学习目标进行中</div>
     <div class="quick-card-link">查看详情 →</div>
   </div>
-  <div class="quick-card" onclick="window.navigateTo&&navigateTo('review')">
+
+  <!-- 复习计划 -->
+  <div class="quick-card" onclick="window.navigateTo('review')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-review">🔁</div>
       <span class="quick-card-badge" id="review-badge">待复习</span>
@@ -60,7 +63,9 @@
     <div class="quick-card-sub">张卡片待复习</div>
     <div class="quick-card-link">开始复习 →</div>
   </div>
-  <div class="quick-card" onclick="window.navigateTo&&navigateTo('news')">
+
+  <!-- 资讯 -->
+  <div class="quick-card" onclick="window.navigateTo('news')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-news">📡</div>
       <span class="quick-card-badge qbadge-info">🤖 AI推荐</span>
@@ -69,7 +74,9 @@
     <div class="quick-card-sub">条AI推荐资讯待处理</div>
     <div class="quick-card-link">查看推荐 →</div>
   </div>
-  <div class="quick-card" onclick="window.navigateTo&&navigateTo('output')">
+
+  <!-- 知识沉淀 -->
+  <div class="quick-card" onclick="window.navigateTo('output')">
     <div class="quick-card-header">
       <div class="quick-card-icon qc-output">✍️</div>
       <span class="quick-card-badge qbadge-edit">编辑中</span>
@@ -80,26 +87,22 @@
   </div>
 </div>
 
-<!-- 智能续接 -->
-<!--
-  【AGG-001】上次学习断点
-  调用方式: 多集合聚合查询（goals + tasks）
-  数据用途: 获取上次学习主题、时间、进度
--->
+<!-- ============ 3. 智能续接 ============ -->
+<!-- AGG-001 上次学习断点 -->
 <div class="panel resume" id="resumePanel">
   <div class="panel-body">
     <div class="panel-header">
       <div class="panel-title">📖 智能续接</div>
     </div>
     <div class="resume-info">
-      <div class="resume-topic" id="resume-topic"><strong>上次学习：</strong><span id="resume-topic-content">暂无学习记录</span></div>
+      <div class="resume-topic"><strong>上次学习：</strong><span id="resume-topic-content">暂无学习记录</span></div>
       <div class="resume-meta" id="resume-meta">
         <span id="resume-time">-</span>
         <span id="resume-duration">-</span>
         <span id="resume-progress">-</span>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="window.navigateTo&&navigateTo('plan')">开始学习 →</button>
+    <button class="btn btn-primary btn-block" onclick="window.navigateTo('plan')">开始学习 →</button>
     <div class="resume-buttons">
       <button class="btn btn-ghost btn-sm" onclick="generateContextSummary()">查看上下文摘要</button>
       <button class="btn btn-ghost btn-sm" onclick="showRelatedKnowledge()">关联知识点</button>
@@ -107,18 +110,15 @@
   </div>
 </div>
 
-<!-- 学习日历热力图 -->
-<!--
-  【DB-R-002】学习热力图
-  调用方式: db.collection('review_history').where({ reviewedAt: dbCmd.gte(startDate) }).get()
-  数据用途: 近2周学习热力图数据
--->
+<!-- ============ 4. 学习日历热力图 ============ -->
+<!-- DB-R-002 学习热力图（近 2 周 / 14 天 / 7 列网格 / h0–h4） -->
 <div class="panel calendar">
   <div class="panel-body">
     <div class="panel-header">
       <div class="panel-title">📅 近2周学习日历</div>
     </div>
     <div class="heatmap-days"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <!-- 14 个格子由 home.js 注入（7 列网格 → 2 行） -->
     <div class="heatmap" id="heatmap"></div>
     <div class="heatmap-legend">
       <span>少</span>
@@ -132,12 +132,8 @@
   </div>
 </div>
 
-<!-- 本周趋势 -->
-<!--
-  【AGG-006】本周学习统计
-  调用方式: review_history + review_cards 聚合查询
-  数据用途: 本周复习完成率、连续学习天数
--->
+<!-- ============ 5. 本周趋势 ============ -->
+<!-- AGG-006 本周学习统计（复习完成率 + 连续学习天数） -->
 <div class="trend">
   <div class="trend-panel">
     <span class="trend-icon">📈</span>
@@ -146,7 +142,7 @@
       <div class="trend-label">本周复习完成率</div>
       <span class="trend-change" id="trend-completion-change">-</span>
     </div>
-    <div class="trend-bar-wrap"><div class="trend-bar-fill" id="trend-completion-bar"></div></div>
+    <div class="trend-bar-wrap"><div class="trend-bar-fill" id="trend-completion-bar" style="width:0%"></div></div>
   </div>
   <div class="trend-panel">
     <span class="trend-icon">🔥</span>

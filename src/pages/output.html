@@ -285,9 +285,9 @@
 </div>
 
 <script>
-let currentDocId = null;
-let saveTimer = null;
-let selectedOutputType = 'article';
+var currentDocId = null;
+var saveTimer = null;
+var selectedOutputType = 'article';
 
 async function initOutputPage() {
   try {
@@ -755,18 +755,19 @@ async function aiAction(action) {
         messages: [{ role: 'user', content: getActionPrompt(action, userContent) }]
       });
       if (result.success && result.content) {
-        resultDiv.innerHTML = result.content.replace(/\n/g, '<br>');
+        // DOMPurify 清理 AI 返回的 HTML，保留 <br> 换行但剥离脚本/事件（XSS 防护）
+        resultDiv.innerHTML = window.DOMPurify.sanitize(result.content.replace(/\n/g, '<br>'));
         window.toast('AI操作完成', 'success');
       } else {
-        resultDiv.innerHTML = '❌ AI 操作失败: ' + (result.error || '未知错误');
+        resultDiv.textContent = '❌ AI 操作失败: ' + (result.error || '未知错误');
         window.toast('AI操作失败', 'error');
       }
     } else {
-      resultDiv.innerHTML = '❌ AI 服务不可用，请先在设置页面配置模型';
+      resultDiv.textContent = '❌ AI 服务不可用，请先在设置页面配置模型';
       window.toast('AI服务不可用', 'error');
     }
   } catch (e) {
-    resultDiv.innerHTML = '❌ 操作失败: ' + e.message;
+    resultDiv.textContent = '❌ 操作失败: ' + (e.message || '');
     window.toast('操作失败', 'error');
   }
 }
@@ -819,7 +820,7 @@ async function publishDoc() {
   }
 }
 
-let selectedMaterial = null;
+var selectedMaterial = null;
 
 async function openMaterialDetail(materialId) {
   try {

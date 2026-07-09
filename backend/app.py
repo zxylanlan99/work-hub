@@ -24,11 +24,39 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTa
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# 文件名消毒（F7 修复）：优先使用 werkzeug，缺失时降级到本地实现
+try:
+    from werkzeug.utils import secure_filename
+except ImportError:
+    def secure_filename(name):
+        """本地降级实现：仅保留安全字符，剥离路径成分，避免 ../ 越权写。"""
+        if not name:
+            return ''
+        # 去掉任何目录前缀（兼容 Windows / Unix 分隔符）
+        name = name.replace('\\', '/').split('/')[-1]
+        # 仅保留字母数字、点、下划线、连字符及中文，其余替换为下划线
+        name = re.sub(r'[^\w.\-\u4e00-\u9fff]+', '_', name)
+        # 去除前导点（避免 Unix 隐藏文件/路径穿越语义）
+        name = name.lstrip('.')
+        if not name:
+            name = 'file'
+        return name[:255]
+
 from config import HOST, PORT, UPLOAD_DIR
 from file_parser import parse_file
 from chunker import chunk_document
 from embedder import embed_texts, embed_query
 from vector_store import store_chunks, search, delete_by_item, get_chunks_by_item, get_stats
+from news_utils import (
+    parse_rss_feed as _parse_rss_feed,
+    extract_body,
+    extract_meta,
+    normalize_web_result,
+    filter_news_items,
+    build_news_document,
+)
+from agent_memory import get_agent_memory
+from ai_agent import AGENTS, generate_with_citations
 
 # ── 日志配置 ──────────────────────────────────────────────
 logging.basicConfig(
@@ -187,8 +215,13 @@ async def upload_file(
     if not file.filename:
         raise HTTPException(status_code=400, detail="文件名为空")
 
+    # 消毒文件名：剥离路径成分，防止 ../ 越权写（F7 修复）
+    safe_name = secure_filename(file.filename)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="非法文件名（仅含特殊字符）")
+
     # 检查文件格式
-    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    ext = safe_name.rsplit('.', 1)[-1].lower() if '.' in safe_name else ''
     supported = ['pdf', 'docx', 'pptx', 'md', 'markdown', 'txt']
     if ext not in supported:
         raise HTTPException(status_code=400, detail=f"不支持的格式: .{ext}，支持: {', '.join(supported)}")
@@ -198,8 +231,14 @@ async def upload_file(
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     item_id = itemId or f"kb_{uuid.uuid4().hex[:12]}"
 
-    # 保存文件到磁盘
-    file_path = os.path.join(UPLOAD_DIR, f"{item_id}_{file.filename}")
+    # 保存文件到磁盘（使用消毒后的文件名）
+    file_path = os.path.join(UPLOAD_DIR, f"{item_id}_{safe_name}")
+
+    # 二次校验：写入前确认目标真实路径仍在 UPLOAD_DIR 内，否则拒绝（F7 修复）
+    real_upload_dir = os.path.realpath(UPLOAD_DIR)
+    real_target = os.path.realpath(file_path)
+    if real_target != real_upload_dir and not real_target.startswith(real_upload_dir + os.sep):
+        raise HTTPException(status_code=400, detail="非法文件路径")
     content = await file.read()
     with open(file_path, 'wb') as f:
         f.write(content)
@@ -210,8 +249,8 @@ async def upload_file(
     # 注册条目
     _register_item(item_id, {
         'item_id': item_id,
-        'title': os.path.splitext(file.filename)[0],
-        'file_name': file.filename,
+        'title': os.path.splitext(safe_name)[0],
+        'file_name': safe_name,
         'file_type': ext,
         'file_size': file_size,
         'file_path': file_path,
@@ -229,22 +268,59 @@ async def upload_file(
 
     # 提交后台任务 — 在线程中运行，不阻塞事件循环
     def run_background():
-        _process_file_background(task_id, file_path, file.filename, item_id, categoryId)
+        _process_file_background(task_id, file_path, safe_name, item_id, categoryId)
 
     background_tasks.add_task(run_background)
 
-    logger.info(f"上传任务已创建: task_id={task_id}, item_id={item_id}, file={file.filename}")
+    logger.info(f"上传任务已创建: task_id={task_id}, item_id={item_id}, file={safe_name}")
 
     return {
         'success': True,
         'data': {
             'task_id': task_id,
             'item_id': item_id,
-            'file_name': file.filename,
+            'file_name': safe_name,
             'file_size': file_size,
             'status': 'processing'
         }
     }
+
+
+def _ingest_text(item_id: str, text: str, title: str, category_id: str) -> int:
+    """
+    共享的「文本 → 切片 → 向量化 → 存储」管线。
+    返回成功存储的切片数量（验收标准 4：智能切片 + 数据层记录 chunk_count）。
+    """
+    chunks = chunk_document(text, {
+        'source_doc_id': item_id,
+        'title': title or '未命名',
+        'category_path': category_id or ''
+    })
+    if not chunks:
+        _update_item(item_id, status='completed', chunk_count=0)
+        return 0
+    texts = [c['content'] for c in chunks]
+    embeddings = embed_texts(texts)
+    stored = store_chunks(item_id, chunks, embeddings)
+    _update_item(item_id, status='completed', chunk_count=stored)
+    return stored
+
+
+def _ingest_text_task(task_id: str, item_id: str, text: str, title: str, category_id: str):
+    """后台任务包装：维护任务状态并调用共享管线"""
+    try:
+        _task_status[task_id] = {'status': 'chunking', 'progress': 30, 'item_id': item_id}
+        stored = _ingest_text(item_id, text, title, category_id)
+        _task_status[task_id] = {
+            'status': 'completed', 'progress': 100, 'item_id': item_id, 'chunk_count': stored
+        }
+        logger.info(f"[Ingest {task_id}] 切片完成: {stored} 个切片, item_id={item_id}")
+    except Exception as e:
+        logger.error(f"[Ingest {task_id}] 切片失败: {e}", exc_info=True)
+        _task_status[task_id] = {
+            'status': 'failed', 'progress': 0, 'item_id': item_id, 'error': str(e)
+        }
+        _update_item(item_id, status='failed', error=str(e))
 
 
 @app.post("/api/knowledge/chunk-text")
@@ -287,28 +363,7 @@ async def chunk_text_endpoint(
     }
 
     def run_text_chunk():
-        try:
-            _task_status[task_id] = {'status': 'chunking', 'progress': 30, 'item_id': item_id}
-            chunks = chunk_document(text, {'source_doc_id': item_id, 'title': title, 'category_path': category_id})
-            if not chunks:
-                _task_status[task_id] = {'status': 'completed', 'progress': 100, 'item_id': item_id, 'chunk_count': 0}
-                _update_item(item_id, status='completed', chunk_count=0)
-                return
-
-            _task_status[task_id] = {'status': 'embedding', 'progress': 60, 'item_id': item_id, 'chunk_count': len(chunks)}
-            texts_list = [c['content'] for c in chunks]
-            embeddings = embed_texts(texts_list)
-
-            _task_status[task_id] = {'status': 'storing', 'progress': 85, 'item_id': item_id}
-            stored = store_chunks(item_id, chunks, embeddings)
-
-            _task_status[task_id] = {'status': 'completed', 'progress': 100, 'item_id': item_id, 'chunk_count': stored}
-            _update_item(item_id, status='completed', chunk_count=stored)
-            logger.info(f"[Text-Task {task_id}] 文本切片完成: {stored} 个切片")
-        except Exception as e:
-            logger.error(f"[Text-Task {task_id}] 切片失败: {e}", exc_info=True)
-            _task_status[task_id] = {'status': 'failed', 'progress': 0, 'item_id': item_id, 'error': str(e)}
-            _update_item(item_id, status='failed', error=str(e))
+        _ingest_text_task(task_id, item_id, text, title, category_id)
 
     background_tasks.add_task(run_text_chunk)
 
@@ -439,10 +494,70 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import ssl
+import socket
+import ipaddress
 
-# 创建不验证服务器证书的 SSL 上下文，解决部分环境（如 macOS）根证书缺失导致的 HTTPS 请求失败
-# 仅用于访问公开搜索/RSS 接口，不处理敏感数据
-_SSL_CONTEXT = ssl._create_unverified_context()
+# 启用证书校验（标准默认上下文），修复原先 unverified 上下文带来的中间人攻击风险（F6 修复）。
+# 若运行环境确实需要自签名证书，应在系统信任库或此处显式加载证书，而非全局关闭校验。
+_SSL_CONTEXT = ssl.create_default_context()
+
+
+# ── 出站 URL 安全校验（防 SSRF，F3 修复）────────────────────
+# 固定来源（如 web_search）使用的域名白名单；
+# extract / rss 由用户提交任意新闻源，无法穷举白名单，
+# 故改用「仅 https + 目标 IP 非私网」的防护，见 _validate_outbound_url。
+_FETCH_DOMAIN_ALLOWLIST = {
+    'www.bing.com',
+    'bing.com',
+}
+
+
+def _is_blocked_ip(ip_str: str) -> bool:
+    """目标 IP 是否属于私网/环回/链路本地/保留/组播等不可信地址。"""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        # 无法解析为合法 IP 的（如非常规格式）一律视为不可信并拒绝
+        return True
+    if (ip.is_private or ip.is_loopback or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast):
+        return True
+    # 云厂商元数据服务（如 169.254.169.254）显式封锁，防凭证窃取
+    if ip_str == '169.254.169.254':
+        return True
+    return False
+
+
+def _validate_outbound_url(url: str, allowlist=None) -> str:
+    """
+    校验出站 URL，防止 SSRF：
+      - 仅允许 https 协议（显式禁止 file:// 及其他非 http(s) 方案）
+      - 解析域名后拒绝指向私网/环回/链路本地的地址
+      - 若提供 allowlist，目标主机还须命中白名单域名
+    通过则返回原 URL；否则抛出 ValueError。
+    """
+    if not url or not isinstance(url, str):
+        raise ValueError('URL 为空')
+    parsed = urllib.parse.urlparse(url)
+    scheme = (parsed.scheme or '').lower()
+    if scheme != 'https':
+        # 显式禁止 file:// 以及任何非 https 方案
+        raise ValueError(f'不支持的协议: {scheme or "(空)"}，仅允许 https')
+    host = parsed.hostname
+    if not host:
+        raise ValueError('URL 缺少主机名')
+    if allowlist is not None and host.lower() not in allowlist:
+        raise ValueError(f'域名不在允许列表: {host}')
+    # 解析并校验目标 IP（拦截 10/172.16-31/192.168 等私网及 169.254.169.254）
+    try:
+        infos = socket.getaddrinfo(host, None)
+        ips = {info[4][0] for info in infos}
+    except socket.gaierror:
+        raise ValueError(f'无法解析主机: {host}')
+    for ip in ips:
+        if _is_blocked_ip(ip):
+            raise ValueError(f'目标地址被拒绝（私网/保留地址）: {ip}')
+    return url
 
 
 class WebSearchRequest(BaseModel):
@@ -466,6 +581,8 @@ async def web_search(req: WebSearchRequest):
         # Bing 搜索（无需 API key，公开可用）
         encoded = urllib.parse.quote(query)
         url = f"https://www.bing.com/search?q={encoded}&count={top_k}"
+        # SSRF 防护：固定来源校验域名白名单（F3 修复）
+        _validate_outbound_url(url, allowlist=_FETCH_DOMAIN_ALLOWLIST)
         headers = {
             'User-Agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -479,41 +596,13 @@ async def web_search(req: WebSearchRequest):
             html_text = resp.read().decode('utf-8', errors='replace')
 
         results = []
-        import html as _html
         import re
         # Bing 结果块：<li class="b_algo">...</li>
         result_blocks = re.findall(r'<li class="b_algo".*?</li>', html_text, re.S)
         for block in result_blocks[:top_k]:
-            title_match = re.search(
-                r'<h2[^>]*>.*?<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>.*?</h2>',
-                block, re.S
-            )
-            summary_match = re.search(
-                r'<div class="b_caption"[^>]*>.*?<p[^>]*>(.*?)</p>.*?</div>',
-                block, re.S
-            )
-            if not title_match:
-                continue
-
-            raw_url = _html.unescape(title_match.group(1))
-            title = re.sub(r'<[^>]+>', '', title_match.group(2))
-            summary = ''
-            if summary_match:
-                summary = re.sub(r'<[^>]+>', '', summary_match.group(1))
-
-            # Bing 部分链接为相对路径，补全
-            clean_url = raw_url
-            if clean_url.startswith('/'):
-                clean_url = f"https://www.bing.com{clean_url}"
-
-            results.append({
-                'title': _html.unescape(title).strip(),
-                'summary': _html.unescape(summary).strip(),
-                'content': _html.unescape(summary).strip(),
-                'url': clean_url,
-                'sourceUrl': clean_url,
-                'sourceName': 'Bing'
-            })
+            item = normalize_web_result(block)
+            if item:
+                results.append(item)
 
         logger.info(f"网络搜索: {query}, 返回 {len(results)} 条")
         return {'success': True, 'data': results, 'count': len(results)}
@@ -527,90 +616,8 @@ class RssRequest(BaseModel):
     sources: list[str]
 
 
-def _parse_rss_feed(xml_text: str, source_url: str):
-    """解析单个 RSS/Atom feed XML"""
-    try:
-        root = ET.fromstring(xml_text)
-    except ET.ParseError as e:
-        logger.warning(f"RSS 解析失败 {source_url}: {e}")
-        return []
-
-    articles = []
-    ns = {'atom': 'http://www.w3.org/2005/Atom'}
-
-    if root.tag == 'rss' or root.tag.endswith('rss'):
-        channel = root.find('channel')
-        if channel is None:
-            return []
-        for item in channel.findall('item'):
-            title = item.findtext('title', default='').strip()
-            link = item.findtext('link', default='').strip()
-            desc = item.findtext('description', default='').strip()
-            pub_date = item.findtext('pubDate', default='')
-            articles.append({
-                'title': title,
-                'sourceUrl': link,
-                'sourceName': source_url,
-                'summary': re.sub(r'<[^>]+>', '', desc),
-                'content': re.sub(r'<[^>]+>', '', desc),
-                'publishedAt': pub_date
-            })
-    elif root.tag.endswith('feed') or root.tag == '{http://www.w3.org/2005/Atom}feed':
-        for entry in root.findall('atom:entry', ns):
-            title = entry.findtext('atom:title', default='', namespaces=ns).strip()
-            link_el = entry.find('atom:link', ns)
-            link = link_el.get('href', '') if link_el is not None else ''
-            summary = entry.findtext('atom:summary', default='', namespaces=ns).strip()
-            content = entry.findtext('atom:content', default='', namespaces=ns).strip()
-            published = entry.findtext('atom:published', default='', namespaces=ns).strip()
-            if not published:
-                published = entry.findtext('atom:updated', default='', namespaces=ns).strip()
-            articles.append({
-                'title': title,
-                'sourceUrl': link,
-                'sourceName': source_url,
-                'summary': re.sub(r'<[^>]+>', '', summary or content),
-                'content': re.sub(r'<[^>]+>', '', content or summary),
-                'publishedAt': published
-            })
-
-    return articles
-
-
 class ExtractRequest(BaseModel):
     url: str
-
-
-class _TextExtractor(HTMLParser):
-    """从 HTML 中提取正文文本，跳过 script/style/nav/header/footer 等标签"""
-
-    SKIP_TAGS = {'script', 'style', 'nav', 'header', 'footer', 'aside', 'noscript', 'svg', 'iframe'}
-
-    def __init__(self):
-        super().__init__()
-        self._skip_depth = 0
-        self._chunks: list[str] = []
-        self._in_body = False
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'body':
-            self._in_body = True
-        if tag in self.SKIP_TAGS:
-            self._skip_depth += 1
-
-    def handle_endtag(self, tag):
-        if tag in self.SKIP_TAGS and self._skip_depth > 0:
-            self._skip_depth -= 1
-
-    def handle_data(self, data):
-        if self._skip_depth > 0:
-            return
-        text = data.strip()
-        if text and len(text) > 2:
-            self._chunks.append(text)
-
-    def get_text(self) -> str:
-        return '\n'.join(self._chunks)
 
 
 @app.post("/api/news/extract")
@@ -622,6 +629,8 @@ async def extract_article_content(req: ExtractRequest):
     url = req.url
     if not url:
         raise HTTPException(status_code=400, detail="URL 为空")
+    # SSRF 防护：仅允许 https，并拦截指向私网/链路本地的目标（F3 修复）
+    _validate_outbound_url(url)
 
     try:
         headers = {
@@ -645,16 +654,29 @@ async def extract_article_content(req: ExtractRequest):
             else:
                 html_text = raw.decode('utf-8', errors='replace')
 
-        parser = _TextExtractor()
-        parser.feed(html_text)
-        text = parser.get_text()
+        # 提取正文（body）与元信息（标题/摘要）
+        text = extract_body(html_text)
+        title, summary = extract_meta(html_text)
 
         # 截断过长内容（保留前 8000 字符）
         if len(text) > 8000:
             text = text[:8000]
 
+        # 来源：取 URL 主机名
+        source = urllib.parse.urlparse(url).netloc or url
+
         logger.info(f"文章抓取: {url}, 提取 {len(text)} 字符")
-        return {'success': True, 'content': text, 'length': len(text)}
+        # 归一化为四要素结构返回（body=正文，content 保留兼容前端）
+        return {
+            'success': True,
+            'title': title,
+            'summary': summary,
+            'source': source,
+            'body': text,
+            'content': text,
+            'url': url,
+            'length': len(text)
+        }
 
     except Exception as e:
         logger.error(f"文章抓取失败 {url}: {e}")
@@ -680,6 +702,8 @@ async def fetch_rss(req: RssRequest):
 
     for source in req.sources:
         try:
+            # SSRF 防护：校验每个 RSS 源 URL（F3 修复）
+            _validate_outbound_url(source)
             request = urllib.request.Request(source, headers=headers)
             with urllib.request.urlopen(request, timeout=15, context=_SSL_CONTEXT) as resp:
                 xml_text = resp.read().decode('utf-8', errors='replace')
@@ -700,6 +724,103 @@ async def fetch_rss(req: RssRequest):
             unique.append(a)
 
     return {'success': True, 'data': unique, 'count': len(unique), 'failedSources': failed_sources}
+
+
+# ── 资讯入库（验收标准 3 + 4）──────────────────────────────
+class NewsIngestRequest(BaseModel):
+    items: list[dict] = []
+    categoryId: Optional[str] = ''
+
+
+@app.post("/api/news/ingest")
+async def news_ingest(req: NewsIngestRequest, background_tasks: BackgroundTasks):
+    """
+    资讯入库：入库前硬性过滤（丢弃无正文 / 正文过短 / 无来源），
+    通过者切片并写入知识库，记录 chunk_count，
+    可经 GET /api/knowledge/chunks/{id} 查询切片数与内容。
+    """
+    if not req.items:
+        raise HTTPException(status_code=400, detail="资讯列表为空")
+
+    # 入库前硬性过滤（验收标准 3）
+    filtered = filter_news_items(req.items)
+    valid = filtered['valid']
+    dropped = filtered['dropped']
+
+    ingested = []
+    import uuid
+    for item in valid:
+        item_id = f"kb_{uuid.uuid4().hex[:12]}"
+        text = build_news_document(item)
+        _register_item(item_id, {
+            'item_id': item_id,
+            'title': item.get('title') or '未命名',
+            'file_name': '',
+            'file_type': 'news',
+            'file_size': len(text),
+            'file_path': '',
+            'category_id': req.categoryId or '',
+            'source': item.get('source', ''),
+            'status': 'processing',
+            'chunk_count': 0,
+            'created_at': datetime.now().isoformat()
+        })
+        task_id = f"task_{item_id}"
+        _task_status[task_id] = {
+            'status': 'pending', 'progress': 0, 'item_id': item_id,
+            'created_at': datetime.now().isoformat()
+        }
+        # 复用共享切片管线（验收标准 4：智能切片 + chunk_count）
+        background_tasks.add_task(
+            _ingest_text_task, task_id, item_id, text,
+            item.get('title', ''), req.categoryId or ''
+        )
+        ingested.append({'item_id': item_id, 'title': item.get('title')})
+
+    return {
+        'success': True,
+        'data': {
+            'ingested': len(ingested),
+            'dropped_count': len(dropped),
+            'dropped': dropped,
+            'items': ingested
+        }
+    }
+
+
+# ── AI 智能体（验收标准 5：引用知识库 + 记忆隔离）─────────────
+class AgentChatRequest(BaseModel):
+    agentId: str
+    query: str
+    model: Optional[str] = 'silicon'
+
+
+@app.post("/api/agent/chat")
+async def agent_chat(req: AgentChatRequest):
+    """AI 智能体对话：检索知识库并引用，记忆按 agent_id 隔离"""
+    if not req.agentId or req.agentId not in AGENTS:
+        raise HTTPException(status_code=400, detail="未知或缺失 agentId")
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="查询内容为空")
+    try:
+        result = generate_with_citations(req.agentId, req.query.strip(), model=req.model or 'silicon')
+        return {'success': True, 'data': result}
+    except Exception as e:
+        logger.error(f"AI 代理失败: {e}", exc_info=True)
+        return {'success': False, 'error': str(e), 'data': None}
+
+
+@app.get("/api/agent/list")
+async def agent_list():
+    """列出 5 个可用智能体"""
+    return {'success': True, 'data': [{'id': k, 'name': v['name']} for k, v in AGENTS.items()]}
+
+
+@app.get("/api/agent/memory/{agent_id}")
+async def agent_memory_get(agent_id: str):
+    """查看某智能体的对话记忆（隔离维度内）"""
+    mem = get_agent_memory()
+    return {'success': True, 'data': {'agent_id': agent_id, 'history': mem.get_history(agent_id)}}
 
 
 @app.on_event("startup")

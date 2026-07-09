@@ -12,10 +12,9 @@ function toast(message, type = 'info') {
 
   const toastEl = document.createElement('div');
   toastEl.className = `toast ${type}`;
-  toastEl.innerHTML = `
-    <span class="toast-icon">${icons[type] || icons.info}</span>
-    <span class="toast-text">${message}</span>
-  `;
+  toastEl.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-text"></span>`;
+  // 用 textContent 写入 message，避免动态内容触发 XSS
+  toastEl.querySelector('.toast-text').textContent = message;
 
   container.appendChild(toastEl);
 
@@ -72,7 +71,7 @@ function formatTimeAgo(timestamp) {
 
 // 生成随机ID
 function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
 }
 
 // 防抖函数
@@ -145,7 +144,7 @@ const validator = {
   },
 
   validateTitle(title, maxLength = 100) {
-    if (!this.required(title)) {
+    if (!validator.required(title)) {
       return { valid: false, message: '标题不能为空' };
     }
     if (title.length > maxLength) {

@@ -222,10 +222,11 @@ const StudyMind = {
           throw new Error('Page not found');
         })
         .then(html => {
+          // 提取页面内联脚本，改为以 <script> 元素方式注入执行（移除 eval，规避代码注入风险）
           const scriptRegex = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
           const scripts = [];
           let match;
-          
+
           while ((match = scriptRegex.exec(html)) !== null) {
             const scriptContent = match[0];
             const contentMatch = scriptContent.match(/<script[^>]*>([\s\S]*?)<\/script>/);
@@ -233,23 +234,25 @@ const StudyMind = {
               scripts.push(contentMatch[1]);
             }
           }
-          
+
           const htmlWithoutScripts = html.replace(scriptRegex, '');
           container.innerHTML = htmlWithoutScripts;
-          
-          setTimeout(() => {
-            scripts.forEach(script => {
-              try {
-                eval(script);
-              } catch (e) {
-                console.error('执行脚本失败:', e);
-              }
-            });
-            
-            if (window[info.init]) {
-              window[info.init]();
+
+          // 通过 <script> 元素执行页面脚本（同步执行，等价于原 eval 但更安全）
+          scripts.forEach(function(code) {
+            try {
+              const s = document.createElement('script');
+              s.textContent = code;
+              document.body.appendChild(s);
+            } catch (e) {
+              console.error('执行脚本失败:', e);
             }
-          }, 50);
+          });
+
+          // 显式调用页面初始化（移除 setTimeout(init, 50) 的延时）
+          if (window[info.init]) {
+            window[info.init]();
+          }
         })
         .catch(() => {
           container.innerHTML = `<div class="empty-state"><span style="font-size:48px">📄</span><div class="empty-title">页面未找到</div><div class="empty-desc">该页面正在开发中...</div></div>`;

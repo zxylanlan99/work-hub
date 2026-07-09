@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StudyMind - AI驱动的学习管理平台</title>
-  <link rel="stylesheet" href="css/global.css?v=10">
-  <link rel="stylesheet" href="css/layout.css?v=10">
-  <link rel="stylesheet" href="css/components.css?v=10">
+  <link rel="stylesheet" href="css/global.css?v=12">
+  <link rel="stylesheet" href="css/layout.css?v=12">
+  <link rel="stylesheet" href="css/components.css?v=12">
 </head>
 <body>
   <div class="app">
@@ -17,35 +17,35 @@
         <span>StudyMind</span>
       </div>
       <nav class="sidebar-nav">
-        <div class="nav-item active" data-page="home" onclick="window.navigateTo&&navigateTo('home')">
+        <div class="nav-item active" data-page="home" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('home')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('home')}">
           <span class="nav-icon">📊</span>
           <span>首页</span>
         </div>
-        <div class="nav-item" data-page="plan" onclick="window.navigateTo&&navigateTo('plan')">
+        <div class="nav-item" data-page="plan" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('plan')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('plan')}">
           <span class="nav-icon">🎯</span>
           <span>学习计划</span>
         </div>
-        <div class="nav-item" data-page="news" onclick="window.navigateTo&&navigateTo('news')">
+        <div class="nav-item" data-page="news" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('news')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('news')}">
           <span class="nav-icon">📡</span>
           <span>资讯</span>
         </div>
-        <div class="nav-item" data-page="knowledge" onclick="window.navigateTo&&navigateTo('knowledge')">
+        <div class="nav-item" data-page="knowledge" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('knowledge')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('knowledge')}">
           <span class="nav-icon">📚</span>
           <span>知识库</span>
         </div>
-        <div class="nav-item" data-page="ai-chat" onclick="window.navigateTo&&navigateTo('ai-chat')">
+        <div class="nav-item" data-page="ai-chat" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('ai-chat')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('ai-chat')}">
           <span class="nav-icon">💬</span>
           <span>AI对话</span>
         </div>
-        <div class="nav-item" data-page="review" onclick="window.navigateTo&&navigateTo('review')">
+        <div class="nav-item" data-page="review" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('review')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('review')}">
           <span class="nav-icon">🔁</span>
           <span>复习计划</span>
         </div>
-        <div class="nav-item" data-page="output" onclick="window.navigateTo&&navigateTo('output')">
+        <div class="nav-item" data-page="output" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('output')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('output')}">
           <span class="nav-icon">✍️</span>
           <span>知识沉淀</span>
         </div>
-        <div class="nav-item" data-page="settings" onclick="window.navigateTo&&navigateTo('settings')">
+        <div class="nav-item" data-page="settings" role="button" tabindex="0" onclick="window.navigateTo&&navigateTo('settings')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.navigateTo&&navigateTo('settings')}">
           <span class="nav-icon">⚙️</span>
           <span>系统设置</span>
         </div>
@@ -72,20 +72,29 @@
   <!-- Toast容器 -->
   <div class="toast-container" id="toast-container"></div>
 
-  <!-- Markdown 渲染库 -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- DOMPurify XSS 防护库 -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <!-- Markdown 渲染库（已本地化，去掉外链依赖：避免国内网络 CDN 超时/被墙时阻塞后续脚本，导致 framework.js 不执行、菜单失效） -->
+  <script defer src="js/vendor/marked.min.js?v=12"></script>
+  <!-- DOMPurify XSS 防护库（已本地化，同上；marked/DOMPurify 被 ai-chat.js 真正用于 AI 回复 Markdown 渲染与 XSS 防护，不可删除） -->
+  <script defer src="js/vendor/purify.min.js?v=12"></script>
 
-  <!-- CloudBase Mock SDK (优先使用，避免 CDN 加载失败) -->
-  <script src="js/cloudbase-mock.js?v=11"></script>
+  <!-- 真实 CloudBase Web SDK（本地化 UMD，挂 window.TCB；cloudbase-mock.js 检测到 TCB 即切换真实后端，禁用 mock） -->
+  <script defer src="js/vendor/cloudbase.full.js?v=12"></script>
+  <!-- CloudBase Mock SDK（仅在真实 SDK 未加载时作兜底；部署环境应始终走真实后端） -->
+  <script defer src="js/cloudbase-mock.js?v=12"></script>
   <!-- 脚本引入 -->
-  <script src="js/utils.js?v=11"></script>
-  <script src="js/config.js?v=11"></script>
-  <script src="js/cloudbase.js?v=11"></script>
-  <script src="js/ai-service.js?v=11"></script>
-  <script src="js/mock.js?v=11"></script>
-  <script src="js/db.js?v=11"></script>
-  <script src="js/framework.js?v=11"></script>
+  <script defer src="js/utils.js?v=12"></script>
+  <script defer src="js/config.js?v=12"></script>
+  <script defer src="js/cloudbase.js?v=12"></script>
+  <script defer src="js/ai-service.js?v=12"></script>
+  <script defer src="js/mock.js?v=12"></script>
+  <script defer src="js/db.js?v=12"></script>
+  <!-- 四大问题修复：纯逻辑双导出模块（问题1/2/3/4 共享） -->
+  <script defer src="js/chat-session.js?v=12"></script>
+  <script defer src="js/rag.js?v=12"></script>
+  <script defer src="js/news-scorer.js?v=12"></script>
+  <script defer src="js/review-card-parser.js?v=12"></script>
+  <script defer src="js/framework.js?v=12"></script>
+  <!-- 首页逻辑（必须在 framework.js 之后，以覆盖其默认的 initHomePage，使真实统计数据得以加载） -->
+  <script defer src="js/home.js?v=12"></script>
 </body>
 </html>

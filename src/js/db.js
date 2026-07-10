@@ -2168,6 +2168,7 @@ const DB = {
       this._collection('chats').add({
         title: data.title || '新对话',
         model: data.model || (typeof AI_MODEL !== 'undefined' ? AI_MODEL : 'Hy3'),
+        agentId: data.agentId || 'general',
         knowledgeId: data.knowledgeId || null,
         createdAt: new Date(),
         updatedAt: new Date()

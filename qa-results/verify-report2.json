@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "base": "http://localhost:8090/",
+    "startedAt": "2026-07-09T10:15:21.111Z"
+  },
+  "vp1": {
+    "name": "知识库「分类目录」支持编辑、删除",
+    "categoriesExistedInitially": {
+      "success": true,
+      "count": 0,
+      "err": null
+    },
+    "modalOpened": true,
+    "afterCreateEditBtnCount": 1,
+    "afterCreateDelBtnCount": 1,
+    "treeShowsNewCategory": true,
+    "newCategoryEditOnclick": "event.stopPropagation();editCategory('daef7e716a4f74c5000895317ee7f710', 'QA_临时分类_1783592133041')",
+    "newCategoryDelOnclick": "event.stopPropagation();deleteCategoryConfirm('daef7e716a4f74c5000895317ee7f710', 'QA_临时分类_1783592133041')",
+    "editDialogFired": true,
+    "editDialogMessage": "请输入新的分类名称：",
+    "deleteDialogFired": true,
+    "deleteDialogMessage": "确定要删除分类「QA_临时分类_1783592133041」吗？\n该分类下的条目将变为\"未分类\"。",
+    "createdCatId": "daef7e716a4f74c5000895317ee7f710",
+    "verdict": "✅ 通过",
+    "cleanup": {
+      "deletedId": "daef7e716a4f74c5000895317ee7f710",
+      "result": {
+        "success": true,
+        "data": {
+          "deleted": 1,
+          "requestId": "ec5626ac8f16d8"
+        }
+      }
+    }
+  },
+  "vp4": {
+    "name": "今日暖身「快问快答」数据来源",
+    "probeQuestion": "QA_LINKAGE_PROBE_1783592138843",
+    "createdCardId": "6e56a4026a4f74cb001791c550a5e7df",
+    "createdCardRaw": {
+      "success": true,
+      "data": {
+        "id": "6e56a4026a4f74cb001791c550a5e7df",
+        "requestId": "7b6576f549a07"
+      }
+    },
+    "displayedQuizQuestion": "QA_LINKAGE_PROBE_1783592138843",
+    "reviewQueue": {
+      "length": 1,
+      "firstQuestion": "QA_LINKAGE_PROBE_1783592138843"
+    },
+    "reviewQueueError": null,
+    "exactMatch": true,
+    "verdict": "✅ 通过（快问快答题面==临时复习卡片题面，证实来自复习计划且数据联动）",
+    "cleanup": {
+      "deletedId": "6e56a4026a4f74cb001791c550a5e7df",
+      "result": {
+        "deleted": 1,
+        "requestId": "da3d37169e8288"
+      }
+    }
+  },
+  "summary": {
+    "vp1": "✅ 通过",
+    "vp4": "✅ 通过（快问快答题面==临时复习卡片题面，证实来自复习计划且数据联动）",
+    "consoleErrors": 1,
+    "pageErrors": 0,
+    "dialogsCaptured": [
+      {
+        "type": "prompt",
+        "message": "请输入新的分类名称："
+      },
+      {
+        "type": "confirm",
+        "message": "确定要删除分类「QA_临时分类_1783592133041」吗？\n该分类下的条目将变为\"未分类\"。"
+      }
+    ]
+  }
+}

@@ -65,10 +65,20 @@ if (!tcbOk || !loggedIn) {
 }
 
 /* 3. 实际部署（带超时保护，避免极端情况下挂起阻塞门禁） */
-console.log('\n[3/3] 执行部署 tcb deploy --mode=auto ...');
-const dep = runWithTimeout('tcb', ['deploy', '--mode=auto'], 90000);
+// 注意：CloudBase CLI 3.x 的 `tcb deploy` 为「云应用部署」，不读取 cloudbaserc v2 的
+// staticAssets 段，且 `--mode=auto` 为非法参数（会交互式卡死退出 1）。
+// 静态托管的正确原语是 `tcb hosting deploy <dir> -e <envId>`。
+let envId = 'studymind-d7g06nv0de98a1f1b';
+let staticSrc = 'src';
+try {
+  const rc = JSON.parse(require('fs').readFileSync(path.join(ROOT, 'cloudbaserc.json'), 'utf8'));
+  if (rc.envId) envId = rc.envId;
+  if (rc.deploy && rc.deploy.staticAssets && rc.deploy.staticAssets.src) staticSrc = rc.deploy.staticAssets.src;
+} catch (e) { /* 回退默认值 */ }
+console.log('\n[3/3] 执行部署 tcb hosting deploy ' + staticSrc + ' -e ' + envId + ' ...');
+const dep = runWithTimeout('tcb', ['hosting', 'deploy', staticSrc, '-e', envId], 120000);
 if (dep.timedOut) {
-  console.error('部署命令在 90s 内未完成，可能网络异常。请手动重试：tcb deploy --mode=auto');
+  console.error('部署命令在 120s 内未完成，可能网络异常。请手动重试：tcb hosting deploy ' + staticSrc + ' -e ' + envId);
   process.exit(1);
 }
 process.exit(dep.status === 0 ? 0 : 1);

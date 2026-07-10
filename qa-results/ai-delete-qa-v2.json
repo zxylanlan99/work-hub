@@ -1,0 +1,323 @@
+{
+  "generatedAt": "2026-07-10T06:41:55.147Z",
+  "suites": [
+    {
+      "label": "src",
+      "base": "http://localhost:8090/",
+      "steps": [
+        {
+          "name": "setup",
+          "emptyAtStart": true,
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED",
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "seed",
+          "count": 2,
+          "ids": [
+            "mrekgx9y5ldbw8hco36",
+            "mrekgwvtmvbdr49y8k8"
+          ],
+          "note": "seeded",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "A-modal",
+          "title": "删除对话",
+          "msgHasTitle": true,
+          "msgHas5s": true,
+          "hasDel": 1,
+          "hasCancel": 1,
+          "cancelFocused": true,
+          "modalGoneAfterCancel": true,
+          "pass": true,
+          "note": "title=删除对话 cancelFocused=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "B-delete-toast",
+          "delId": "mrekgwvtmvbdr49y8k8",
+          "toastCount": 1,
+          "toastHasUndo": true,
+          "removedFromConv": true,
+          "removedFromDom": true,
+          "pass": true,
+          "note": "toast=1 removedConv=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "C-undo-restore",
+          "toastGone": true,
+          "restoredConv": true,
+          "restoredDom": true,
+          "stillInDb": true,
+          "pass": true,
+          "note": "restored=true dbStill=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "D-cancel-keep",
+          "modalGone": true,
+          "toastCount": 0,
+          "kept": true,
+          "pass": true,
+          "note": "kept=true modalGone=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "E-timeout-realdelete",
+          "idB": "mrekgx9y5ldbw8hco36",
+          "toastGone": true,
+          "inDomAfter": 0,
+          "inDbAfter": false,
+          "pass": true,
+          "note": "toastGone=true dbAfter=false",
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "F-current-session-clear",
+          "currentBefore": "mrekh5tvxneb4cth34",
+          "title": "AI助手",
+          "currentAfter": null,
+          "fInDb": false,
+          "pass": true,
+          "note": "title=AI助手 currentAfter=null",
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "G-agentId",
+          "agentBefore": "general",
+          "newId": "mrekhb9j2w8zojkz3hr",
+          "hasAgent": true,
+          "agentVal": "general",
+          "pass": true,
+          "note": "agentVal=general expected=general",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "H-empty-state",
+          "count": 0,
+          "empty": true,
+          "pass": true,
+          "note": "count=0 empty=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "K-smoke",
+          "visited": 7,
+          "whiteScreens": [],
+          "pass": true,
+          "note": "no white",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        }
+      ],
+      "errors": {
+        "pageErrors": 0,
+        "consoleErrors": 4,
+        "jsPageErrors": [],
+        "jsConsoleErrors": []
+      },
+      "pass": {
+        "A": true,
+        "B": true,
+        "C": true,
+        "D": true,
+        "E": true,
+        "F": true,
+        "G": true,
+        "H": true,
+        "I": true,
+        "J": true,
+        "K": true
+      },
+      "go": true
+    },
+    {
+      "label": "dist",
+      "base": "http://localhost:8091/",
+      "steps": [
+        {
+          "name": "setup",
+          "emptyAtStart": true,
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED",
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "seed",
+          "count": 2,
+          "ids": [
+            "mrekhqc1hk833xmfltc",
+            "mrekhpy003avci8bzwux"
+          ],
+          "note": "seeded",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "A-modal",
+          "title": "删除对话",
+          "msgHasTitle": true,
+          "msgHas5s": true,
+          "hasDel": 1,
+          "hasCancel": 1,
+          "cancelFocused": true,
+          "modalGoneAfterCancel": true,
+          "pass": true,
+          "note": "title=删除对话 cancelFocused=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "B-delete-toast",
+          "delId": "mrekhpy003avci8bzwux",
+          "toastCount": 1,
+          "toastHasUndo": true,
+          "removedFromConv": true,
+          "removedFromDom": true,
+          "pass": true,
+          "note": "toast=1 removedConv=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "C-undo-restore",
+          "toastGone": true,
+          "restoredConv": true,
+          "restoredDom": true,
+          "stillInDb": true,
+          "pass": true,
+          "note": "restored=true dbStill=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "D-cancel-keep",
+          "modalGone": true,
+          "toastCount": 0,
+          "kept": true,
+          "pass": true,
+          "note": "kept=true modalGone=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "E-timeout-realdelete",
+          "idB": "mrekhqc1hk833xmfltc",
+          "toastGone": true,
+          "inDomAfter": 0,
+          "inDbAfter": false,
+          "pass": true,
+          "note": "toastGone=true dbAfter=false",
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "F-current-session-clear",
+          "currentBefore": "mrekhysdqzrzfhizim8",
+          "title": "AI助手",
+          "currentAfter": null,
+          "fInDb": false,
+          "pass": true,
+          "note": "title=AI助手 currentAfter=null",
+          "_status": "ok",
+          "_consoleSince": [
+            "Failed to load resource: net::ERR_FAILED"
+          ],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "G-agentId",
+          "agentBefore": "general",
+          "newId": "mreki46r10tm8b86nxd",
+          "hasAgent": true,
+          "agentVal": "general",
+          "pass": true,
+          "note": "agentVal=general expected=general",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "H-empty-state",
+          "count": 0,
+          "empty": true,
+          "pass": true,
+          "note": "count=0 empty=true",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        },
+        {
+          "name": "K-smoke",
+          "visited": 7,
+          "whiteScreens": [],
+          "pass": true,
+          "note": "no white",
+          "_status": "ok",
+          "_consoleSince": [],
+          "_pageErrorsSince": []
+        }
+      ],
+      "errors": {
+        "pageErrors": 0,
+        "consoleErrors": 4,
+        "jsPageErrors": [],
+        "jsConsoleErrors": []
+      },
+      "pass": {
+        "A": true,
+        "B": true,
+        "C": true,
+        "D": true,
+        "E": true,
+        "F": true,
+        "G": true,
+        "H": true,
+        "I": true,
+        "J": true,
+        "K": true
+      },
+      "go": true
+    }
+  ]
+}

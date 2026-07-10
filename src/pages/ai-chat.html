@@ -497,13 +497,62 @@
 }
 
 /* Issue 3b: 对话列表项悬浮时显示删除按钮 */
+/* 注意：删除按钮的「默认隐藏 / hover 显示」必须用 CSS 类控制，
+   不能在 JS 里用内联 style.opacity 设置——内联样式优先级高于样式表，
+   会覆盖下方的 hover 规则导致按钮永久不可见（历史 bug）。 */
+.conv-delete-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+  background: transparent;
+  border: none;
+  line-height: 1;
+}
 .conversation-item:hover .conv-delete-btn {
   opacity: 1;
+}
+/* 触屏/无 hover 设备：始终显示删除按钮，保证可达性 */
+@media (hover: none) {
+  .conv-delete-btn {
+    opacity: 1;
+  }
 }
 .conv-delete-btn:hover {
   background: var(--gray-100, #f4f4f5);
   color: var(--danger, #ef4444);
-}</style>
+}
+
+/* ============ 自绘删除确认弹层 ============ */
+body .modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+  opacity: 1; visibility: visible;
+}
+.modal-box {
+  background: var(--bg, #fff); color: var(--text, #18181b);
+  border-radius: 12px; padding: 20px; max-width: 320px; width: 86%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2); font-size: 14px;
+}
+.modal-box .modal-title { font-weight: 600; margin-bottom: 8px; }
+.modal-box .modal-msg { color: var(--gray-500, #71717a); margin-bottom: 16px; line-height: 1.5; }
+.modal-box .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-box button { border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 14px; }
+.modal-cancel { background: var(--gray-100, #f4f4f5); color: var(--text, #18181b); }
+.modal-delete { background: var(--danger, #ef4444); color: #fff; }
+.modal-delete:focus, .modal-cancel:focus { outline: 2px solid var(--primary, #3b82f6); outline-offset: 2px; }
+
+/* ============ 撤销提示 toast ============ */
+.undo-toast {
+  position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%);
+  background: #18181b; color: #fff; padding: 10px 14px; border-radius: 10px;
+  display: flex; align-items: center; gap: 12px; z-index: 1100; font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+}
+.undo-toast button {
+  background: transparent; border: 1px solid rgba(255,255,255,0.4); color: #fff;
+  border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px;
+}
+.undo-toast button:focus { outline: 2px solid #fff; outline-offset: 2px; }
+</style>
 
 <script>
 // ================================================================
@@ -520,7 +569,8 @@ var chatState = window.__chatState = window.__chatState || {
   inflightCount: 0,
   conversations: [],
   pendingFiles: [],       // 待发送的附件列表 [{file, name, category}]
-  selectedKnowledgeIds: [] // 选中的知识条目 ID 列表
+  selectedKnowledgeIds: [], // 选中的知识条目 ID 列表
+  pendingDeleteIds: {}      // 正在等待「撤销窗口」结束、尚未真正删除的对话 ID
 };
 
 // ================================================================
@@ -1039,7 +1089,9 @@ async function loadChatList() {
     if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
     var result = await window.DB.getChats(1, 50);
     
-    chatState.conversations = result.data || [];
+    chatState.conversations = (result.data || []).filter(function(c) {
+      return !chatState.pendingDeleteIds[c._id || c.id];
+    });
     
     if (chatState.conversations.length === 0) {
       list.innerHTML = '<div class="empty-state" style="text-align:center;padding:30px 20px;">' +
@@ -1113,16 +1165,18 @@ async function loadChatList() {
       var timeEl = document.createElement('div');
       timeEl.className = 'conv-time';
       timeEl.textContent = timeStr;
-      var delBtn = document.createElement('span');
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
       delBtn.className = 'conv-delete-btn';
-      delBtn.title = '删除对话';
+      delBtn.setAttribute('aria-label', '删除对话');
       delBtn.style.cursor = 'pointer';
       delBtn.style.fontSize = '14px';
       delBtn.style.color = 'var(--gray-400)';
       delBtn.style.padding = '2px 4px';
       delBtn.style.borderRadius = '4px';
-      delBtn.style.opacity = '0';
-      delBtn.style.transition = 'opacity 0.15s';
+      // 注意：不要在此设置 style.opacity / style.transition，
+      // 否则内联样式会覆盖 <style> 中的 hover 规则导致按钮永久不可见。
+      // 默认隐藏 + hover 显示由 CSS 类 .conv-delete-btn 控制。
       delBtn.textContent = '🗑️';
       delBtn.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -1658,63 +1712,183 @@ async function parseAndExecuteKbCommands(reply) {
 // 删除对话
 // ================================================================
 
+// ================================================================
+// 删除对话（自绘确认弹层 + 撤销窗口 + 持久化清理）
+// ================================================================
+
+/** 清空右侧消息区并复位标题 */
+function clearChatPane() {
+  var msgs = document.getElementById('chat-messages');
+  if (msgs) msgs.innerHTML = '';
+  var titleEl = document.getElementById('chat-title');
+  if (titleEl) titleEl.textContent = 'AI助手';
+}
+
+/** 删除当前对话后清理持久化会话，避免刷新恢复已删对话 */
+function persistSessionClear() {
+  if (window.ChatSession && window.ChatSession.saveChatSession) {
+    window.ChatSession.saveChatSession({
+      currentAgent: chatState.currentAgent,
+      currentChatId: null
+    });
+  }
+}
+
+/** 自绘删除确认弹层，返回 Promise<boolean>（true=确认删除） */
+function showDeleteConfirm(title) {
+  return new Promise(function(resolve) {
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', '删除对话确认');
+
+    var box = document.createElement('div');
+    box.className = 'modal-box';
+
+    var t = document.createElement('div');
+    t.className = 'modal-title';
+    t.textContent = '删除对话';
+
+    var msg = document.createElement('div');
+    msg.className = 'modal-msg';
+    msg.textContent = '确定要删除「' + title + '」及其所有消息吗？删除后可在 5 秒内撤销。';
+
+    var actions = document.createElement('div');
+    actions.className = 'modal-actions';
+
+    var cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'modal-cancel';
+    cancelBtn.textContent = '取消';
+
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'modal-delete';
+    delBtn.textContent = '删除';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(delBtn);
+    box.appendChild(t);
+    box.appendChild(msg);
+    box.appendChild(actions);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    function cleanup() {
+      document.removeEventListener('keydown', onKey);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') { cleanup(); resolve(false); }
+    }
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) { cleanup(); resolve(false); }
+    });
+    cancelBtn.addEventListener('click', function() { cleanup(); resolve(false); });
+    delBtn.addEventListener('click', function() { cleanup(); resolve(true); });
+    document.addEventListener('keydown', onKey);
+    cancelBtn.focus();
+  });
+}
+
+/** 撤销提示 toast：message + 撤销按钮，5 秒后自动消失 */
+function showUndoToast(message, onUndo) {
+  var toast = document.createElement('div');
+  toast.className = 'undo-toast';
+  toast.setAttribute('role', 'status');
+  var span = document.createElement('span');
+  span.textContent = message;
+  var btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '撤销';
+  toast.appendChild(span);
+  toast.appendChild(btn);
+  document.body.appendChild(toast);
+
+  var done = false;
+  function remove() {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }
+  var timer = setTimeout(remove, 5000);
+  btn.addEventListener('click', function() { remove(); if (onUndo) onUndo(); });
+}
+
+/**
+ * 带撤销窗口的删除：确认后乐观隐藏列表项（pendingDeleteIds），
+ * 5 秒内可撤销（取消真实删除）；否则真正级联删除。
+ * @param {string} chatId
+ * @returns {Promise<boolean>}
+ */
+async function removeChatWithUndo(chatId) {
+  if (!chatId) return false;
+  var chat = chatState.conversations.find(function(c) { return (c._id || c.id) === chatId; });
+  var title = chat ? (chat.title || '未命名对话') : '这个对话';
+  var confirmed = await showDeleteConfirm(title);
+  if (!confirmed) return false;
+
+  try {
+    if (!window.DB) throw new Error('数据库服务未初始化');
+    // 乐观隐藏 + 进入待删除态
+    chatState.pendingDeleteIds[chatId] = true;
+    if (chatState.currentChatId === chatId) {
+      chatState.currentChatId = null;
+      clearChatPane();
+      persistSessionClear();
+    }
+    await loadChatList(); // 过滤 pendingDeleteIds → 列表隐藏该项
+
+    // 撤销窗口
+    var undone = false;
+    await new Promise(function(resolve) {
+      showUndoToast('对话已删除', function() { undone = true; resolve(); });
+      setTimeout(resolve, 5000);
+    });
+
+    if (undone) {
+      delete chatState.pendingDeleteIds[chatId];
+      chatToast('已撤销删除', 'info');
+      await loadChatList();
+      return true;
+    }
+
+    delete chatState.pendingDeleteIds[chatId];
+    var result = await window.DB.deleteChat(chatId);
+    if (!result.success) {
+      chatToast('删除失败，请稍后重试', 'error');
+      await loadChatList();
+      return false;
+    }
+    chatToast('对话已删除', 'success');
+    return true;
+  } catch (error) {
+    console.error('[AIChat] 删除对话失败:', error);
+    delete chatState.pendingDeleteIds[chatId];
+    chatToast('删除失败，请稍后重试', 'error');
+    await loadChatList();
+    return false;
+  }
+}
+
+/** 顶部「删除」按钮：删除当前选中对话 */
 async function deleteChatConfirm() {
   if (!chatState.currentChatId) {
     chatToast('请先选择一个对话', 'warning');
     return;
   }
-  
-  if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
-  
-  try {
-    if (!window.DB) throw new Error('数据库服务未初始化，请检查 CloudBase 配置');
-    var result = await window.DB.deleteChat(chatState.currentChatId);
-    
-    if (result.success) {
-      chatToast('对话已删除', 'success');
-      chatState.currentChatId = null;
-      document.getElementById('chat-messages').innerHTML = '';
-      document.getElementById('chat-title').textContent = 'AI助手';
-      await loadChatList();
-    } else {
-      chatToast('删除失败: ' + (result.error || '未知错误'), 'error');
-    }
-  } catch (error) {
-    console.error('[AIChat] 删除对话失败:', error);
-    chatToast('删除失败', 'error');
-  }
+  await removeChatWithUndo(chatState.currentChatId);
 }
 
-// ================================================================
-// 从对话列表中删除对话（Issue 3b）
-// ================================================================
-
 /**
- * 从对话列表中删除指定对话，二次确认后调用 DB.deleteChat()
+ * 从对话列表中删除指定对话（列表项删除按钮触发）
  * @param {string} chatId - 要删除的对话 ID
  */
 async function deleteChatFromList(chatId) {
   if (!chatId) return;
-  if (!confirm('确定要删除这个对话及其所有消息吗？此操作不可恢复。')) return;
-  try {
-    if (!window.DB) throw new Error('数据库服务未初始化');
-    var result = await window.DB.deleteChat(chatId);
-    if (result.success) {
-      chatToast('对话已删除', 'success');
-      /* 如果删除的是当前选中的对话，清空右侧消息区 */
-      if (chatState.currentChatId === chatId) {
-        chatState.currentChatId = null;
-        document.getElementById('chat-messages').innerHTML = '';
-        document.getElementById('chat-title').textContent = 'AI助手';
-      }
-      await loadChatList();
-    } else {
-      chatToast('删除失败: ' + (result.error || '未知错误'), 'error');
-    }
-  } catch (error) {
-    console.error('[AIChat] 删除对话失败:', error);
-    chatToast('删除失败: ' + error.message, 'error');
-  }
+  await removeChatWithUndo(chatId);
 }
 
 // ================================================================

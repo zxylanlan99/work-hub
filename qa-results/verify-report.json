@@ -1,0 +1,629 @@
+{
+  "meta": {
+    "base": "http://localhost:8090/",
+    "chromium": "chromium-1228",
+    "proxy": "http://127.0.0.1:59004",
+    "startedAt": "2026-07-09T10:32:07.782Z"
+  },
+  "cloudbase": {
+    "hasCloudbaseSDK": true,
+    "hasDB": true,
+    "hasApp": true,
+    "hasRawDb": true,
+    "dbInitType": "function"
+  },
+  "backendConnectivity": {
+    "backendRequestCount": 22,
+    "sampleUrls": [
+      "http://localhost:8090/js/vendor/cloudbase.full.js?v=12",
+      "http://localhost:8090/js/cloudbase-mock.js?v=12",
+      "http://localhost:8090/js/cloudbase.js?v=12",
+      "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/signin/anonymously?client_id=studymi",
+      "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/user/me"
+    ],
+    "responses": [
+      {
+        "status": 200,
+        "url": "http://localhost:8090/js/cloudbase.js?v=12"
+      },
+      {
+        "status": 200,
+        "url": "http://localhost:8090/js/cloudbase-mock.js?v=12"
+      },
+      {
+        "status": 200,
+        "url": "http://localhost:8090/js/vendor/cloudbase.full.js?v=12"
+      },
+      {
+        "status": 200,
+        "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/signin/anonymously?client_id=studymi"
+      },
+      {
+        "status": 200,
+        "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/user/me"
+      },
+      {
+        "status": 200,
+        "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b"
+      },
+      {
+        "status": 200,
+        "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b"
+      },
+      {
+        "status": 200,
+        "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b"
+      }
+    ]
+  },
+  "vp1": {
+    "name": "知识库「分类目录」支持编辑、删除",
+    "editBtnCount": 0,
+    "delBtnCount": 0,
+    "treeLoaded": false,
+    "editDialogFired": false,
+    "editDialogMessage": null,
+    "deleteDialogFired": false,
+    "deleteDialogMessage": null,
+    "firstEditOnclick": null,
+    "firstDelOnclick": null,
+    "treeTextSnippet": "分类目录\n+ 新建\n📁\n全部条目\n0\n📄\n未分类\n1\n＋\n新建分类",
+    "verdict": "❌ 不通过 / 无法验证（分类树未渲染编辑删除入口）"
+  },
+  "vp2": {
+    "name": "知识库「AI推荐清单」已移除",
+    "anyAIMatch": false,
+    "matchedKeywords": [],
+    "verdict": "✅ 通过（知识库页面无任何 AI推荐清单字样）"
+  },
+  "vp3": {
+    "name": "资讯「知识源管理」res.data.forEach is not a function",
+    "rssButtonClicked": true,
+    "modalVisible": true,
+    "containerText": "名称\tURL\t来源\t状态与操作\n少数派\thttps://sspai.com/feed\t预设\t\n删除\n\n36氪\thttps://rsshub.app/36kr/newsflashes\t预设\t\n删除\n\nCSDN 热门\thttps://rsshub.app/csdn/hot\t预设\t\n删除\n\n掘金前端\thttps://rsshub.app/juejin/category/frontend\t预设\t\n删除\n\n阮一峰周刊\thttps://www.ruanyifeng.com/blog/atom.xml\t预设\t\n删除\n\nO'Reilly Radar\thttps://feeds.feedburner.com/oreilly/radar\t预设\t\n删除\n\nMIT Technology Review\thttps://www.technologyreview.com/rss/\t预设\t\n删除\n\n机器之心\thttps://www.jiqizhixin.com/rss\t预设\t\n删除\n\nInfoQ 中文\thttps://www.infoq.cn/rss/\t预设\t\n删除\n\nHacker News\thttps://news.ycombinator.com/rss\t预设\t\n删除",
+    "resDataCapture": {
+      "success": true,
+      "dataType": "object",
+      "isArray": true,
+      "length": 10,
+      "sample": {
+        "_id": "daef7e716a4f78b70008e12b2c9bd152",
+        "_openid": "4cTMj4kZ4sM7WFkm5sPm-g",
+        "category": "效率工具",
+        "createdAt": "2026-07-09T10:32:22.956Z",
+        "enabled": false,
+        "isPreset": true,
+        "name": "少数派",
+        "updatedAt": "2026-07-09T10:32:22.956Z",
+        "url": "https://sspai.com/feed"
+      }
+    },
+    "forEachErrorInConsole": [],
+    "rawBackendRssResp": [],
+    "verdict": "✅ 通过 / 未复现（res.data 为数组，无 forEach 报错）"
+  },
+  "vp4": {
+    "name": "今日暖身「快问快答」数据来源",
+    "displayedQuestion": "暂无待复习卡片",
+    "reviewQueueFirstQuestion": null,
+    "reviewQueue": {
+      "success": true,
+      "dataType": "object",
+      "isArray": true,
+      "length": 0,
+      "firstQuestion": null,
+      "firstCardId": null
+    },
+    "reviewQueueError": null,
+    "dataLinked": true,
+    "verdict": "✅ 通过（快问快答题面与 DB.getReviewQueue 首张复习卡片一致，数据来自复习计划）"
+  },
+  "console": [
+    {
+      "type": "log",
+      "text": "[CloudBase] ✅ 真实 CloudBase SDK 已加载，替换为真实 SDK"
+    },
+    {
+      "type": "log",
+      "text": "✅ CloudBase Mock SDK loaded"
+    },
+    {
+      "type": "log",
+      "text": "✅ StudyMind AI Service loaded (with AgentManager)"
+    },
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 404 (File not found)"
+    },
+    {
+      "type": "log",
+      "text": "[CloudBase] 初始化成功"
+    },
+    {
+      "type": "log",
+      "text": "[Framework] CloudBase initialized successfully"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (232ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (236ms): {dataCount: 1}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (253ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (254ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (266ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (274ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (276ms): {dataCount: 1}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (290ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "Initializing knowledge page (DB-backed)..."
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (153ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (80ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (156ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (81ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (79ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (70ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (75ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (90ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (68ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (71ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (78ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (68ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (69ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (65ms): {dataCount: 6}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (78ms): {dataCount: 6}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (87ms): {dataCount: 10}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (133ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (137ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (144ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (144ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (167ms): {dataCount: 1}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (167ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (168ms): {dataCount: 1}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (169ms): {dataCount: 0}"
+    },
+    {
+      "type": "log",
+      "text": "[DB] ✅ 查询成功 (62ms): {dataCount: 0}"
+    }
+  ],
+  "pageErrors": [],
+  "backendResp": [
+    {
+      "url": "http://localhost:8090/js/cloudbase.js?v=12",
+      "status": 200,
+      "body": "let app = null;\nlet db = null;\n\nasync function initCloudbase() {\n  if (app) return app;\n\n  try {\n    // 如果 DOM 已加载完成，直接初始化，避免无限等待\n    if (document.readyState === 'loading') {\n      await new Promise(resolve => {\n        const handler = () => {\n          document.removeEventListener('DOMContentLoaded', handler);\n          resolve();\n        };\n        document.addEventListener('DOMContentLoaded', handler);\n      });\n    }\n\n    if (!window.cloudbase) {\n      console.error('[CloudBase] SDK not loaded');\n      return null;\n    }\n\n    // 使用 @cloudbase/js-sdk v2.28.6 初始化\n    app = window.cloudbase.init({\n      env: CONFIG.cloudbase.env,\n      region: CONFIG.cloudbase.region\n    });\n\n    db = app.database();\n\n    // v2.x 匿名登录 API\n    await app.auth().signInAnonymously();\n\n    // 挂载到全局供其他模块使用\n    window.app = app;\n    window.db = db;\n\n    console.log('[CloudBase] 初始化成功');\n    return app;\n  } catch (error) {\n    console.error('CloudBase initialization failed:', error);\n    return null;\n  }\n}\n\nasync function getDb() {\n  if (db) return db;\n  await initCloudbase();\n  return db;\n}\n\nasync function addData(collection, data) {\n  const database = await getDb();\n  return database.collection(collection).add(data);\n}\n\nasync function getData(collection, query = {}) {\n  const database = await getDb();\n  return database.collection(collection).where(query).get();\n}\n\nasync function updateData(collection, id, data) {\n  const database = await getDb();\n  return database.collection(collection).doc(id).update(data);\n}\n\nasync function deleteData(collection, id) {\n  const database = await getDb();\n  return database.collection(collection).doc(id).remove();\n}\n\nasync function callFunction(name, data) {\n  await initCloudbase();\n  return app.callFunction({ name, data });\n}\n"
+    },
+    {
+      "url": "http://localhost:8090/js/cloudbase-mock.js?v=12",
+      "status": 200,
+      "body": "/**\n * CloudBase Mock SDK - 用于本地开发测试\n * 模拟 CloudBase SDK 的核心功能，使用 localStorage 存储数据\n */\n(function() {\n  'use strict';\n\n  // 存储键名\n  const STORAGE_KEY = 'studymind_db';\n\n  // 获取存储数据\n  function getStoredData() {\n    try {\n      const data = localStorage.getItem(STORAGE_KEY);\n      return data ? JSON.parse(data) : {};\n    } catch (e) {\n      return {};\n    }\n  }\n\n  // 保存数据\n  function saveStoredData(data) {\n    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));\n  }\n\n  // 生成唯一 ID\n  function generateId() {\n    return Date.now().toString(36) + Math.random().toString(36).substr(2);\n  }\n\n  // Mock 数据库集合\n  class MockCollection {\n    constructor(name) {\n      this.name = name;\n    }\n\n    // 获取集合数据\n    _getCollectionData() {\n      const data = getStoredData();\n      return data[this.name] || [];\n    }\n\n    // 保存集合数据\n    _saveCollectionData(items) {\n      const data = getStoredData();\n      data[this.name] = items;\n      saveStoredData(data);\n    }\n\n    // where 查询\n    where(query) {\n      this._query = query;\n      return this;\n    }\n\n    // 排序\n    orderBy(field, direction = 'asc') {\n      this._orderBy = { field, direction };\n      return this;\n    }\n\n    // 限制数量\n    limit(count) {\n      this._limit = count;\n      return this;\n    }\n\n    // 跳过\n    skip(count) {\n      this._skip = count;\n      return this;\n    }\n\n    // 获取数据\n    async get() {\n      console.log(`[MockDB] 📡 ${this.name}.get() 调用`);\n      let items = this._getCollectionData();\n      console.log(`[MockDB] 📊 ${this.name} 集合原始数据:`, { count: items.length, items: items.slice(0, 5) });\n\n      // 应用 where 查询\n      if (this._query) {\n        items = items.filter(item => {\n          return Object.keys(this._query).every(key => {\n            const queryVal = this._query[key];\n            const itemVal = item[key];\n            if (queryVal && typeof queryVal === 'object' && queryVal.$gte) {\n              return itemVal >= queryVal.$gte;\n            }\n            if (queryVal && typeof queryVal === 'object' && queryVal.$lte) {\n              return itemVal <= queryVal.$lte;\n            }\n            if (queryVal && typeof queryVal === 'object' && queryVal.$lt) {\n              return itemVal < queryVal.$lt;\n            }\n            if (queryVal && typeof queryVal === 'object' && queryVal.$gt) {\n              return itemVal > queryVal.$gt;\n            }\n            return itemVal === queryVal;\n          });\n        });\n      }\n\n      // 应用排序\n      if (this._orderBy) {\n        const { field, direction } = this._orderBy;\n        items.sort((a, b) => {\n          const aVal = a[field];\n          const bVal = b[field];\n          if (aVal < bVal) return direction === 'asc' ? -1 : 1;\n          if (aVal > bVal) return direction === 'asc' ? 1 : -1;\n          return 0;\n        });\n      }\n\n      // 应用跳过\n      if (this._skip) {\n        items = items.slice(this._skip);\n      }\n\n      // 应用限制\n      if (this._limit) {\n        items = items.slice(0, this._limit);\n      }\n\n      // 重置查询条件\n      this._query = null;\n      this._orderBy = null;\n      this._limit = null;\n      this._skip = null;\n\n      console.log(`[MockDB] 📊 ${this.name}.get() 返回:`, { count: items.length, items: items.slice(0, 3) });\n      return { data: items, total: items.length };\n    }\n\n    // 计数\n    async count() {\n      console.log(`[MockDB] 📡 ${this.name}.count() 调用`);\n      let items = this._getCollectionData();\n      console.log(`[MockDB] 📊 ${this.name} 集合原始数据量:`, items.length);\n\n      // 应用 where 查询\n      if (this._query) {\n        items = items.filter(item => {\n          return Object.keys(this._query).every(key => {\n            const queryVal = this._query[key];\n            const itemVal = item[key];\n            if (queryVal && typeof queryVal === 'object' && queryVal.$gte) {\n              return itemVal >= queryVal.$gte;\n            }\n            if (queryVal && typeof queryVal === 'object' && queryVal.$lte) {\n              return itemVal <= queryVal.$lte;\n            }\n            if (queryVal && typeof queryVal === "
+    },
+    {
+      "url": "http://localhost:8090/js/vendor/cloudbase.full.js?v=12",
+      "status": 200,
+      "body": "(() => {\n  var __create = Object.create;\n  var __defProp = Object.defineProperty;\n  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;\n  var __getOwnPropNames = Object.getOwnPropertyNames;\n  var __getProtoOf = Object.getPrototypeOf;\n  var __hasOwnProp = Object.prototype.hasOwnProperty;\n  var __esm = (fn, res, err) => function __init() {\n    if (err) throw err[0];\n    try {\n      return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;\n    } catch (e3) {\n      throw err = [e3], e3;\n    }\n  };\n  var __commonJS = (cb, mod) => function __require() {\n    try {\n      return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;\n    } catch (e3) {\n      throw mod = 0, e3;\n    }\n  };\n  var __export = (target, all) => {\n    for (var name in all)\n      __defProp(target, name, { get: all[name], enumerable: true });\n  };\n  var __copyProps = (to2, from, except, desc) => {\n    if (from && typeof from === \"object\" || typeof from === \"function\") {\n      for (let key2 of __getOwnPropNames(from))\n        if (!__hasOwnProp.call(to2, key2) && key2 !== except)\n          __defProp(to2, key2, { get: () => from[key2], enumerable: !(desc = __getOwnPropDesc(from, key2)) || desc.enumerable });\n    }\n    return to2;\n  };\n  var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, \"default\"), secondTarget && __copyProps(secondTarget, mod, \"default\"));\n  var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(\n    // If the importer is in node compatibility mode or this is not an ESM\n    // file that has been converted to a CommonJS file using a Babel-\n    // compatible transform (i.e. \"__esModule\" has not been set), then set\n    // \"default\" to the CommonJS \"module.exports\" for node compatibility.\n    isNodeMode || !mod || !mod.__esModule ? __defProp(target, \"default\", { value: mod, enumerable: true }) : target,\n    mod\n  ));\n  var __toCommonJS = (mod) => __copyProps(__defProp({}, \"__esModule\", { value: true }), mod);\n\n  // node_modules/@cloudbase/adapter-interface/dist/cmjs/types.js\n  var require_types = __commonJS({\n    \"node_modules/@cloudbase/adapter-interface/dist/cmjs/types.js\"(exports) {\n      \"use strict\";\n      Object.defineProperty(exports, \"__esModule\", { value: true });\n      var StorageType3;\n      (function(StorageType4) {\n        StorageType4[\"local\"] = \"local\";\n        StorageType4[\"none\"] = \"none\";\n        StorageType4[\"session\"] = \"session\";\n      })(StorageType3 = exports.StorageType || (exports.StorageType = {}));\n      var AbstractSDKRequest3 = /* @__PURE__ */ (function() {\n        function AbstractSDKRequest4() {\n        }\n        return AbstractSDKRequest4;\n      })();\n      exports.AbstractSDKRequest = AbstractSDKRequest3;\n      var AbstractStorage2 = /* @__PURE__ */ (function() {\n        function AbstractStorage3() {\n        }\n        return AbstractStorage3;\n      })();\n      exports.AbstractStorage = AbstractStorage2;\n    }\n  });\n\n  // node_modules/@cloudbase/adapter-interface/dist/cmjs/utils.js\n  var require_utils = __commonJS({\n    \"node_modules/@cloudbase/adapter-interface/dist/cmjs/utils.js\"(exports) {\n      \"use strict\";\n      Object.defineProperty(exports, \"__esModule\", { value: true });\n      function formatUrl4(protocol, url, query) {\n        if (query === void 0) {\n          query = {};\n        }\n        var urlHasQuery = /\\?/.test(url);\n        var queryString = \"\";\n        for (var key2 in query) {\n          if (queryString === \"\") {\n            !urlHasQuery && (url += \"?\");\n          } else {\n            queryString += \"&\";\n          }\n          queryString += key2 + \"=\" + encodeURIComponent(query[key2]);\n        }\n        url += queryString;\n        if (/^http(s)?\\:\\/\\//.test(url)) {\n          return url;\n        }\n        return \"\" + protocol + url;\n      }\n      exports.formatUrl = formatUrl4;\n    }\n  });\n\n  // node_modules/@cloudbase/adapter-interface/dist/cmjs/index.js\n  var require_cmj"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/signin/anonymously?client_id=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"token_type\":\"Bearer\",\"access_token\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6IjlkMWRjMzFlLWI0ZDAtNDQ4Yi1hNzZmLWIwY2M2M2Q4MTQ5OCJ9.eyJpc3MiOiJodHRwczovL3N0dWR5bWluZC1kN2cwNm52MGRlOThhMWYxYi5hcC1zaGFuZ2hhaS50Y2ItYXBpLnRlbmNlbnRjbG91ZGFwaS5jb20iLCJzdWIiOiI0Y1RNajRrWjRzTTdXRmttNXNQbS1nIiwiYXVkIjoic3R1ZHltaW5kLWQ3ZzA2bnYwZGU5OGExZjFiIiwiZXhwIjoxNzgzNjAwMzI4LCJpYXQiOjE3ODM1OTMxMjgsIm5vbmNlIjoiMDJmZmU0MTgtZmJlYi00NjI4LWJhYzktN2NkNTk4MjkwYjg4IiwiYXRfaGFzaCI6InRCSFI2c213UnZHM0QzVEFXeVZOa0EiLCJuYW1lIjoiQW5vbnltb3VzIiwic2NvcGUiOiJhbm9ueW1vdXMiLCJwcm9qZWN0X2lkIjoic3R1ZHltaW5kLWQ3ZzA2bnYwZGU5OGExZjFiIiwibWV0YSI6eyJ1c2VyRGVwVmVyc2lvbiI6IkNFTlRFUiIsInd4T3BlbklkIjoiIiwid3hVbmlvbklkIjoiIn0sInVzZXJfaWQiOiI0Y1RNajRrWjRzTTdXRmttNXNQbS1nIiwidXNlcl90eXBlIjoiIiwiY2xpZW50X3R5cGUiOiJjbGllbnRfdXNlciIsImlzX3N5c3RlbV9hZG1pbiI6ZmFsc2V9.YJkvPbwUF3xbH86mUJdp0bJa97YZn7Dt7HEVFDJV6PnF74Z5VibW87f3an4gXdwRU585U17AdfIZXZZMMBbzi-LbzsDxFJ_QCKuDd9EILFSKlEmGJYUx3RuPebMT8Ik5_Ox78MuZHuNM6yu4D1YnCmoPkIAbYvr68jf-A-JMjapCUqGJhNqYbsdtoCo2A_JfocfhLFWBwUfy0txqY4JD49iO2voiKj8Yh8OAIDFceV4fd6gJQsCJbxJq8yjD603PCqVA0yEH9rtysNGMHwSJ59wunti5eMXNXPngOnjCssAMQUnQ9dH4w3WcaG0JrZFdhY2KywP_mqhwTZPCcFJJVA\",\"refresh_token\":\"m.FMWSjyJTJmp3BagOexGSQwGnlGKi2GvtcPNxMA7kN_D9PoKi-WyncW3WP2Wp\",\"expires_in\":7200,\"scope\":\"anonymous\",\"sub\":\"4cTMj4kZ4sM7WFkm5sPm-g\"}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/auth/v1/user/me",
+      "status": 200,
+      "body": "{\"sub\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"name\":\"anonymous\",\"groups\":[{\"id\":\"anonymous\"}]}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"1b8d44f0f6a91\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"41fcfcff644ca\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"3579913ed9a76\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[{\"_id\":\"5caf1a7c6a3a202103f0fe6f2cb711b9\",\"_openid\":\"cLdFGkEZ1iVQLbF_gEC4wA\",\"agentId\":\"general\",\"createdAt\":{\"$date\":1782194208776},\"knowledgeId\":null,\"model\":\"mimo\",\"title\":\"我现在想做一个用AI来设计架构图（应用架\",\"updatedAt\":{\"$date\":1783590102322}}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"3173b3379e9be\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"d7d424d3d5f6\",\"data\":{\"total\":2}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"0847ec00871348\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5bb217f42a47d8\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"977bd79c9e475\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"8fb6100e6d1228\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5c38c7cd27a618\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"4b2ff40512f058\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"dd50bd8c993998\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"73c72e85fedef8\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"eca92017fb084\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"a8f73dc2a8da4\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"ddbebeb293e388\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[{\"_id\":\"6e56a4026a4f65dc0016494156a40e9d\",\"_openid\":\"7ZgBGRD75bHP-NvTx4PoSw\",\"createdAt\":{\"$date\":1783588315593},\"currentLevel\":\"\",\"deadline\":{\"$date\":1793404800000},\"description\":\"零基础\",\"domain\":\"\",\"status\":\"active\",\"title\":\"掌握微服务架构设计与实战\",\"updatedAt\":{\"$date\":1783588315593},\"weeklyHours\":\"3-5 小时/周\"}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"21fee7ef7e5bf\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"37d32990c11ae8\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"485ef38ff31b9\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5bcf0c8778b5a\",\"data\":{\"offset\":0,\"limit\":1000,\"list\":[{\"_id\":\"daef7e716a4f5d100006ca662b5c3f83\",\"_openid\":\"7ZgBGRD75bHP-NvTx4PoSw\",\"category\":\"\",\"chunkCount\":1,\"content\":\"由Mozilla维护的权威Web技术文档库，涵盖HTML、CSS、JavaScript等全面技术参考、教程和开发指南，是前端与全栈开发者的必备工具。\",\"createdAt\":{\"$date\":1783586064639},\"isDeleted\":false,\"level\":\"public\",\"score\":92,\"sourceName\":\"MDN Web Docs\",\"sourceType\":\"news\",\"sourceUrl\":\"https://developer.mozilla.org/\",\"summary\":\"由Mozilla维护的权威Web技术文档库，涵盖HTML、CSS、JavaScript等全面技术参考、教程和开发指南，是前端与全栈开发者的必备工具。\",\"tags\":[\"MDN文档\",\"Web开发\",\"开发者工具\"],\"title\":\"MDN Web Docs：Web开发者的权威技术百科全书\",\"updatedAt\":{\"$date\":1783586064639}}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"cb894d70c47d8\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"6e8415fe8f228\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[{\"_id\":\"daef7e716a4f5d100006ca662b5c3f83\",\"_openid\":\"7ZgBGRD75bHP-NvTx4PoSw\",\"category\":\"\",\"chunkCount\":1,\"content\":\"由Mozilla维护的权威Web技术文档库，涵盖HTML、CSS、JavaScript等全面技术参考、教程和开发指南，是前端与全栈开发者的必备工具。\",\"createdAt\":{\"$date\":1783586064639},\"isDeleted\":false,\"level\":\"public\",\"score\":92,\"sourceName\":\"MDN Web Docs\",\"sourceType\":\"news\",\"sourceUrl\":\"https://developer.mozilla.org/\",\"summary\":\"由Mozilla维护的权威Web技术文档库，涵盖HTML、CSS、JavaScript等全面技术参考、教程和开发指南，是前端与全栈开发者的必备工具。\",\"tags\":[\"MDN文档\",\"Web开发\",\"开发者工具\"],\"title\":\"MDN Web Docs：Web开发者的权威技术百科全书\",\"updatedAt\":{\"$date\":1783586064639}}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"f94385cd6ea0b\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"d49bb574393e6\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"18c40c78a928c8\",\"data\":{\"_id\":\"daef7e716a4f78b60008e11f342624b0\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"a08aa1b73ae9a\",\"data\":{\"_id\":\"6e56a4026a4f78b60018021f7253a43b\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"46f9007fb8ae7\",\"data\":{\"_id\":\"13a660eb6a4f78b600057892355c40e2\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"2fb48cd19c3aa\",\"data\":{\"_id\":\"daef7e716a4f78b60008e1257b2a89e5\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"cf569b33b5c8b\",\"data\":{\"_id\":\"13a660eb6a4f78b6000578977739ac2f\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"71138d9ada5f98\",\"data\":{\"_id\":\"1a4410256a4f78b60008bd5c71a14eaf\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"40791cbd77dcf8\",\"data\":{\"_id\":\"1a4410256a4f78b70008bd5d183ef3b9\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"57eaf0f1151c78\",\"data\":{\"_id\":\"6e56a4026a4f78b7001802285d34da37\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"b89bc4d3284a5\",\"data\":{\"_id\":\"1a4410256a4f78b70008bd604e4e34b6\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"ce5f9564b5bf\",\"data\":{\"_id\":\"daef7e716a4f78b70008e12b2c9bd152\"}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"d211c4a0d9dc88\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"22c64f6132fed\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"20906b4535f548\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"481e88d4ce91a8\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"b105b89646bbd\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"a48ea7b4f9de2\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5bc139a94807f8\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[{\"_id\":\"baede45d6a3ce733045e32053ed58575\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376243280},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":85,\"scoreDetail\":{\"主题关联度\":[20,\"高度相关\"],\"信息新鲜度\":[12,\"近期内容\"],\"信源可信度\":[18,\"权威技术博客\"],\"内容价值\":[25,\"深度分析\"],\"可转化性\":[8,\"可操作\"]},\"sourceName\":\"奇舞周刊\",\"sourceUrl\":\"https://weekly.75team.com/\",\"summary\":\"75团队定期发布前端开发周报，包含技术动态、工具推荐和代码实践，助力开发者持续学习。\",\"tags\":[\"前端开发\",\"技术周刊\",\"学习资源\"],\"title\":\"前端技术周刊：75团队最新学习资源与实践\",\"updatedAt\":{\"$date\":1782376288888}},{\"_id\":\"c6c1a17e6a3ce735010c1dfa0b76440c\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376244905},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":83,\"scoreDetail\":{\"主题关联度\":[20,\"高度匹配技术学习方向\"],\"信息新鲜度\":[12,\"频道活跃更新，内容时效性强\"],\"信源可信度\":[18,\"权威技术频道，作者可信\"],\"内容价值\":[25,\"信息密集，原创深度教程\"],\"可转化性\":[8,\"提供可操作代码和实践步骤\"]},\"sourceName\":\"Fireship\",\"sourceUrl\":\"https://www.youtube.com/c/Fireship\",\"summary\":\"Fireship是一个知名YouTube频道，提供快速、有趣的编程和技术教程，覆盖Web开发、云计算等热门领域。\",\"tags\":[\"编程教程\",\"技术教育\",\"YouTube频道\"],\"title\":\"Fireship: 快速编程与技术教育YouTube频道\",\"updatedAt\":{\"$date\":1782376288584}},{\"_id\":\"baede45d6a3ce72f045e31d0474e2866\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376238457},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":83,\"scoreDetail\":{\"主题关联度\":[20,\"与Web开发学习方向高度匹配\"],\"信息新鲜度\":[12,\"网站持续更新，内容时效性好\"],\"信源可信度\":[18,\"权威技术博客，域名可信度高，引用广泛\"],\"内容价值\":[25,\"信息密度高，原创性强，深度分析且实用\"],\"可转化性\":[8,\"教程可操作性强，易于摘要和实践\"]},\"sourceName\":\"CSS-Tricks\",\"sourceUrl\":\"https://css-tricks.com/\",\"summary\":\"CSS-Tricks 是知名的前端开发博客，提供丰富的CSS、HTML、JavaScript教程和技巧，适合Web开发者学习。\",\"tags\":[\"前端开发\",\"CSS教程\",\"Web技术\"],\"title\":\"CSS-Tricks: 前端开发权威资源\",\"updatedAt\":{\"$date\":1782376281255}},{\"_id\":\"d0f4e3f46a3ce73600c4741a265096f3\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376245742},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"Addy Osmani\",\"sourceUrl\":\"https://twitter.com/addyosmani\",\"summary\":\"Google工程师，专注性能优化前沿\",\"tags\":[\"Twitter账号\"],\"title\":\"Addy Osmani [Twitter账号]\"},{\"_id\":\"5caf1a7c6a3ce73004cdcf3926b8b493\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376240702},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"前端早读课\",\"sourceUrl\":\"https://www.zhihu.com/column/pocket-frontend\",\"summary\":\"每日精选前端资讯，高效省时\",\"tags\":[\"Newsletter/社区\"],\"title\":\"前端早读课 [Newsletter/社区]\"},{\"_id\":\"baede45d6a3ce72f045e31d5478b7488\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376239539},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"Smashing Magazine\",\"sourceUrl\":\"https://www.smashingmagazine.com/\",\"summary\":\"深度技术文章+行业趋势分析\",\"tags\":[\"博客/Newsletter\"],\"title\":\"Smashing Magazine [博客/Newsletter]\"}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"2bb49cfdf72ac\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[{\"_id\":\"baede45d6a3ce733045e32053ed58575\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376243280},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":85,\"scoreDetail\":{\"主题关联度\":[20,\"高度相关\"],\"信息新鲜度\":[12,\"近期内容\"],\"信源可信度\":[18,\"权威技术博客\"],\"内容价值\":[25,\"深度分析\"],\"可转化性\":[8,\"可操作\"]},\"sourceName\":\"奇舞周刊\",\"sourceUrl\":\"https://weekly.75team.com/\",\"summary\":\"75团队定期发布前端开发周报，包含技术动态、工具推荐和代码实践，助力开发者持续学习。\",\"tags\":[\"前端开发\",\"技术周刊\",\"学习资源\"],\"title\":\"前端技术周刊：75团队最新学习资源与实践\",\"updatedAt\":{\"$date\":1782376288888}},{\"_id\":\"c6c1a17e6a3ce735010c1dfa0b76440c\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376244905},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":83,\"scoreDetail\":{\"主题关联度\":[20,\"高度匹配技术学习方向\"],\"信息新鲜度\":[12,\"频道活跃更新，内容时效性强\"],\"信源可信度\":[18,\"权威技术频道，作者可信\"],\"内容价值\":[25,\"信息密集，原创深度教程\"],\"可转化性\":[8,\"提供可操作代码和实践步骤\"]},\"sourceName\":\"Fireship\",\"sourceUrl\":\"https://www.youtube.com/c/Fireship\",\"summary\":\"Fireship是一个知名YouTube频道，提供快速、有趣的编程和技术教程，覆盖Web开发、云计算等热门领域。\",\"tags\":[\"编程教程\",\"技术教育\",\"YouTube频道\"],\"title\":\"Fireship: 快速编程与技术教育YouTube频道\",\"updatedAt\":{\"$date\":1782376288584}},{\"_id\":\"baede45d6a3ce72f045e31d0474e2866\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"aiScored\":true,\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376238457},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"high\",\"publishedAt\":null,\"score\":83,\"scoreDetail\":{\"主题关联度\":[20,\"与Web开发学习方向高度匹配\"],\"信息新鲜度\":[12,\"网站持续更新，内容时效性好\"],\"信源可信度\":[18,\"权威技术博客，域名可信度高，引用广泛\"],\"内容价值\":[25,\"信息密度高，原创性强，深度分析且实用\"],\"可转化性\":[8,\"教程可操作性强，易于摘要和实践\"]},\"sourceName\":\"CSS-Tricks\",\"sourceUrl\":\"https://css-tricks.com/\",\"summary\":\"CSS-Tricks 是知名的前端开发博客，提供丰富的CSS、HTML、JavaScript教程和技巧，适合Web开发者学习。\",\"tags\":[\"前端开发\",\"CSS教程\",\"Web技术\"],\"title\":\"CSS-Tricks: 前端开发权威资源\",\"updatedAt\":{\"$date\":1782376281255}},{\"_id\":\"d0f4e3f46a3ce73600c4741a265096f3\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376245742},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"Addy Osmani\",\"sourceUrl\":\"https://twitter.com/addyosmani\",\"summary\":\"Google工程师，专注性能优化前沿\",\"tags\":[\"Twitter账号\"],\"title\":\"Addy Osmani [Twitter账号]\"},{\"_id\":\"5caf1a7c6a3ce73004cdcf3926b8b493\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376240702},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"前端早读课\",\"sourceUrl\":\"https://www.zhihu.com/column/pocket-frontend\",\"summary\":\"每日精选前端资讯，高效省时\",\"tags\":[\"Newsletter/社区\"],\"title\":\"前端早读课 [Newsletter/社区]\"},{\"_id\":\"baede45d6a3ce72f045e31d5478b7488\",\"_openid\":\"UHAopAOlE_ZBqim_BqK4SA\",\"category\":\"\",\"content\":\"\",\"createdAt\":{\"$date\":1782376239539},\"hasRead\":false,\"importance\":0,\"isSaved\":false,\"knowledgeId\":null,\"level\":\"\",\"publishedAt\":null,\"score\":0,\"sourceName\":\"Smashing Magazine\",\"sourceUrl\":\"https://www.smashingmagazine.com/\",\"summary\":\"深度技术文章+行业趋势分析\",\"tags\":[\"博客/Newsletter\"],\"title\":\"Smashing Magazine [博客/Newsletter]\"}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"b580efa4dcb8a8\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[{\"_id\":\"daef7e716a4f78b70008e12b2c9bd152\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"效率工具\",\"createdAt\":{\"$date\":1783593142956},\"enabled\":false,\"isPreset\":true,\"name\":\"少数派\",\"updatedAt\":{\"$date\":1783593142956},\"url\":\"https://sspai.com/feed\"},{\"_id\":\"1a4410256a4f78b70008bd604e4e34b6\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"科技新闻\",\"createdAt\":{\"$date\":1783593142888},\"enabled\":false,\"isPreset\":true,\"name\":\"36氪\",\"updatedAt\":{\"$date\":1783593142888},\"url\":\"https://rsshub.app/36kr/newsflashes\"},{\"_id\":\"6e56a4026a4f78b7001802285d34da37\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"技术资讯\",\"createdAt\":{\"$date\":1783593142809},\"enabled\":false,\"isPreset\":true,\"name\":\"CSDN 热门\",\"updatedAt\":{\"$date\":1783593142809},\"url\":\"https://rsshub.app/csdn/hot\"},{\"_id\":\"1a4410256a4f78b70008bd5d183ef3b9\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"前端开发\",\"createdAt\":{\"$date\":1783593142737},\"enabled\":false,\"isPreset\":true,\"name\":\"掘金前端\",\"updatedAt\":{\"$date\":1783593142737},\"url\":\"https://rsshub.app/juejin/category/frontend\"},{\"_id\":\"1a4410256a4f78b60008bd5c71a14eaf\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"技术博客\",\"createdAt\":{\"$date\":1783593142669},\"enabled\":false,\"isPreset\":true,\"name\":\"阮一峰周刊\",\"updatedAt\":{\"$date\":1783593142669},\"url\":\"https://www.ruanyifeng.com/blog/atom.xml\"},{\"_id\":\"13a660eb6a4f78b6000578977739ac2f\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"技术资讯\",\"createdAt\":{\"$date\":1783593142579},\"enabled\":true,\"isPreset\":true,\"name\":\"O'Reilly Radar\",\"updatedAt\":{\"$date\":1783593142579},\"url\":\"https://feeds.feedburner.com/oreilly/radar\"},{\"_id\":\"daef7e716a4f78b60008e1257b2a89e5\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"科技前沿\",\"createdAt\":{\"$date\":1783593142504},\"enabled\":true,\"isPreset\":true,\"name\":\"MIT Technology Review\",\"updatedAt\":{\"$date\":1783593142504},\"url\":\"https://www.technologyreview.com/rss/\"},{\"_id\":\"13a660eb6a4f78b600057892355c40e2\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"AI/ML\",\"createdAt\":{\"$date\":1783593142433},\"enabled\":true,\"isPreset\":true,\"name\":\"机器之心\",\"updatedAt\":{\"$date\":1783593142433},\"url\":\"https://www.jiqizhixin.com/rss\"},{\"_id\":\"6e56a4026a4f78b60018021f7253a43b\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"技术资讯\",\"createdAt\":{\"$date\":1783593142353},\"enabled\":true,\"isPreset\":true,\"name\":\"InfoQ 中文\",\"updatedAt\":{\"$date\":1783593142353},\"url\":\"https://www.infoq.cn/rss/\"},{\"_id\":\"daef7e716a4f78b60008e11f342624b0\",\"_openid\":\"4cTMj4kZ4sM7WFkm5sPm-g\",\"category\":\"技术资讯\",\"createdAt\":{\"$date\":1783593142271},\"enabled\":true,\"isPreset\":true,\"name\":\"Hacker News\",\"updatedAt\":{\"$date\":1783593142271},\"url\":\"https://news.ycombinator.com/rss\"}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"6b9ee399d57b68\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"6dcea07abede8\",\"data\":{\"total\":7}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"9ebb5c5b3b0478\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5839005a73f02\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"d97677a5c5de18\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"4dc23d94136d48\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"ccce24e10d0858\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"b48a66f38fcb38\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[{\"_id\":\"6e56a4026a4f65dc0016494156a40e9d\",\"_openid\":\"7ZgBGRD75bHP-NvTx4PoSw\",\"createdAt\":{\"$date\":1783588315593},\"currentLevel\":\"\",\"deadline\":{\"$date\":1793404800000},\"description\":\"零基础\",\"domain\":\"\",\"status\":\"active\",\"title\":\"掌握微服务架构设计与实战\",\"updatedAt\":{\"$date\":1783588315593},\"weeklyHours\":\"3-5 小时/周\"}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"5fb350c3b5e0a8\",\"data\":{\"total\":2}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"70034a584e0a28\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"0a72d3024e8b6\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"466668e3c3416\",\"data\":{\"offset\":0,\"limit\":1,\"list\":[{\"_id\":\"5caf1a7c6a3a202103f0fe6f2cb711b9\",\"_openid\":\"cLdFGkEZ1iVQLbF_gEC4wA\",\"agentId\":\"general\",\"createdAt\":{\"$date\":1782194208776},\"knowledgeId\":null,\"model\":\"mimo\",\"title\":\"我现在想做一个用AI来设计架构图（应用架\",\"updatedAt\":{\"$date\":1783590102322}}]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"cf2553c6f932b8\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"b310854bbdd938\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"ca2e929f2b2c7\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"03a21be11352d8\",\"data\":{\"total\":0}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"7108da5d156e5\",\"data\":{\"total\":1}}"
+    },
+    {
+      "url": "https://studymind-d7g06nv0de98a1f1b.ap-shanghai.tcb-api.tencentcloudapi.com/web?env=studymind-d7g06nv0de98a1f1b",
+      "status": 200,
+      "body": "{\"requestId\":\"810c71bb935978\",\"data\":{\"offset\":0,\"limit\":100,\"list\":[]}}"
+    }
+  ],
+  "dialogs": [],
+  "summary": {
+    "vp1": "❌ 不通过 / 无法验证（分类树未渲染编辑删除入口）",
+    "vp2": "✅ 通过（知识库页面无任何 AI推荐清单字样）",
+    "vp3": "✅ 通过 / 未复现（res.data 为数组，无 forEach 报错）",
+    "vp4": "✅ 通过（快问快答题面与 DB.getReviewQueue 首张复习卡片一致，数据来自复习计划）",
+    "backendRequests": 66,
+    "consoleErrors": 1,
+    "pageErrors": 0
+  },
+  "consoleErrorsOnly": [
+    "Failed to load resource: the server responded with a status of 404 (File not found)"
+  ]
+}

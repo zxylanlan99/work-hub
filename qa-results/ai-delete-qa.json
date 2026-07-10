@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "base": "http://localhost:8091/",
+    "chromium": "chromium-1228",
+    "mockForced": true,
+    "endedAt": "2026-07-10T05:13:20.481Z"
+  },
+  "steps": [
+    {
+      "name": "setup-clean",
+      "emptyAtStart": true,
+      "note": "clean empty state",
+      "_status": "ok",
+      "_consoleSince": [
+        "Failed to load resource: net::ERR_FAILED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "create-via-ui",
+      "count": 1,
+      "hasNewTitle": true,
+      "note": "count=1",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "seed-via-db",
+      "count": 3,
+      "note": "seeded, count=3",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "delete-btn-visibility",
+      "before": "0",
+      "after": "1",
+      "fixEffective": true,
+      "note": "opacity 0 -> 1",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "full-delete-flow",
+      "before": 3,
+      "after": 2,
+      "removed": true,
+      "note": "count 3->2, A removed=true",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "delete-selected-clears-pane",
+      "titleAfterSelect": "测试对话B",
+      "paneTitle": "AI助手",
+      "paneCleared": true,
+      "remaining": 1,
+      "note": "selected='测试对话B', afterDelete pane='AI助手', cleared=true",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "cancel-dismiss-keeps",
+      "before": 1,
+      "after": 1,
+      "kept": true,
+      "confirmFired": true,
+      "note": "count 1->1, kept=true",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "delete-last-empty-state",
+      "count": 0,
+      "empty": true,
+      "note": "count=0, emptyState=true",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    },
+    {
+      "name": "prerelease-smoke",
+      "visited": 7,
+      "whiteScreens": [],
+      "newPageErrors": [],
+      "note": "no white screens",
+      "_status": "ok",
+      "_consoleSince": [],
+      "_pageErrorsSince": []
+    }
+  ],
+  "touch": {
+    "hoverNone": true,
+    "opacityNoHover": "1",
+    "alwaysVisible": true,
+    "pageErrors": []
+  },
+  "verdict": {
+    "coreFix": true,
+    "fullDelete": true,
+    "paneClear": true,
+    "cancelKeeps": true,
+    "emptyState": true,
+    "touchVisible": true,
+    "noPageErrors": true,
+    "noWhite": true,
+    "jsPageErrors": [],
+    "jsConsoleErrors": [],
+    "go": true
+  },
+  "pageErrors": [],
+  "consoleErrors": [
+    "Failed to load resource: net::ERR_FAILED",
+    "Failed to load resource: net::ERR_FAILED"
+  ],
+  "dialogs": [
+    {
+      "type": "confirm",
+      "message": "确定要删除这个对话及其所有消息吗？此操作不可恢复。"
+    },
+    {
+      "type": "confirm",
+      "message": "确定要删除这个对话及其所有消息吗？此操作不可恢复。"
+    },
+    {
+      "type": "confirm",
+      "message": "确定要删除这个对话及其所有消息吗？此操作不可恢复。"
+    },
+    {
+      "type": "confirm",
+      "message": "确定要删除这个对话及其所有消息吗？此操作不可恢复。"
+    }
+  ]
+}

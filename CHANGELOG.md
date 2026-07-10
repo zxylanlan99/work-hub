@@ -2,6 +2,27 @@
 
 所有重要项目变更将记录在此文件中。
 
+## [V1.8.3] - 2026-07-10
+
+### 新增
+- AI 聊天页对话列表删除加固（自绘确认弹层 + 5 秒撤销窗口 + 持久化会话清理 + 按钮语义化）
+
+### 修复
+- 修复删除按钮因 JS 内联 `opacity:0` 覆盖 CSS hover 规则导致永久不可见（对话列表「不支持删除」根因）
+- db.js `createChat` 补写 `agentId`，修正新建对话列表项智能体图标恒为 🤖 的问题
+- AI 聊天页删除流程改用自绘确认弹层（替换原生 `confirm()`，显示对话标题、Esc/遮罩取消、可聚焦）
+- 删除后 5 秒撤销窗口（误删可恢复，超时方执行级联硬删）
+- 删除当前对话后清理持久化会话（`saveChatSession({currentChatId:null})`），刷新不再恢复已删对话
+- 删除按钮 `<span>` → `<button>` + `aria-label`，删除失败提示通用化（不暴露内部错误）
+- 修复自绘弹层被全局 `components.css` 的 `.modal-overlay{opacity:0}` 隐藏的冲突（inline `body .modal-overlay` 提权）
+- 发布脚本 `scripts/deploy.js` 改用 `tcb hosting deploy src -e <envId>` 原语（原 `tcb deploy --mode=auto` 在本机 CloudBase CLI 3.x 失效、交互卡死）
+
+### 优化
+- 已发布上线（CloudBase 静态托管），线上点击式回归 A–K 全绿
+
+### 已知风险（待后端/云架构闭环）
+- CloudBase `chats`/`messages` 集合 `remove` 权限是否限定 `doc._openid==auth.openid` 尚未在控制台核验（越权删除 IDOR 防护）
+
 ## [V1.8.1] - 2026-07-10
 
 ### 修复

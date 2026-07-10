@@ -11,6 +11,7 @@ StudyMind 资讯爬虫云函数 (验收标准 3 · 四要素 + 入库过滤)
   POST /api/news/validate  {items:[...]}       -> {valid:[...], dropped:[...]}  (包装 filter_news_items)
 """
 import json
+import time
 import ssl
 import socket
 import ipaddress
@@ -95,9 +96,17 @@ def _decode(raw):
     return raw.decode('utf-8', errors='replace')
 
 
+# ── RSS 正文抓取参数（避免云函数 60s 超时）────────────
+_RSS_EXTRACT_LIMIT = 10        # 每个源最多抓取多少篇真实正文
+_RSS_ARTICLE_TIMEOUT = 8        # 单篇正文抓取超时(秒)
+_RSS_EXTRACT_BUDGET = 45       # 单次 handle_rss 正文抓取总预算(秒)
+
+
 def handle_rss(sources):
     all_articles = []
     failed_sources = []
+    # 时间预算保护：逼近云函数 60s 上限前停止抓取，避免整体超时
+    extract_deadline = time.time() + _RSS_EXTRACT_BUDGET
     for source in sources or []:
         try:
             _validate_outbound_url(source)
@@ -105,6 +114,38 @@ def handle_rss(sources):
             xml_text = raw.decode('utf-8', errors='replace')
             articles = parse_rss_feed(xml_text, source)
             logger.info('RSS 抓取: %s, %d 条', source, len(articles))
+
+            # 【需求2·严禁摘要当正文】先清空 content/body，仅保留 summary 字段
+            for art in articles:
+                art['content'] = ''
+                art['body'] = ''
+
+            # 仅对前 N 篇抓取真实正文（标准库 extract_body），其余 body 留空
+            # 触发下游"无正文"过滤；绝不把 RSS 摘要回填进 body。
+            for art in articles[:_RSS_EXTRACT_LIMIT]:
+                # 时间预算保护：超时则停止后续抓取
+                if time.time() > extract_deadline:
+                    logger.warning('RSS 正文抓取已达时间预算，停止后续抓取')
+                    break
+                url = art.get('url') or art.get('sourceUrl') or ''
+                if not url:
+                    continue
+                try:
+                    res = handle_extract(url, timeout=_RSS_ARTICLE_TIMEOUT)
+                    if res.get('success') and res.get('body'):
+                        body = res['body']
+                        art['content'] = body
+                        art['body'] = body
+                        # summary 为空时用提取的 meta.summary 兜底（仍只进 summary 字段）
+                        if not art.get('summary') and res.get('summary'):
+                            art['summary'] = res['summary']
+                    else:
+                        # 抓取失败或正文为空：body 保持空，绝不回填 RSS 摘要
+                        reason = res.get('error') if isinstance(res, dict) else '未知错误'
+                        logger.warning('RSS 正文抓取无效 %s: %s', url, reason)
+                except Exception as e:
+                    logger.warning('RSS 正文抓取异常 %s: %s', url, e)
+
             all_articles.extend(articles)
         except Exception as e:
             logger.warning('RSS 源抓取失败 %s: %s', source, e)
@@ -120,12 +161,12 @@ def handle_rss(sources):
             'failedSources': failed_sources}
 
 
-def handle_extract(url):
+def handle_extract(url, timeout=15):
     if not url:
         return {'success': False, 'error': 'URL 为空', 'content': ''}
     try:
         _validate_outbound_url(url)
-        raw = _http_get(url)
+        raw = _http_get(url, timeout=timeout)
         html_text = _decode(raw)
         text = extract_body(html_text)
         title, summary = extract_meta(html_text)

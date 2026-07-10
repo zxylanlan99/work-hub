@@ -1504,7 +1504,7 @@ async function loadRssSourceList() {
   container.innerHTML = '<div style="text-align:center;padding:12px;color:var(--gray-400);">加载中...</div>';
   try {
     var res = await DB.getRssSources();
-    if (!res.success || !res.data || res.data.length === 0) {
+    if (!res || !res.success || !Array.isArray(res.data) || res.data.length === 0) {
       container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--gray-400);">暂无RSS源，请添加或等待预设源初始化</div>';
       return;
     }
@@ -1522,7 +1522,7 @@ async function loadRssSourceList() {
       var toggleBg = src.enabled ? 'var(--success)' : 'var(--gray-300)';
       var toggleDot = src.enabled ? '16px' : '2px';
       var toggleTitle = src.enabled ? '点击禁用' : '点击启用';
-      var toggleHtml = '<div onclick="toggleRssSourceEnabled(\'' + id + '\',' + (!src.enabled) + ')" title="' + toggleTitle + '" style="cursor:pointer;display:inline-flex;align-items:center;width:36px;height:20px;border-radius:10px;background:' + toggleBg + ';position:relative;vertical-align:middle;">'
+      var toggleHtml = '<div id="rssToggle_' + id + '" onclick="toggleRssSourceEnabled(\'' + id + '\',' + (!src.enabled) + ')" title="' + toggleTitle + '" style="cursor:pointer;display:inline-flex;align-items:center;width:36px;height:20px;border-radius:10px;background:' + toggleBg + ';position:relative;vertical-align:middle;">'
         + '<div style="width:16px;height:16px;border-radius:50%;background:#fff;margin-left:' + toggleDot + ';box-shadow:0 1px 3px rgba(0,0,0,.2);transition:margin .2s;"></div></div>';
       /* 操作区：开关 + 删除按钮 */
       var actionsHtml = '<div style="display:flex;align-items:center;gap:8px;">'
@@ -1571,10 +1571,29 @@ async function toggleRssSourceEnabled(id, enabled) {
   try {
     await DB.toggleRssSource(id, enabled);
     showNewsToast(enabled ? '已启用' : '已禁用', 'info');
+    /* 【需求3·局部刷新】仅更新该列表项的开关视觉，不重刷整页，UI 与后台一致 */
+    _refreshRssToggle(id, enabled);
   } catch (error) {
     showNewsToast('操作失败: ' + error.message, 'error');
   }
 }
+
+/**
+ * 局部刷新单个 RSS 源开关的视觉状态（与后台保持一致）
+ * 直接修改该开关的背景色、圆点位置、提示文案，并重新绑定下一次点击的相反状态。
+ * 找不到对应 DOM 时回退到整列表刷新，保证不出现状态错乱。
+ */
+function _refreshRssToggle(id, enabled) {
+  var el = document.getElementById('rssToggle_' + id);
+  if (!el) { loadRssSourceList(); return; }
+  el.style.background = enabled ? 'var(--success)' : 'var(--gray-300)';
+  var dot = el.querySelector('div');
+  if (dot) dot.style.marginLeft = enabled ? '16px' : '2px';
+  el.title = enabled ? '点击禁用' : '点击启用';
+  /* 重新绑定点击：下一次点击切换为相反状态 */
+  el.setAttribute('onclick', "toggleRssSourceEnabled('" + id + "'," + (!enabled) + ")");
+}
+window._refreshRssToggle = _refreshRssToggle;
 
 /** 更新RSS源字段 */
 async function updateRssSourceField(id, field, value) {

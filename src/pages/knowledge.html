@@ -17,7 +17,6 @@
     <div class="list-header-row">
       <div class="sub-tabs">
         <div class="sub-tab active" onclick="switchKbTab('all')">全部条目</div>
-        <div class="sub-tab" onclick="switchKbTab('ai')"><span class="badge-dot"></span> 🤖 AI推荐清单</div>
         <div class="sub-tab" onclick="switchKbTab('trash')">🗑 回收站</div>
       </div>
       <div class="list-controls">
@@ -48,14 +47,6 @@
         <button class="btn btn-sm" style="background:var(--warning);color:#fff" onclick="openModal('modal-expiry')">查看</button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('expiry-banner').style.display='none'">忽略</button>
       </div>
-    </div>
-
-    <!-- 批量操作栏 -->
-    <div class="batch-bar" id="kb-batch-bar">
-      <div class="batch-info">已选择 <strong id="batch-count">0</strong> 条知识</div>
-      <button class="btn btn-primary btn-sm" onclick="batchImport()">批量入库</button>
-      <button class="btn btn-secondary btn-sm" onclick="batchIgnore()">批量忽略</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearBatchSelection()">取消</button>
     </div>
 
     <!-- 知识卡片网格 -->
@@ -221,65 +212,6 @@
   </div>
 </div>
 
-<!-- ===== 弹窗2：入库确认 ===== -->
-<div class="modal-overlay" id="modal-import-confirm" onclick="if(event.target===this)closeModal('modal-import-confirm')">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">📥 入库确认</div>
-      <button class="modal-close" onclick="closeModal('modal-import-confirm')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="import-source">
-        <div class="import-source-title" id="import-source-title">—</div>
-        <div class="import-source-url" id="import-source-url"></div>
-      </div>
-      <div class="ai-badge-group">
-        <span class="ai-badge-tag ai-badge-bot">🤖 AI推荐</span>
-        <span class="ai-badge-tag ai-badge-lightning">⚡ AI摘要</span>
-        <span class="ai-badge-tag ai-badge-label">🏷️ AI标签</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">标题 <span class="req">*</span></label>
-        <input type="text" class="form-input" id="import-title" value="">
-      </div>
-      <div class="form-group">
-        <label class="form-label">分类 <span class="req">*</span></label>
-        <select class="form-select" id="import-category">
-          <option value="">请选择分类...</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">标签</label>
-        <div class="tag-input-wrap" id="import-tags-wrap">
-          <input type="text" class="tag-input" placeholder="输入标签后回车..." onkeydown="addTag(event)">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">摘要</label>
-        <textarea class="form-textarea" id="import-summary" style="min-height:60px"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">存储级别</label>
-        <select class="form-select" id="import-level">
-          <option value="public">公开</option>
-          <option value="sensitive">敏感</option>
-          <option value="secret">机密</option>
-        </select>
-      </div>
-      <div style="background:var(--primary-light);border-radius:var(--radius);padding:12px 16px">
-        <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:8px">📚 是否加入学习计划？</div>
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-primary btn-sm" onclick="confirmImportWithPlan()">入库 + 加入计划</button>
-          <button class="btn btn-secondary btn-sm" onclick="confirmImport()">仅入库</button>
-        </div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('modal-import-confirm')">取消</button>
-    </div>
-  </div>
-</div>
-
 <!-- ===== 弹窗3：新建分类 ===== -->
 <div class="modal-overlay" id="modal-new-category" onclick="if(event.target===this)closeModal('modal-new-category')">
   <div class="modal modal-sm">
@@ -402,49 +334,19 @@
   margin-left: auto;
   position: relative;
 }
-.cat-more-btn {
+.cat-edit-btn, .cat-del-btn {
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
-  color: var(--gray-400);
   font-size: 14px;
-  letter-spacing: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-.cat-item:hover .cat-more-btn {
   opacity: 1;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
 }
-.cat-more-btn:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-.cat-menu {
-  position: absolute;
-  right: 0;
-  top: 100%;
-  background: #fff;
-  border: 1px solid var(--gray-200);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  z-index: 50;
-  min-width: 100px;
-  padding: 4px;
-}
-.cat-menu-item {
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-.cat-menu-item:hover {
+.cat-edit-btn:hover {
   background: var(--gray-100);
 }
-.cat-menu-danger {
-  color: var(--danger);
-}
-.cat-menu-danger:hover {
+.cat-del-btn:hover {
   background: #fef2f2;
 }
 </style>
@@ -846,11 +748,8 @@ async function loadCategoryTree() {
         '<span class="cat-icon">📁</span><span class="cat-name">' + kbEscapeHtml(cat.name) + '</span>' +
         '<span class="cat-count">' + count + '</span>' +
         '<span class="cat-actions">' +
-          '<span class="cat-more-btn" onclick="event.stopPropagation();toggleCatMenu(\'' + cat._id + '\')" title="更多操作">⋯</span>' +
-          '<div class="cat-menu" id="cat-menu-' + cat._id + '" style="display:none;">' +
-            '<div class="cat-menu-item" onclick="event.stopPropagation();editCategory(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')">✏️ 编辑</div>' +
-            '<div class="cat-menu-item cat-menu-danger" onclick="event.stopPropagation();deleteCategoryConfirm(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')">🗑️ 删除</div>' +
-          '</div>' +
+          '<span class="cat-edit-btn" onclick="event.stopPropagation();editCategory(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="编辑">✏️</span>' +
+          '<span class="cat-del-btn" onclick="event.stopPropagation();deleteCategoryConfirm(\'' + cat._id + '\', \'' + kbEscapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="删除">🗑️</span>' +
         '</span>' +
         '</div>';
       if (hasChildren) {
@@ -1001,19 +900,13 @@ async function renderKnowledgeItems() {
   try {
     var items = [];
     var isTrash = (kbState.currentSubTab === 'trash');
-    var isAI = (kbState.currentSubTab === 'ai');
 
     if (!window.DB) {
       container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><div class="empty-title">DB 不可用</div><div class="empty-desc">请检查网络连接</div></div>';
       return;
     }
 
-    if (isAI) {
-      /* 【修复】AI推荐清单从 news_items 读取，过滤 AI 评分 >= 60 的资讯 */
-      var aiRes = await window.DB.getAIRecommendedItems();
-      var allNews = (aiRes.success ? aiRes.data : []) || [];
-      items = allNews.filter(function(n) { return (n.aiScore || 0) >= 60; });
-    } else if (isTrash) {
+    if (isTrash) {
       var trashRes = await window.DB.getTrashItems();
       items = (trashRes.success ? trashRes.data : []) || [];
     } else if (kbState.currentSubTab === 'search') {
@@ -1036,7 +929,6 @@ async function renderKnowledgeItems() {
 
     if (items.length === 0) {
       var messages = {
-        ai: { title: '暂无AI推荐', desc: 'AI会根据学习内容推荐知识条目' },
         trash: { title: '回收站为空', desc: '删除的知识条目会出现在这里' },
         search: { title: '未找到相关内容', desc: '请尝试其他关键词' },
         all: { title: '暂无知识条目', desc: '点击右上角按钮创建知识条目' }
@@ -1046,22 +938,7 @@ async function renderKnowledgeItems() {
       return;
     }
 
-    if (isAI) {
-      container.innerHTML = items.map(function(item) {
-        var score = item.aiScore || 0;
-        var scoreColor = score >= 80 ? 'var(--success)' : (score >= 60 ? 'var(--warning)' : 'var(--gray-400)');
-        return '<div class="knowledge-card" style="border-left:3px solid var(--primary)">' +
-          '<div class="kc-header"><div class="cb" onclick="toggleBatchSelect(\'' + item._id + '\', event)" style="margin-right:8px"></div>' +
-          '<div style="flex:1"><div class="kc-title">' + kbEscapeHtml(item.title) + '</div></div>' +
-          '<div class="kc-badges"><span class="kc-badge" style="background:' + scoreColor + ';color:#fff;">🤖 ' + score + '分</span></div></div>' +
-          '<div class="kc-excerpt">' + kbEscapeHtml((item.summary || item.content || '').substring(0, 150)) + '</div>' +
-          '<div class="kc-meta"><span class="kc-meta-item">🔗 ' + kbEscapeHtml(item.sourceName || item.sourceUrl || '资讯模块') + '</span>' +
-          '<span class="kc-meta-item">⏱️ ' + kbFormatDate(item.createdAt) + '</span></div>' +
-          '<div class="kc-footer"><span class="kc-meta-item">来源: 资讯模块</span>' +
-          '<div class="kc-actions"><button class="btn btn-primary btn-xs" onclick="openImportConfirm(\'' + item._id + '\')">确认入库</button>' +
-          '<button class="btn btn-secondary btn-xs" onclick="ignoreAIItem(\'' + item._id + '\')">忽略</button></div></div></div>';
-      }).join('');
-    } else if (isTrash) {
+    if (isTrash) {
       container.innerHTML = '<div class="trash-table"><div class="trash-thead"><div>标题</div><div>分类</div><div>删除时间</div><div>剩余天数</div><div>操作</div></div>' +
         items.map(function(item) {
           var deletedDate = item.deletedAt ? new Date(item.deletedAt) : new Date();
@@ -1143,14 +1020,6 @@ async function renderKnowledgeItems() {
    批量操作
    ================================================================ */
 
-function toggleBatchSelect(id, e) {
-  e.stopPropagation();
-  var cb = e.currentTarget;
-  if (cb.classList.contains('checked')) { cb.classList.remove('checked'); cb.textContent = ''; kbState.selectedIds.delete(id); }
-  else { cb.classList.add('checked'); cb.textContent = '✓'; kbState.selectedIds.add(id); }
-  updateBatchBar();
-}
-
 function updateBatchBar() {
   var count = kbState.selectedIds.size;
   var countEl = document.getElementById('batch-count');
@@ -1163,44 +1032,6 @@ function clearBatchSelection() {
   document.querySelectorAll('.cb.checked').forEach(function(cb) { cb.classList.remove('checked'); cb.textContent = ''; });
   kbState.selectedIds.clear();
   updateBatchBar();
-}
-
-/**
- * 批量入库（AI推荐清单场景）
- * 【修复】逐条调用 importNewsToKnowledge 导入资讯到知识库
- */
-async function batchImport() {
-  var ids = Array.from(kbState.selectedIds);
-  if (ids.length === 0) return;
-  try {
-    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
-    var successCount = 0;
-    for (var i = 0; i < ids.length; i++) {
-      var r = await window.DB.importNewsToKnowledge(ids[i]);
-      if (r.success) successCount++;
-    }
-    showToast('已批量入库 ' + successCount + ' 条知识', 'success');
-    clearBatchSelection();
-    renderKnowledgeItems();
-  } catch (e) { showToast('批量入库失败: ' + e.message, 'error'); }
-}
-
-/**
- * 批量忽略（AI推荐清单场景）
- * 【修复】逐条调用 ignoreNews 标记已读
- */
-async function batchIgnore() {
-  var ids = Array.from(kbState.selectedIds);
-  if (ids.length === 0) return;
-  try {
-    if (!window.DB) { showToast('DB 不可用', 'error'); return; }
-    for (var i = 0; i < ids.length; i++) {
-      await window.DB.ignoreNews(ids[i]);
-    }
-    showToast('已批量忽略 ' + ids.length + ' 条资讯', 'info');
-    clearBatchSelection();
-    renderKnowledgeItems();
-  } catch (e) { showToast('批量忽略失败: ' + e.message, 'error'); }
 }
 
 /* ================================================================
@@ -1581,95 +1412,6 @@ async function createCategory() {
   } catch (e) { showToast('创建失败: ' + e.message, 'error'); }
 }
 
-/**
- * 打开确认入库弹窗
- * 【修复】从 news_items 读取资讯详情（AI推荐清单数据源已改为 news_items）
- */
-async function openImportConfirm(itemId) {
-  loadCategoryOptionsInto('import-category');
-  try {
-    if (window.DB && itemId) {
-      /* 优先从 news_items 读取（AI推荐清单场景） */
-      var res = await window.DB._exec(window.DB._collection('news_items').doc(itemId).get());
-      var item = (res.success && res.data && res.data.length > 0) ? res.data[0] : null;
-      if (!item) {
-        /* 降级：从 knowledge_items 读取（已入库条目场景） */
-        var res2 = await window.DB.getKnowledgeItemDetail(itemId);
-        item = (res2.success && res2.data) ? res2.data : null;
-      }
-      if (item) {
-        document.getElementById('import-source-title').textContent = item.title || '';
-        document.getElementById('import-source-url').textContent = item.sourceUrl || '';
-        document.getElementById('import-title').value = item.title || '';
-        document.getElementById('import-summary').value = item.summary || '';
-        kbState.currentItemId = itemId;
-        kbState.currentItemData = item;
-      }
-    }
-  } catch (e) { console.error('加载推荐详情失败:', e); }
-  openModal('modal-import-confirm');
-}
-
-/**
- * 确认入库操作
- * 【修复】调用 importNewsToKnowledge 将资讯导入知识库，并触发文本切片与矢量化
- */
-async function confirmImport() {
-  try {
-    if (!window.DB || !kbState.currentItemId) { showToast('入库失败', 'error'); return; }
-    var title = document.getElementById('import-title').value.trim();
-    var categoryId = document.getElementById('import-category').value.trim();
-    var level = document.getElementById('import-level').value.trim();
-    var summary = document.getElementById('import-summary').value.trim();
-    var tags = [];
-    document.querySelectorAll('#import-tags-wrap .tag-chip').forEach(function(chip) {
-      tags.push(chip.textContent.replace(/\s×$/, '').trim());
-    });
-
-    /* 调用 importNewsToKnowledge 创建知识条目并标记 news_items.isSaved=true */
-    var result = await window.DB.importNewsToKnowledge(kbState.currentItemId);
-    if (!result.success) { showToast('入库失败: ' + (result.error || ''), 'error'); return; }
-
-    /* 更新知识条目的补充字段（分类、级别、标签） */
-    var knowledgeId = result.data && result.data.knowledgeId;
-    if (knowledgeId) {
-      await window.DB.updateKnowledgeItem(knowledgeId, {
-        title: title, categoryId: categoryId, level: level, summary: summary, tags: tags
-      });
-
-      /* 【Issue 6 修复】触发文本切片与矢量化 */
-      var itemData = kbState.currentItemData || {};
-      var content = itemData.content || summary || title;
-      if (content && content.length >= 50) {
-        window.DB.chunkKnowledgeText(content, title, knowledgeId, categoryId).catch(function(e) {
-          console.warn('[Knowledge] 文本切片异步失败:', e.message);
-        });
-      }
-    }
-
-    showToast('入库成功', 'success');
-    closeModal('modal-import-confirm');
-    kbState.currentItemId = null;
-    kbState.currentItemData = null;
-    await renderKnowledgeItems();
-  } catch (e) { showToast('入库失败: ' + e.message, 'error'); }
-}
-
-async function confirmImportWithPlan() {
-  /* 【修复】先保存 itemId，因为 confirmImport 会将其置空 */
-  var savedItemId = kbState.currentItemId;
-  var savedItemData = kbState.currentItemData;
-  await confirmImport();
-  if (savedItemId && window.DB) {
-    try {
-      var title = (savedItemData && savedItemData.title) || document.getElementById('import-title').value.trim();
-      var summary = (savedItemData && savedItemData.summary) || document.getElementById('import-summary').value.trim();
-      await window.DB.addToStudyPlan({ title: '学习: ' + title, description: summary || '' });
-      showToast('已加入学习计划', 'success');
-    } catch (e) { console.error('加入学习计划失败:', e); }
-  }
-}
-
 async function restoreFromTrash(id) {
   try {
     if (!window.DB) { showToast('DB 不可用', 'error'); return; }
@@ -1740,30 +1482,6 @@ function toggleScoreDetail(el) {
   var parent = el.parentElement.nextElementSibling;
   if (parent.classList.contains('hidden')) { parent.classList.remove('hidden'); el.textContent = '收起 ▲'; }
   else { parent.classList.add('hidden'); el.textContent = '展开 ▼'; }
-}
-
-/**
- * 忽略AI推荐的资讯
- * 【修复】数据源已改为 news_items，调用 ignoreNews 标记已读
- */
-async function ignoreAIItem(id) {
-  try {
-    if (window.DB) await window.DB.ignoreNews(id);
-    showToast('已忽略此推荐', 'info');
-    kbState.selectedIds.delete(id);
-    updateBatchBar();
-    await renderKnowledgeItems();
-  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
-}
-
-async function delayAIItem(id) {
-  try {
-    if (window.DB) await window.DB.delayKnowledge(id);
-    showToast('已暂缓7天', 'info');
-    kbState.selectedIds.delete(id);
-    updateBatchBar();
-    await renderKnowledgeItems();
-  } catch (e) { showToast('操作失败: ' + e.message, 'error'); }
 }
 
 async function markUpdated() {
@@ -2053,16 +1771,6 @@ async function loadExpiryModal() {
    Issue 6: 分类管理 — 编辑/删除操作
    ================================================================ */
 
-/* 切换分类操作下拉菜单的显示/隐藏 */
-function toggleCatMenu(catId) {
-  /* 关闭所有其他菜单 */
-  document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
-  var menu = document.getElementById('cat-menu-' + catId);
-  if (menu) {
-    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  }
-}
-
 /* 编辑分类名称：弹出 prompt 输入新名称，调用 DB.updateCategory 更新 */
 function editCategory(catId, currentName) {
   document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
@@ -2089,13 +1797,6 @@ function deleteCategoryConfirm(catId, catName) {
   });
 }
 
-/* 点击页面其他区域时关闭所有分类菜单 */
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.cat-actions')) {
-    document.querySelectorAll('.cat-menu').forEach(function(m) { m.style.display = 'none'; });
-  }
-});
-
 /* ================================================================
    全局暴露
    ================================================================ */
@@ -2107,9 +1808,6 @@ window.filterCategories = filterCategories;
 window.switchKbTab = switchKbTab;
 window.searchKnowledge = searchKnowledge;
 window.doQuickSearch = doQuickSearch;
-window.toggleBatchSelect = toggleBatchSelect;
-window.batchImport = batchImport;
-window.batchIgnore = batchIgnore;
 window.clearBatchSelection = clearBatchSelection;
 window.showKnowledgeDetail = showKnowledgeDetail;
 window.backToList = backToList;
@@ -2123,16 +1821,11 @@ window.selectColor = selectColor;
 window.saveEntry = saveEntry;
 window.openEditModal = openEditModal;
 window.createCategory = createCategory;
-window.openImportConfirm = openImportConfirm;
-window.confirmImport = confirmImport;
-window.confirmImportWithPlan = confirmImportWithPlan;
 window.restoreFromTrash = restoreFromTrash;
 window.permanentDelete = permanentDelete;
 window.restoreAllTrash = restoreAllTrash;
 window.emptyTrash = emptyTrash;
 window.toggleScoreDetail = toggleScoreDetail;
-window.ignoreAIItem = ignoreAIItem;
-window.delayAIItem = delayAIItem;
 window.markUpdated = markUpdated;
 window.ignoreExpiry = ignoreExpiry;
 window.markExpiredUpdated = markExpiredUpdated;
@@ -2148,7 +1841,6 @@ window.generateImprovementPlan = generateImprovementPlan;
 window.generateHealthReport = generateHealthReport;
 window.loadHealthModal = loadHealthModal;
 window.loadExpiryModal = loadExpiryModal;
-window.toggleCatMenu = toggleCatMenu;
 window.editCategory = editCategory;
 window.deleteCategoryConfirm = deleteCategoryConfirm;
 

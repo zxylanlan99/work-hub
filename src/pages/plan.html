@@ -630,7 +630,7 @@ async function loadWarmupData() {
   try {
     var results = await Promise.all([
       DB.getYesterdayReview(),
-      DB.getQuiz('学习')
+      DB.getReviewQueue()
     ]);
     var reviewRes = results[0];
     var quizRes = results[1];
@@ -647,15 +647,16 @@ async function loadWarmupData() {
       console.log('[Plan] ⚠️ 昨日回顾为空');
     }
     
-    if (quizRes.success) {
-      var question = quizRes.content || '暂无快问快答';
-      quizEl.textContent = question;
-      console.log('[Plan] ✅ 快问快答已渲染:', question);
+    var quizCard = (quizRes && quizRes.success && Array.isArray(quizRes.data) && quizRes.data.length > 0) ? quizRes.data[0] : null;
+    if (quizCard) {
+      quizEl.textContent = quizCard.question || '（无题面）';
+      if (answerEl) answerEl.textContent = quizCard.answer || '';
+      console.log('[Plan] ✅ 快问快答已渲染:', quizCard.question);
     } else {
-      quizEl.textContent = '暂无快问快答';
-      console.log('[Plan] ⚠️ 快问快答为空');
+      quizEl.textContent = '暂无待复习卡片';
+      if (answerEl) answerEl.textContent = '';
+      console.log('[Plan] ⚠️ 待复习卡片为空');
     }
-    if (answerEl) answerEl.textContent = '';
     console.log('[Plan] ✅ 暖身数据加载完成');
   } catch (error) {
     console.error('[Plan] ❌ 加载暖身数据失败:', error);

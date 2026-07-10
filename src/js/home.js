@@ -239,8 +239,8 @@
   }
 
   /**
-   * 快问快答：DB.getQuiz(topic) → { success, content }
-   * content 可能是字符串或对象（{question, options, answer}），做容错解析。
+   * 快问快答：改用复习计划真实卡片（DB.getReviewQueue）
+   * 取待复习队列首张卡，渲染 question/answer；空则提示「暂无待复习卡片」。
    */
   async function loadQuiz() {
     const questionEl = $('quiz-question');
@@ -250,39 +250,25 @@
     if (!questionEl) return;
 
     try {
-      const result = await DB.getQuiz('学习方法');
-      const quiz = parseQuizContent(result && result.content);
+      const result = await DB.getReviewQueue();
+      const cards = (result && result.success ? result.data : []) || [];
+      const card = cards[0];
 
-      if (!quiz) {
-        // 无题目（AI 未配置/失败）→ 隐藏整块快问快答
-        const container = $('quizContainer');
-        if (container) container.style.display = 'none';
+      if (!card) {
+        // 无待复习卡片 → 显示空态提示
+        questionEl.textContent = '暂无待复习卡片';
+        if (optionsEl) optionsEl.innerHTML = '';
+        if (answerBtn) answerBtn.style.display = 'none';
+        if (answerEl) answerEl.style.display = 'none';
+        currentQuiz = { question: '', answer: '' };
         return;
       }
 
-      questionEl.textContent = quiz.question;
+      questionEl.textContent = card.question || '（无题面）';
+      if (optionsEl) optionsEl.innerHTML = '';
 
-      // 渲染选项（若存在）
-      if (optionsEl) {
-        optionsEl.innerHTML = '';
-        if (Array.isArray(quiz.options) && quiz.options.length > 0) {
-          quiz.options.forEach((opt, idx) => {
-            const optionEl = document.createElement('div');
-            optionEl.className = 'quiz-option';
-            optionEl.textContent = `${String.fromCharCode(65 + idx)}. ${opt}`;
-            optionEl.style.padding = '8px 12px';
-            optionEl.style.border = '1px solid var(--gray-200)';
-            optionEl.style.borderRadius = '8px';
-            optionEl.style.marginBottom = '8px';
-            optionEl.style.cursor = 'pointer';
-            optionEl.addEventListener('click', () => selectQuizOption(optionEl, quiz.answer));
-            optionsEl.appendChild(optionEl);
-          });
-        }
-      }
-
-      // 暂存当前题目，供 showQuizAnswer 揭晓
-      currentQuiz = quiz;
+      // 暂存当前卡片，供 showQuizAnswer 揭晓
+      currentQuiz = { question: card.question, answer: card.answer };
 
       if (answerBtn) answerBtn.style.display = 'inline-flex';
       if (answerEl) answerEl.style.display = 'none';

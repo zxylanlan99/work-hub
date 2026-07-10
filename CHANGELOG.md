@@ -2,6 +2,20 @@
 
 所有重要项目变更将记录在此文件中。
 
+## [V1.8.1] - 2026-07-10
+
+### 修复
+- RSS 资讯抓取改为抓取真实正文（前 10 篇逐条 handle_extract），禁止将摘要当正文入库；提取失败的文章 body 留空并记 `RSS 正文抓取无效` 告警
+- db.js 正文组装去除 `article.summary` 回退，避免摘要冒充正文
+- 知识库「分类目录」编辑/删除改为常驻图标，提升可发现性
+- 删除知识库「AI推荐清单」子模块（保留资讯模块 AI 推荐）
+- 修复资讯「知识源管理」`res.data.forEach is not a function` 报错（getRssSources 数组归一化 + Array.isArray 防御）
+- 首页/计划/复习页「快问快答」改为读取复习计划（getReviewQueue），不再使用写死数据
+- 资讯 RSS 源开关点击后即时局部刷新视觉状态（_refreshRssToggle），无需刷新页面
+
+### 优化
+- 新增 RSS 源读取单元测试（tests/unit/get-rss-sources.test.mjs）
+
 ## [V1.8.0] - 2026-07-09
 
 ### 新增

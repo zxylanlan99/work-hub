@@ -716,21 +716,36 @@ document.addEventListener('DOMContentLoaded', () => {
 // ================================================================
 
 async function generateDailyQuiz() {
-  var topic = reviewState.weakTopics[0]?.name || '学习'
-  utils.toast('正在生成暖身测试题…', 'info')
+  utils.toast('加载今日复习卡…', 'info')
   try {
-    var res = await window.DB.getQuiz(topic)
-    if (res.success && res.content) {
-      utils.toast('暖身测试题已生成', 'success')
+    var res = await window.DB.getReviewQueue()
+    var card = (res && res.success && Array.isArray(res.data) && res.data.length > 0) ? res.data[0] : null
+    if (card) {
+      utils.toast('今日复习卡已加载', 'success')
       var overviewEl = document.querySelector('.review-overview, .today-overview, #page-today .stat-panel')
       if (overviewEl) {
         var quizEl = document.createElement('div')
         quizEl.style.cssText = 'margin-top:12px;padding:12px;background:var(--primary-light);border-radius:var(--radius);font-size:13px;'
-        quizEl.innerHTML = '<div style="font-weight:600;margin-bottom:6px">🎯 每日暖身测试题</div><div style="color:var(--gray-600);line-height:1.6">' + res.content + '</div>'
+        var qTitle = document.createElement('div')
+        qTitle.style.cssText = 'font-weight:600;margin-bottom:6px'
+        qTitle.textContent = '🎯 每日复习卡'
+        var qBody = document.createElement('div')
+        qBody.style.cssText = 'color:var(--gray-600);line-height:1.6'
+        var qText = document.createElement('div')
+        qText.innerHTML = '<strong>问：</strong>'
+        qText.appendChild(document.createTextNode(card.question || '（无题面）'))
+        var aText = document.createElement('div')
+        aText.style.marginTop = '6px'
+        aText.innerHTML = '<strong>答：</strong>'
+        aText.appendChild(document.createTextNode(card.answer || '（暂无答案）'))
+        qBody.appendChild(qText)
+        qBody.appendChild(aText)
+        quizEl.appendChild(qTitle)
+        quizEl.appendChild(qBody)
         overviewEl.appendChild(quizEl)
       }
     } else {
-      utils.toast('AI 暂不可用: ' + (res.error || '未知错误'), 'error')
+      utils.toast('暂无待复习卡片', 'info')
     }
   } catch (e) {
     utils.toast('生成失败: ' + e.message, 'error')

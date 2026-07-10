@@ -1443,14 +1443,6 @@ const DB = {
     }
   },
 
-  /** DB-R-020: AI 推荐清单 — 从 news_items 中获取 AI 评分 >= 60 且未入库的资讯 */
-  async getAIRecommendedItems() {
-    /* 【修复】查询 news_items 而非 knowledge_items，按 PRD 定义：AI评分>=60 → AI推荐清单 */
-    return this._exec(
-      this._collection('news_items').where({ isSaved: false }).orderBy('createdAt', 'desc').limit(50).get()
-    );
-  },
-
   /** DB-R-021: 过期条目 */
   async getExpiredItems() {
     const expireDate = new Date();
@@ -2627,7 +2619,8 @@ const DB = {
         const _valid = await this._validateNewsItem({
           title: article.title || '',
           summary: article.summary || '',
-          body: fullContent || article.summary || article.body || '',
+          // 【需求2·严禁摘要当正文】body 只认真实正文，绝不把 RSS 摘要当 body
+          body: fullContent || article.body || '',
           source: article.sourceName || '',
           sourceUrl: article.sourceUrl || ''
         });
@@ -2672,7 +2665,12 @@ const DB = {
     const result = await this._exec(
       this._collection('rss_sources').orderBy('createdAt', 'desc').get()
     );
-    return { success: true, data: result.data || [] };
+    const raw = result.data;
+    const data = Array.isArray(raw) ? raw
+      : (raw && Array.isArray(raw.data)) ? raw.data
+      : (raw && Array.isArray(raw.list)) ? raw.list
+      : [];
+    return { success: true, data };
   },
 
   /** 添加RSS源 */

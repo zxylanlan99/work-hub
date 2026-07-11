@@ -356,6 +356,20 @@ class CustomAgentCreate(CustomAgentBase):
     pass
 
 
+class CustomAgentUpdate(BaseModel):
+    """更新自定义智能体（V2-AGENT-005 真编辑端点）。
+
+    全部字段 Optional，允许部分更新：仅覆盖调用方传入的非 None 字段，
+    未传字段保留数据库原值（不做整体覆盖）。
+    """
+
+    name: Optional[str] = None
+    prompt: Optional[str] = None
+    skill_ids: Optional[List[str]] = None
+    knowledge_scope: Optional[str] = None
+    model: Optional[str] = None
+
+
 class CustomAgentRead(CustomAgentBase):
     model_config = ConfigDict(from_attributes=True)
     id: int

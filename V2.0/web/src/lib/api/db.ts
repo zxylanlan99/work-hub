@@ -10,6 +10,10 @@ export const dbApi = {
   listAgents: () => request<CustomAgent[]>("data", "/api/db/agents"),
   createAgent: (body: CustomAgent) =>
     request<CustomAgent>("data", "/api/db/agents", { method: "POST", body }),
+  // V2-AGENT-005 真编辑端点：部分更新自定义智能体定义（PUT /api/db/agents/{id}）。
+  // 入参为 CustomAgent 的可空子集（name/prompt/skill_ids/knowledge_scope/model）。
+  updateAgent: (id: number, body: Partial<CustomAgent>) =>
+    request<CustomAgent>("data", `/api/db/agents/${id}`, { method: "PUT", body }),
   removeAgent: (id: number) =>
     request<{ id: number }>("data", `/api/db/agents/${id}`, { method: "DELETE" }),
 

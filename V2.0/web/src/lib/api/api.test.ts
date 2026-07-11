@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { request, ApiError, SERVICE_BASE } from "../api";
 import { categoriesApi } from "./categories";
 import { agentsApi } from "./agents";
+import { dbApi } from "./db";
 import { kbApi } from "./kb";
 import { crawlerApi } from "./crawler";
 
@@ -138,5 +139,47 @@ describe("服务路由（base 端口）", () => {
     expect(SERVICE_BASE.agent).toBe("http://localhost:8001");
     expect(SERVICE_BASE.kb).toBe("http://localhost:8002");
     expect(SERVICE_BASE.crawler).toBe("http://localhost:8003");
+  });
+});
+
+// --------------------------------------------------------------------------- //
+// V2-AGENT-005 自定义智能体真编辑：PUT /api/db/agents/{id}
+// 仅校验请求契约（命中 data 服务、method=PUT、路径、请求体 shape），
+// 不 mock 业务结果（C1）。
+// --------------------------------------------------------------------------- //
+describe("dbApi 自定义智能体真编辑（PUT /api/db/agents/{id}）", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    fetchMock = vi
+      .fn()
+      .mockResolvedValue(makeResponse({ json: { code: 0, data: {} } }));
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("updateAgent PUT /api/db/agents/{id} 且请求体含可更新字段（T04 真编辑契约）", async () => {
+    await dbApi.updateAgent(7, {
+      name: "改名后",
+      prompt: "新提示词",
+      skill_ids: ["builtin:kb_qa"],
+      knowledge_scope: "数学",
+      model: "gpt-4o",
+    });
+    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("localhost:8000");
+    expect(url).toContain("/api/db/agents/7");
+    expect(opts.method).toBe("PUT");
+    const body = JSON.parse((opts.body as string) ?? "{}");
+    expect(body).toEqual({
+      name: "改名后",
+      prompt: "新提示词",
+      skill_ids: ["builtin:kb_qa"],
+      knowledge_scope: "数学",
+      model: "gpt-4o",
+    });
   });
 });

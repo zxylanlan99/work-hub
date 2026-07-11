@@ -10,6 +10,7 @@
   POST   /api/db/agents             创建自定义智能体
   GET    /api/db/agents             列出自定义智能体
   GET    /api/db/agents/{id}        详情
+  PUT    /api/db/agents/{id}        更新（部分更新，V2-AGENT-005 真编辑）
   DELETE /api/db/agents/{id}        删除（其 conversation 记忆级联清理由 agent-service 负责）
 
 记忆级联清理约定：删除自定义智能体时，由 agent-service 调自身 /api/agent/{id}
@@ -139,3 +140,31 @@ def delete_agent(agent_id: int, db: Session = Depends(get_db)):
     db.delete(obj)
     db.commit()
     return ok({"id": agent_id})
+
+
+@router.put("/api/db/agents/{agent_id}")
+def update_agent(
+    agent_id: int,
+    payload: schemas.CustomAgentUpdate,
+    db: Session = Depends(get_db),
+):
+    """更新自定义智能体（V2-AGENT-005 真编辑端点）。
+
+    - 不存在 -> 404（与 delete 一致：找对象 + raise HTTPException）。
+    - 存在 -> 仅覆盖 payload 中传入的非 None 字段，未传字段保留原值
+      （部分更新，不整体覆盖）；commit 后返回更新后的 CustomAgentRead。
+    - 内存隔离维度是 conversation_id，编辑智能体定义不影响已有会话记忆
+      （预期行为，无需特殊处理）。
+    """
+    obj = db.query(models.CustomAgent).filter(models.CustomAgent.id == agent_id).first()
+    if not obj:
+        raise HTTPException(status_code=404, detail="agent not found")
+    # 仅更新显式传入（非 None）的字段，保留未传字段原值。
+    for field in ("name", "prompt", "skill_ids", "knowledge_scope", "model"):
+        value = getattr(payload, field)
+        if value is None:
+            continue
+        setattr(obj, field, value)
+    db.commit()
+    db.refresh(obj)
+    return ok(schemas.CustomAgentRead.model_validate(obj).model_dump())

@@ -26,6 +26,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
 )
@@ -180,4 +181,48 @@ class NewsItem(Base):
     has_read = Column(Boolean, nullable=False, default=False)
     is_favorited = Column(Boolean, nullable=False, default=False)
     imported_to_kb = Column(Boolean, nullable=False, default=False)
+    # T08 资讯入库知识库管线状态机：new -> pending -> imported | failed
+    status = Column(String(32), nullable=False, default="new")
+    backend_collection_id = Column(String(255), nullable=True)
+    chunk_count = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+# --------------------------------------------------------------------------- #
+# T04 自定义智能体 / 自定义 Skill（V2-AGENT-002 / 003）
+# --------------------------------------------------------------------------- #
+class AgentSkill(Base):
+    """自定义 Skill（内置 Skill 由代码常量提供，不落库）。
+
+    tools 为工具白名单子集（web_search / knowledge_base / code_exec）。
+    """
+
+    __tablename__ = "agent_skills"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, default="")
+    prompt = Column(Text, nullable=False, default="")
+    tools = Column(JSON, nullable=False, default=list)
+    scope = Column(String(64), nullable=False, default="user")
+    builtin = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)
+
+
+class CustomAgent(Base):
+    """自定义智能体（内置智能体由代码常量提供，不落库）。
+
+    skill_ids 为绑定的 Skill id 列表（内置 builtin: 或自定义）。
+    """
+
+    __tablename__ = "custom_agents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, default="")
+    prompt = Column(Text, nullable=False, default="")
+    skill_ids = Column(JSON, nullable=False, default=list)
+    knowledge_scope = Column(String(255), nullable=False, default="")
+    model = Column(String(255), nullable=False, default="")
+    builtin = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow, nullable=False)

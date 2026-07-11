@@ -42,6 +42,10 @@ class Settings:
     # ---- 工程约束：单请求超时 <=45s（沿用 V1.x，超时不重试防烧 token） ----
     CHAT_TIMEOUT_SECONDS: float = float(os.getenv("CHAT_TIMEOUT_SECONDS", "45"))
 
+    # ---- 自定义 Skill 工具白名单：code_exec 默认禁用（C2/C3 安全默认） ----
+    # 仅当显式配置为 truthy（"1"/"true"/"yes" 等）时才允许将 code_exec 装配到智能体。
+    CODE_EXEC_ENABLED: bool = bool(os.getenv("CODE_EXEC_ENABLED", ""))
+
     # ---- 知识库检索 topK ----
     KB_SEARCH_TOP_K: int = int(os.getenv("KB_SEARCH_TOP_K", "5"))
 

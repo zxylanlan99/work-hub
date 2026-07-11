@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 
 from app import aggregates  # noqa: F401  (ensures aggregate imports resolve)
 from app.db import init_db
-from app.routers import categories, home, knowledge, news, plans, review, settings
+from app.routers import categories, home, knowledge, agents, news, plans, review, settings
 
 app = FastAPI(title="StudyMind data-service", version="2.0.0")
 
@@ -45,6 +45,7 @@ app.include_router(plans.router)
 app.include_router(settings.router)
 app.include_router(news.router)
 app.include_router(home.router)
+app.include_router(agents.router)  # T04: 自定义智能体 / 自定义 Skill CRUD
 
 
 @app.get("/health")

@@ -94,6 +94,22 @@ class ConversationMemory:
             self._store.pop(conversation_id, None)
             self._save()
 
+    def clear_by_agent(self, agent_id: str) -> int:
+        """清除某智能体关联的全部会话记忆（自定义智能体删除时级联清理）。
+
+        返回被清除的会话数。隔离不变量：仅移除 ``agent_id`` 匹配的会话，
+        绝不波及其他智能体（跨智能体不可见，C1）。
+        """
+        with self._lock:
+            removed = [
+                cid for cid, conv in self._store.items() if conv.agent_id == agent_id
+            ]
+            for cid in removed:
+                self._store.pop(cid, None)
+            if removed:
+                self._save()
+            return len(removed)
+
     def _save(self) -> None:
         if not self._persist_path:
             return

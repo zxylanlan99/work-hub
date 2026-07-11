@@ -258,6 +258,10 @@ class NewsItemBase(BaseModel):
     has_read: bool = False
     is_favorited: bool = False
     imported_to_kb: bool = False
+    # T08 资讯入库知识库管线状态机：new | pending | imported | failed
+    status: str = "new"
+    backend_collection_id: Optional[str] = None
+    chunk_count: Optional[int] = None
 
 
 class NewsItemCreate(NewsItemBase):
@@ -274,9 +278,54 @@ class NewsItemUpdate(BaseModel):
     has_read: Optional[bool] = None
     is_favorited: Optional[bool] = None
     imported_to_kb: Optional[bool] = None
+    status: Optional[str] = None
+    backend_collection_id: Optional[str] = None
+    chunk_count: Optional[int] = None
 
 
 class NewsItemRead(NewsItemBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
     created_at: datetime
+
+
+# --------------------------------------------------------------------------- #
+# T04 自定义智能体 / 自定义 Skill（V2-AGENT-002 / 003）
+# --------------------------------------------------------------------------- #
+class AgentSkillBase(BaseModel):
+    name: str = ""
+    prompt: str = ""
+    tools: List[str] = []
+    scope: str = "user"
+
+
+class AgentSkillCreate(AgentSkillBase):
+    pass
+
+
+class AgentSkillRead(AgentSkillBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    builtin: bool = False
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomAgentBase(BaseModel):
+    name: str = ""
+    prompt: str = ""
+    skill_ids: List[str] = []
+    knowledge_scope: str = ""
+    model: str = ""
+
+
+class CustomAgentCreate(CustomAgentBase):
+    pass
+
+
+class CustomAgentRead(CustomAgentBase):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    builtin: bool = False
+    created_at: datetime
+    updated_at: datetime

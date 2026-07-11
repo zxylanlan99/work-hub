@@ -50,6 +50,10 @@ class Settings(BaseModel):
         default="http://data-service:8000", description="data-service 地址"
     )
     request_timeout: float = Field(default=30.0, description="FastGPT 上游调用超时(秒)")
+    kb_news_chunk_size: int = Field(
+        default=1000,
+        description="资讯入库切片数估计的字符阈值（精确切片数由 FastGPT 服务端计算）",
+    )
 
 
 settings = Settings(
@@ -59,4 +63,5 @@ settings = Settings(
     qdrant_url=os.getenv("QDRANT_URL", "http://qdrant:6333"),
     kb_service_port=int(os.getenv("KB_SERVICE_PORT", "8002")),
     data_service_url=os.getenv("DATA_SERVICE_URL", "http://data-service:8000"),
+    kb_news_chunk_size=int(os.getenv("KB_NEWS_CHUNK_SIZE", "1000")),
 )

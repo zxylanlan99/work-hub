@@ -14,6 +14,12 @@ DATA_SERVICE_URL: str = os.getenv("DATA_SERVICE_URL", "http://data-service:8000"
 # crawler-service 监听端口 (任务铁律: 8003)
 CRAWLER_SERVICE_PORT: int = int(os.getenv("CRAWLER_SERVICE_PORT", "8003"))
 
+# kb-service 地址 (T08 资讯入库知识库管线, 端口 8002)
+KB_SERVICE_URL: str = os.getenv("KB_SERVICE_URL", "http://kb-service:8002")
+
+# 资讯入库单请求超时 (秒)；约束单请求超时 <=45s，超时不重试
+INGEST_TIMEOUT: float = float(os.getenv("INGEST_TIMEOUT", "40"))
+
 # 单次 HTTP 抓取超时 (秒)
 FETCH_TIMEOUT: float = float(os.getenv("FETCH_TIMEOUT", "15"))
 

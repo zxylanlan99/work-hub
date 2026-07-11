@@ -9,12 +9,13 @@ C2 硬约束: 本服务不自动入库; 通过红线的条目交由 web / T08 �
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.fetch_rss import run_crawl, search_web
+from app.ingest import ingest_news
 from app.redline import NewsCandidate, RedlineEngine
 
 router = APIRouter(prefix="/api/crawler", tags=["crawler"])
@@ -66,3 +67,30 @@ def redline_check(
     engine = RedlineEngine()
     passed, reasons = engine.check(item, source=source or None)
     return {"code": 0, "data": {"passed": passed, "reasons": reasons}, "message": "ok"}
+
+
+class NewsIngestItem(BaseModel):
+    """单条待入库资讯（应已通过上游红线；入库前会再次双保险）。"""
+    title: str
+    url: str
+    source: str = ""
+    content: str = ""
+    summary: str = ""
+    published_at: Optional[str] = None
+
+
+class NewsIngestRequest(BaseModel):
+    """POST /api/crawler/news/ingest 请求体。"""
+    items: List[NewsIngestItem]
+
+
+@router.post("/news/ingest")
+async def news_ingest(payload: NewsIngestRequest):
+    """资讯入库知识库管线 (T08, V2-NEWS-001/002)。
+
+    对每条 items 再次执行红线双保险（R1-R5，C2 禁止无正文入库），通过后写入
+    news_items（pending），再调 kb-service 入库；成功回写 backend_collection_id，
+    失败标记 failed（避免「资讯已落库但知识未切片」半成品）。返回逐条结果与汇总。
+    """
+    summary = await ingest_news([item.model_dump() for item in payload.items])
+    return {"code": 0, "data": summary, "message": "ok"}

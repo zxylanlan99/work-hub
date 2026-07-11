@@ -8,11 +8,12 @@ C3 硬约束（架构文档 §7）：本路由严禁暴露任何 FastGPT Agent/W
 """
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.config import settings
 from app.fastgpt_client import get_kb_backend
 from app.response import ok
 
@@ -85,3 +86,41 @@ async def search(payload: SearchRequest) -> dict:
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(status_code=502, detail=f"检索失败: {exc}")
     return ok(results)
+
+
+class NewsIngestRequest(BaseModel):
+    """资讯入库请求体（T08，V2-NEWS-001）。
+
+    text 为正文（交由 FastGPT 切片 / BGE-M3 向量化）；title / meta 为可选元数据。
+    """
+
+    text: str = Field(..., min_length=1, description="资讯正文（交由 FastGPT 切片/向量化）")
+    title: str = Field(default="", description="资讯标题")
+    meta: Optional[dict] = Field(default=None, description="可选元数据（来源/链接等）")
+
+
+@router.post("/ingest-news")
+async def ingest_news(payload: NewsIngestRequest) -> dict:
+    """资讯入库：建文档 + 切片 + BGE-M3 向量化（仅数据集/文档 OpenAPI，C3 合规）。
+
+    流程：create_dataset（建知识库）-> upload_document（文本入库，切片/向量化由
+    FastGPT 服务端完成）。返回 {collectionId, chunkCount}，其中 collectionId 即
+    data-service news_items.backend_collection_id；chunkCount 为基于正文长度的估计值
+    （精确切片数由 FastGPT 服务端计算，MVP 以字符阈值估算，供前端展示）。
+
+    严禁调用 FastGPT 的 Agent 应用 / Workflow / 应用编排端点（C3 硬约束）。
+    """
+    try:
+        collection_id = await get_kb_backend().create_dataset(payload.title or "news")
+        await get_kb_backend().upload_document(
+            collection_id, payload.title, payload.text
+        )
+        # chunkCount 估计：按 kb_news_chunk_size 字符阈值向上取整（>=1）
+        chunk_count = max(
+            1,
+            (len(payload.text) + settings.kb_news_chunk_size - 1)
+            // settings.kb_news_chunk_size,
+        )
+    except Exception as exc:  # noqa: BLE001 — 统一转为 502 上游错误
+        raise HTTPException(status_code=502, detail=f"资讯入库失败: {exc}")
+    return ok({"collectionId": collection_id, "chunkCount": chunk_count})

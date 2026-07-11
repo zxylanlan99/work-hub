@@ -1,0 +1,21 @@
+# crawler-service 依赖 (锁定决策允许范围: 爬虫必要库 + FastAPI 基础栈)
+# 严禁引入与锁定决策冲突的大框架 (如 Agno / FastGPT SDK / 大模型框架)。
+fastapi==0.111.0
+uvicorn[standard]==0.30.6
+pydantic==2.8.2
+python-dotenv==1.0.1
+
+# 服务间调用 + 网页抓取
+httpx==0.27.0
+requests==2.32.3
+
+# RSS 解析
+feedparser==6.0.11
+
+# 正文抽取
+beautifulsoup4==4.12.3
+lxml==5.3.0
+trafilatura==1.12.2
+
+# 测试
+pytest==8.2.2

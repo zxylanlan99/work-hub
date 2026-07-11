@@ -1,0 +1,9 @@
+# StudyMind V2.0 — agent-service 依赖
+# 技术栈锁定：FastAPI + Agno(Python 智能体底座) + Pydantic v2 + python-dotenv + uvicorn + httpx
+# 禁止引入额外大框架（C3：编排/记忆/工具/密钥统一收敛于此服务）。
+agno
+fastapi
+uvicorn
+pydantic
+python-dotenv
+httpx

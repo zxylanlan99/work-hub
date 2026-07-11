@@ -1,0 +1,12 @@
+# StudyMind V2.0 — kb-service dependencies
+# 技术栈锁定（见架构决策 #3 / C3）：FastAPI + httpx + Pydantic v2 + python-dotenv + uvicorn。
+# 严禁引入其它框架（无 Agno / 无 LangChain / 无 Dify SDK 等）。
+fastapi>=0.111
+uvicorn[standard]>=0.30
+pydantic>=2.8
+python-dotenv>=1.0
+httpx>=0.27
+
+# 可选：开发期 ChromaDB 向量回退（无 FastGPT 时本地检索闭环）。
+# 取消下行注释以启用 DEV_VECTOR_STORE=chroma 的内存持久化向量库。
+# chromadb>=0.5

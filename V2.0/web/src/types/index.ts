@@ -158,6 +158,10 @@ export interface NewsItem {
   is_favorited: boolean;
   imported_to_kb: boolean;
   created_at: string;
+  // T17 / V2-NEWS-003 —— POST /api/news/recommend 附加字段（可选，旧数据无）。
+  score?: number; // 0..1 加权总分（维度权重计算，红线不参与）
+  passed?: boolean; // 服务端红线再校验是否通过（R2/R3/R4）
+  dropReason?: string[]; // 触发红线的原因列表（空 = 通过）
 }
 
 /** crawler /api/crawler/rss/fetch 返回结构（前端假设 rejected 形态）。 */

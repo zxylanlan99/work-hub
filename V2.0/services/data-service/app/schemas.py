@@ -290,6 +290,39 @@ class NewsItemRead(NewsItemBase):
 
 
 # --------------------------------------------------------------------------- #
+# T17 V2-NEWS-003 资讯推荐维度评分（POST /api/news/recommend）
+# --------------------------------------------------------------------------- #
+class RecommendWeights(BaseModel):
+    """推荐维度权重（相关度 / 时效性 / 权威性 / 完整度 / 去重）。缺省给默认权重。"""
+
+    relevance: float = 0.25
+    recency: float = 0.25
+    authority: float = 0.15
+    completeness: float = 0.20
+    dedup: float = 0.15
+
+
+class RecommendRequest(BaseModel):
+    """POST /api/news/recommend 请求体。weights 省略则使用缺省权重。"""
+
+    weights: Optional["RecommendWeights"] = None
+
+
+class NewsRecommendItem(NewsItemRead):
+    """推荐结果项：在 NewsItem 基础上附加维度评分与红线标记。
+
+    - ``score``      : 0..1 加权总分（维度权重计算，红线不参与）。
+    - ``passed``     : 服务端红线再校验是否通过（R2 / R3 / R4）。
+    - ``dropReason`` : 触发红线的原因列表（空 = 通过）。
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    score: float = 0.0
+    passed: bool = True
+    dropReason: List[str] = []
+
+
+# --------------------------------------------------------------------------- #
 # T04 自定义智能体 / 自定义 Skill（V2-AGENT-002 / 003）
 # --------------------------------------------------------------------------- #
 class AgentSkillBase(BaseModel):

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import true as sa_true
 from sqlalchemy.orm import Session
 
-from app import models, schemas
+from app import models, recommend, schemas
 from app.db import get_db
 from app.response import ok
 
@@ -109,3 +109,27 @@ def toggle_favorite(news_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(obj)
     return ok({"is_favorited": obj.is_favorited})
+
+
+@router.post("/api/news/recommend")
+def recommend_news(
+    payload: schemas.RecommendRequest = Body(default_factory=schemas.RecommendRequest),
+    db: Session = Depends(get_db),
+):
+    """资讯推荐维度评分（V2-NEWS-003, T17）。
+
+    读取全部 news_items，按权重计算 5 维度加权评分（相关度/时效性/权威性/完整度/去重），
+    并复用 crawler 红线风格做服务端再校验（R2 正文非空 / R3 关键词 / R4 去重）。
+    红线仅做标记（passed / dropReason），不参与 score 计算（C2 评分与红线解耦）。
+
+    入参（可选）: { weights?: { relevance, recency, authority, completeness, dedup } }
+    出参: NewsRecommendItem[]（按 score 降序，每项含 score / passed / dropReason）。
+    """
+    rows = (
+        db.query(models.NewsItem)
+        .order_by(models.NewsItem.created_at.desc())
+        .all()
+    )
+    weights = payload.weights if payload and payload.weights else None
+    data = recommend.recommend_items(rows, weights)
+    return ok(data)

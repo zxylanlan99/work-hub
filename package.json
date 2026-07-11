@@ -1,6 +1,6 @@
 {
   "name": "studymind",
-  "version": "1.8.3",
+  "version": "1.8.5",
   "description": "StudyMind - 个人学习管理系统 (QA 门禁 + 自动测试基础设施)",
   "main": "src/pages/index.html",
   "scripts": {

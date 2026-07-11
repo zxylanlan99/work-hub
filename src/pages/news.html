@@ -244,7 +244,7 @@
         <div id="newsPreviewAiSummary" style="font-size:13px;color:var(--gray-600);line-height:1.6;"></div>
       </div>
       <div style="font-size:12px;color:var(--gray-400);margin-bottom:8px;">📖 原文</div>
-      <div class="article-content" id="newsPreviewContent"></div>
+      <div class="article-content" id="newsPreviewContent" data-testid="news-full-body"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeNewsModal('newsPreviewModal')">关闭</button>
@@ -579,7 +579,7 @@ async function renderRecommendCards() {
     const checked = newsState.selectedIds.has(itemIdStr) ? 'selected' : '';
     const checkHtml = newsState.batchMode ? `<input type="checkbox" class="checkbox" ${newsState.selectedIds.has(itemIdStr) ? 'checked' : ''} onclick="toggleNewsSelect(${itemIdJs}, event)">` : '';
 
-    return `<div class="news-info-card ${checked}" id="newsCard${itemId}" onclick="${newsState.batchMode ? `toggleNewsSelect(${itemIdJs}, event)` : `openNewsPreview(${itemIdJs})`}">
+    return `<div class="news-info-card ${checked}" id="newsCard${itemId}" data-testid="news-card" onclick="${newsState.batchMode ? `toggleNewsSelect(${itemIdJs}, event)` : `openNewsPreview(${itemIdJs})`}">
       <div class="card-top">
         ${checkHtml}
         <span class="score-badge ${scoreClass}" onclick="event.stopPropagation();expandNewsScore(${itemIdJs})">${levelLabel} ${item.score || '--'}分</span>
@@ -597,6 +597,7 @@ async function renderRecommendCards() {
             `).join('') : ''}
           </div>
           <div class="card-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-sm btn-ghost" data-testid="news-open-detail" onclick="openNewsPreview(${itemIdJs})">阅读全文</button>
             <button class="btn btn-sm btn-primary" onclick="openNewsImportConfirm(${itemIdJs})">确认入库</button>
             <button class="btn btn-sm btn-secondary" onclick="ignoreNewsItem(${itemIdJs})">忽略</button>
             <button class="btn btn-sm btn-ghost" onclick="delayNewsItem(${itemIdJs})">暂缓</button>

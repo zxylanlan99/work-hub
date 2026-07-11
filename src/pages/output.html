@@ -288,6 +288,7 @@
 var currentDocId = null;
 var saveTimer = null;
 var selectedOutputType = 'article';
+var currentDocFilter = 'all';
 
 async function initOutputPage() {
   try {
@@ -340,14 +341,135 @@ function renderDocGrid(docs) {
       </div>
       <div class="doc-card-footer">
         <span class="status-tag status-${doc.status}">${doc.status === 'published' ? '✅ 已发布' : '📝 草稿'}</span>
-        ${doc.status === 'published' ? 
-          `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>` : 
-          `<div class="progress-mini" style="width:80px;height:6px;background:var(--gray-100);border-radius:4px"><div style="width:${doc.progress || 0}%;height:100%;background:var(--warning);border-radius:4px"></div></div>`
-        }
+        <div class="doc-card-actions">
+          <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openEditor('${escAttr(doc._id)}')">✏️ 编辑</button>
+          ${doc.status === 'published' ? `<button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();openModal('modal-review')">🤖 AI评审</button>` : ''}
+          <button class="btn btn-ghost btn-xs doc-del-btn" onclick="event.stopPropagation();deleteDocWithConfirm('${escAttr(doc._id)}')">🗑️ 删除</button>
+        </div>
       </div>
     `;
     grid.appendChild(card);
   });
+}
+
+// 安全转义（拼入 onclick 属性，防注入）
+function escAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// 删除文档（确认弹层 + 撤销窗口，5 秒内可还原）
+async function deleteDocWithConfirm(docId) {
+  if (!docId) return;
+  const confirmed = await showDocDeleteConfirm();
+  if (!confirmed) return;
+  try {
+    if (!window.DB) throw new Error('数据库服务未初始化');
+    // 先拉取完整文档，供撤销时还原
+    let backup = null;
+    try {
+      const res = await window.DB.getDocumentContent(docId);
+      const d = res && res.success && res.data ? (Array.isArray(res.data) ? res.data[0] : res.data) : null;
+      if (d) backup = { title: d.title, content: d.content || '', type: d.type, status: d.status || 'draft' };
+    } catch (e) { /* 拉取失败不影响删除 */ }
+    const result = await window.DB.deleteDocument(docId);
+    if (!result.success) throw new Error(result.error || '删除失败');
+    window.toast('文档已删除', 'success');
+    await loadDocList(currentDocFilter);
+    await loadStats();
+    // 撤销窗口
+    let undone = false;
+    await new Promise(function (resolve) {
+      showDocUndoToast('文档已删除', function () { undone = true; resolve(); });
+      setTimeout(resolve, 5000);
+    });
+    if (undone && backup) {
+      try {
+        await window.DB.createDocument(backup);
+        window.toast('已撤销删除', 'info');
+      } catch (e) {
+        window.toast('撤销失败，文档已删除', 'error');
+      }
+      await loadDocList(currentDocFilter);
+      await loadStats();
+    }
+  } catch (error) {
+    console.error('删除文档失败:', error);
+    window.toast('删除失败：' + (error.message || '未知错误'), 'error');
+  }
+}
+
+// 自绘删除确认弹层，返回 Promise<boolean>
+function showDocDeleteConfirm() {
+  return new Promise(function (resolve) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    const t = document.createElement('div');
+    t.className = 'modal-title';
+    t.textContent = '删除文档';
+    const msg = document.createElement('div');
+    msg.className = 'modal-msg';
+    msg.textContent = '确定要删除这篇文档吗？删除后可在 5 秒内撤销。';
+    const actions = document.createElement('div');
+    actions.className = 'modal-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'modal-cancel';
+    cancelBtn.textContent = '取消';
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'modal-delete';
+    delBtn.textContent = '删除';
+    actions.appendChild(cancelBtn);
+    actions.appendChild(delBtn);
+    box.appendChild(t);
+    box.appendChild(msg);
+    box.appendChild(actions);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cleanup() {
+      document.removeEventListener('keydown', onKey);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    function onKey(e) { if (e.key === 'Escape') { cleanup(); resolve(false); } }
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) { cleanup(); resolve(false); } });
+    cancelBtn.addEventListener('click', function () { cleanup(); resolve(false); });
+    delBtn.addEventListener('click', function () { cleanup(); resolve(true); });
+    document.addEventListener('keydown', onKey);
+    cancelBtn.focus();
+  });
+}
+
+// 撤销提示 toast
+function showDocUndoToast(message, onUndo) {
+  const toast = document.createElement('div');
+  toast.className = 'undo-toast';
+  toast.setAttribute('role', 'status');
+  const span = document.createElement('span');
+  span.textContent = message;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = '撤销';
+  toast.appendChild(span);
+  toast.appendChild(btn);
+  document.body.appendChild(toast);
+  let done = false;
+  function remove() {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    if (toast.parentNode) toast.parentNode.removeChild(toast);
+  }
+  const timer = setTimeout(remove, 5000);
+  btn.addEventListener('click', function () { remove(); if (onUndo) onUndo(); });
 }
 
 // 获取类型标签
@@ -455,6 +577,7 @@ async function loadMaterials() {
 function filterDocs(el, status) {
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+  currentDocFilter = status;
   loadDocList(status);
 }
 
@@ -755,9 +878,34 @@ async function aiAction(action) {
         messages: [{ role: 'user', content: getActionPrompt(action, userContent) }]
       });
       if (result.success && result.content) {
-        // DOMPurify 清理 AI 返回的 HTML，保留 <br> 换行但剥离脚本/事件（XSS 防护）
-        resultDiv.innerHTML = window.DOMPurify.sanitize(result.content.replace(/\n/g, '<br>'));
-        window.toast('AI操作完成', 'success');
+        const ta = document.getElementById('editorText');
+        const aiText = String(result.content).trim();
+        if (action === 'suggest') {
+          // 素材推荐：仅展示在预览面板，不改动正文
+          resultDiv.innerHTML = window.DOMPurify.sanitize(aiText.replace(/\n/g, '<br>'));
+          window.toast('AI 已推荐相关素材', 'success');
+        } else if (action === 'continue') {
+          // 续写：追加到正文末尾
+          ta.value = (ta.value ? ta.value + '\n\n' : '') + aiText;
+          ta.focus();
+          updatePreview();
+          resultDiv.innerHTML = '<div style="color:var(--success);font-size:13px;">✅ 续写内容已写入编辑器，记得保存</div>';
+          window.toast('AI 续写完成，已写入编辑器', 'success');
+        } else if (action === 'summary') {
+          // 总结全文：追加到文末（非破坏式），避免覆盖原文
+          ta.value = (ta.value ? ta.value + '\n\n' : '') + '## 🤖 AI 总结全文\n\n' + aiText;
+          ta.focus();
+          updatePreview();
+          resultDiv.innerHTML = '<div style="color:var(--success);font-size:13px;">✅ 总结已追加到文末，记得保存</div>';
+          window.toast('AI 总结完成，已写入编辑器', 'success');
+        } else {
+          // polish / expand / summarize：用 AI 结果替换正文（真实写入）
+          ta.value = aiText;
+          ta.focus();
+          updatePreview();
+          resultDiv.innerHTML = '<div style="color:var(--success);font-size:13px;">✅ 已应用到编辑器，记得保存</div>';
+          window.toast('AI 操作完成，已写入编辑器', 'success');
+        }
       } else {
         resultDiv.textContent = '❌ AI 操作失败: ' + (result.error || '未知错误');
         window.toast('AI操作失败', 'error');
@@ -791,10 +939,33 @@ function getActionPrompt(action, content) {
   }
 }
 
-// 一键优化
-function optimizeDoc() {
+// 一键优化（真实调用 AI 润色并写回编辑器，杜绝假成功）
+async function optimizeDoc() {
   closeModal('modal-review');
-  window.toast('已一键优化文档', 'success');
+  const ta = document.getElementById('editorText');
+  const content = ta ? ta.value : '';
+  if (!content.trim()) { window.toast('请先输入内容', 'warning'); return; }
+  window.toast('AI 正在优化文档...', 'info');
+  try {
+    if (window.AIService && typeof window.AIService.callAI === 'function') {
+      const result = await window.AIService.callAI({
+        action: 'refine',
+        messages: [{ role: 'user', content: '请优化润色以下文档，提升表达清晰度与结构：\n\n' + content }]
+      });
+      if (result.success && result.content) {
+        ta.value = String(result.content).trim();
+        ta.focus();
+        updatePreview();
+        window.toast('已一键优化文档', 'success');
+      } else {
+        window.toast('AI 优化失败: ' + (result.error || '未知错误'), 'error');
+      }
+    } else {
+      window.toast('AI 服务不可用，无法优化', 'error');
+    }
+  } catch (e) {
+    window.toast('优化失败: ' + e.message, 'error');
+  }
 }
 
 async function publishDoc() {
@@ -881,10 +1052,29 @@ function toggleCheck(el) {
   el.textContent = el.classList.contains('done') ? '✓' : '';
 }
 
-// 生成实践计划
-function generatePracticePlan() {
+// 生成实践计划（真实写入学习计划，而非假成功）
+async function generatePracticePlan() {
   closeModal('modal-practice');
-  window.toast('实践计划已关联到学习计划', 'success');
+  const titleEl = document.getElementById('editor-title');
+  const title = (titleEl ? titleEl.textContent : '').trim() || '未命名文档';
+  const content = document.getElementById('editorText') ? document.getElementById('editorText').value : '';
+  try {
+    if (window.DB && typeof window.DB.addToStudyPlan === 'function') {
+      const res = await window.DB.addToStudyPlan({
+        title: '实践: ' + title,
+        description: (content || '').substring(0, 200)
+      });
+      if (res && res.success) {
+        window.toast('实践计划已关联到学习计划', 'success');
+      } else {
+        window.toast('关联失败: ' + ((res && res.error) || '未知错误'), 'error');
+      }
+    } else {
+      window.toast('数据服务不可用，无法生成计划', 'error');
+    }
+  } catch (e) {
+    window.toast('关联失败: ' + e.message, 'error');
+  }
 }
 
 async function openModal(id) {

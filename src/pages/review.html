@@ -1,8 +1,8 @@
 <!-- 子标签页 -->
   <div class="sub-tabs">
-    <div class="sub-tab active" onclick="switchReviewPage('today')">📋 今日复习</div>
-    <div class="sub-tab" onclick="switchReviewPage('history')">📅 复习历史</div>
-    <div class="sub-tab" onclick="switchReviewPage('stats')">📊 统计总览</div>
+    <div class="sub-tab active" onclick="switchReviewPage('today', this)">📋 今日复习</div>
+    <div class="sub-tab" onclick="switchReviewPage('history', this)">📅 复习历史</div>
+    <div class="sub-tab" onclick="switchReviewPage('stats', this)">📊 统计总览</div>
   </div>
 
   <!-- ===== 页面1：今日复习 ===== -->
@@ -273,7 +273,7 @@ function safeAttr(value) {
 async function initReviewPage() {
   await loadReviewData()
   renderTodayOverview()
-  renderCurrentCard()
+  renderCurrentCard()        // renderCurrentCard 内部会调用 renderSourcePanel()
   renderMasteryTrend()
   renderRelatedCards()
   renderHeatmap()
@@ -283,6 +283,7 @@ async function initReviewPage() {
   renderImproveItems()
   renderStatsOverview()
   renderMasteryDist()
+  bindReviewKeyboard()       // 键盘监听必须在此注册：页面为 fetch+innerHTML 注入，DOMContentLoaded 不会再触发
 }
 
 async function loadReviewData() {
@@ -350,6 +351,7 @@ function renderCurrentCard() {
   document.getElementById('answerExplanation').innerHTML = '<strong>📖 解析：</strong>' + (card.explanation || '暂无解析')
   document.getElementById('answerRelated').innerHTML = ''
 
+  renderSourcePanel()
   resetCard()
 }
 
@@ -620,13 +622,14 @@ function renderSourcePanel() {
   `
 }
 
-function switchReviewPage(page) {
+function switchReviewPage(page, el) {
   document.getElementById('page-today').classList.toggle('page-hidden', page !== 'today')
   document.getElementById('page-history').classList.toggle('page-hidden', page !== 'history')
   document.getElementById('page-stats').classList.toggle('page-hidden', page !== 'stats')
 
   document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'))
-  event.target.classList.add('active')
+  const activeTab = el || (typeof event !== 'undefined' && event && event.target)
+  if (activeTab) activeTab.classList.add('active')
 
   if (page === 'stats') {
     renderCardDetail()
@@ -693,23 +696,35 @@ function renderTodayOverview() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  initReviewPage()
+/**
+ * 键盘快捷键：Esc 关闭最上层弹窗；空格/回车翻转当前卡片。
+ * 注意：本页面由 framework.js 在运行时 fetch+innerHTML 注入，
+ * DOMContentLoaded 早已触发，因此绝不能依赖 DOMContentLoaded 注册监听
+ * （否则监听永远不绑定 → 键盘快捷键失效）。改为在 initReviewPage() 中
+ * 调用 bindReviewKeyboard() 注册，并做幂等去重 + 函数存在性保护，避免
+ * 在页面间来回切换时重复绑定或引用已被卸载的脚本函数。
+ */
+function reviewKeydownHandler(e) {
+  if (e.key === 'Escape') {
+    const modals = document.querySelectorAll('.modal-overlay.show')
+    if (modals.length > 0 && typeof closeModal === 'function') closeModal(modals[modals.length - 1].id)
+  }
+  if ((e.key === ' ' || e.key === 'Enter') && document.activeElement === document.body) {
+    const card = document.getElementById('reviewCard')
+    if (card && !card.classList.contains('flipped') && typeof flipCard === 'function') {
+      e.preventDefault()
+      flipCard()
+    }
+  }
+}
 
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-      const modals = document.querySelectorAll('.modal-overlay.show')
-      if (modals.length > 0) closeModal(modals[modals.length - 1].id)
-    }
-    if ((e.key === ' ' || e.key === 'Enter') && document.activeElement === document.body) {
-      const card = document.getElementById('reviewCard')
-      if (card && !card.classList.contains('flipped')) {
-        e.preventDefault()
-        flipCard()
-      }
-    }
-  })
-})
+function bindReviewKeyboard() {
+  if (window.__reviewKeydownHandler) {
+    document.removeEventListener('keydown', window.__reviewKeydownHandler)
+  }
+  window.__reviewKeydownHandler = reviewKeydownHandler
+  document.addEventListener('keydown', reviewKeydownHandler)
+}
 
 // ================================================================
 // AI 功能连接

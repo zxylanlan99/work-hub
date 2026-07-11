@@ -18,7 +18,12 @@ const CONFIG = {
     minSimilarity: 0.3
   },
   // 资讯爬虫后端 (CloudBase Python 云函数 news-crawler，仅标准库，含 SSRF 防护 + filter_news_items)
-  // 部署后由部署脚本/人工填入线上 HTTP 访问地址；为空时回退到 kbBackend（本地开发）
+  // 部署后由部署脚本/人工填入线上 HTTP 访问地址；为空时回退到 kbBackend（本地开发）。
+  // 【E2E 联调约定】本地开发/QA 联调时，让爬虫打到本地 FastAPI 的 action 分发器 /api/news，二选一：
+  //   1)（推荐）运行时注入 window.__STUDYMINDCONFIG__ = { crawlerBackend: { baseURL: 'http://localhost:8765/api/news' } }；
+  //   2) 或直接把下方 baseURL 改为 'http://localhost:8765/api/news'。
+  // 说明：前端 _crawlerBackendURL() 会对"指向本地 FastAPI 的地址"自动追加 /api/news，
+  // 因此 baseURL 写成 'http://localhost:8765' 也会被补全为 'http://localhost:8765/api/news'。
   crawlerBackend: {
     baseURL: 'https://studymind-d7g06nv0de98a1f1b.service.tcloudbase.com/news-crawler'
   },

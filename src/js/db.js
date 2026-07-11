@@ -114,7 +114,12 @@ const DB = {
 
     switch (action) {
       case 'goal-create':
-        return [{ role: 'user', content: '请为以下学习目标制定学习计划，拆解为里程碑和任务：\n\n' + (description || '请制定一个学习计划') }];
+        // 【Issue 修复】强制要求 JSON 结构化输出，确保前端 parseAIPlanResponse 能解析出里程碑
+        // 否则 AI 返回自由文本会导致解析失败，只能给默认模板（用户感知为"没生成计划"）
+        return [
+          { role: 'system', content: '你是 StudyMind 的学习规划专家。请基于用户的学习目标，拆解为结构化的里程碑与任务。必须严格按照以下 JSON 格式输出，不要包含任何额外说明文字或 markdown 代码块标记：\n{\n  "milestones": [\n    {"title": "里程碑名称", "tasks": ["任务1", "任务2"]},\n    {"title": "里程碑名称2", "tasks": ["任务3"]}\n  ]\n}\n要求：3-5 个里程碑，按学习顺序排列；每个里程碑 2-4 个具体可执行的任务。' },
+          { role: 'user', content: '学习目标：\n' + (description || '请制定一个通用学习计划') }
+        ];
 
       case 'quiz':
         return [{ role: 'user', content: '请出一道关于「' + (topic || '学习') + '」的知识检测题，包含问题和答案。' }];
@@ -238,50 +243,77 @@ const DB = {
 
   /** 调用 AI — 优先使用客户端 AI 服务，回退到云函数 */
   async _aiProxy(data) {
-    // 如果没有 messages，根据 action 构建用户消息
-    if (!data.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
-      try {
-        data.messages = await this._buildMessagesForAction(data);
-        console.log('[DB] 📝 构建 AI 消息:', { action: data.action, msgCount: data.messages.length });
-      } catch (e) {
-        console.warn('[DB] 消息构建失败，使用默认消息:', e.message);
-        data.messages = [{ role: 'user', content: data.description || data.topic || data.content || '请处理请求' }];
-      }
+    // 【Issue 修复】全局防重入锁：同一时刻只允许一个 AI 调用在途，
+    // 避免用户在加载中反复点击按钮触发多个并发请求，造成 token 浪费与状态错乱。
+    if (this._aiInFlight) {
+      console.warn('[DB] ⚠️ 已有 AI 任务在途，拒绝重复调用');
+      return { success: false, error: 'AI 任务进行中，请稍候再试' };
     }
+    this._aiInFlight = true;
 
-    // 优先使用客户端 AI 服务（直接调用 AI 提供商 API）
-    if (window.AIService && typeof window.AIService.callAI === 'function') {
-      console.log('[DB] 🤖 使用客户端 AI 服务调用:', data.action);
-      try {
-        const result = await window.AIService.callAI(data);
-        if (result.success) {
-          return result;
+    // 【Issue 修复】全链路超时止损：超过 45s 直接 abort，不再等待/重试，避免烧 token。
+    const AI_TIMEOUT_MS = 45000;
+    let timeoutId = null;
+    const timeoutP = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('AI 调用超时（45s），已主动停止任务以避免资源浪费')), AI_TIMEOUT_MS);
+    });
+    const withTimeout = (p) => Promise.race([p, timeoutP]);
+
+    try {
+      // 如果没有 messages，根据 action 构建用户消息
+      if (!data.messages || !Array.isArray(data.messages) || data.messages.length === 0) {
+        try {
+          data.messages = await this._buildMessagesForAction(data);
+          console.log('[DB] 📝 构建 AI 消息:', { action: data.action, msgCount: data.messages.length });
+        } catch (e) {
+          console.warn('[DB] 消息构建失败，使用默认消息:', e.message);
+          data.messages = [{ role: 'user', content: data.description || data.topic || data.content || '请处理请求' }];
         }
-        // 客户端 AI 失败，记录错误但继续尝试云函数回退
-        console.warn('[DB] 客户端 AI 调用失败，尝试云函数回退:', result.error);
-      } catch (e) {
-        console.warn('[DB] 客户端 AI 异常，尝试云函数回退:', e.message);
       }
-    }
 
-    // 回退：尝试通过 CloudBase 云函数调用
-    if (window.app) {
-      try {
-        // 云函数回退补充统一模型 Hy3（硬约束：禁止硬编码其他模型名）
-        const fallbackModel = (typeof AI_MODEL !== 'undefined' && AI_MODEL) ? AI_MODEL : 'Hy3';
-        const fallbackData = Object.assign({ model: fallbackModel }, data);
-        const result = await window.app.callFunction({ name: 'ai-proxy', data: fallbackData });
-        if (result && result.result) {
-          return { success: true, ...result.result };
+      // 优先使用客户端 AI 服务（直接调用 AI 提供商 API）
+      if (window.AIService && typeof window.AIService.callAI === 'function') {
+        console.log('[DB] 🤖 使用客户端 AI 服务调用:', data.action);
+        try {
+          // retry:0 —— 超时与重试完全由本层 withTimeout 统一控制，禁止内部重试烧 token
+          const result = await withTimeout(window.AIService.callAI(Object.assign({ retry: 0 }, data)));
+          if (result.success) {
+            return result;
+          }
+          // 客户端 AI 失败，记录错误但继续尝试云函数回退
+          console.warn('[DB] 客户端 AI 调用失败，尝试云函数回退:', result.error);
+        } catch (e) {
+          console.warn('[DB] 客户端 AI 异常，尝试云函数回退:', e.message);
         }
-        return { success: false, error: 'AI 响应为空' };
-      } catch (error) {
-        console.error('AI Proxy Error:', error);
-        return { success: false, error: error.message || 'AI 调用失败' };
       }
-    }
 
-    // 最终回退：返回提示信息（不再返回 mock 数据）
+      // 回退：尝试通过 CloudBase 云函数调用
+      if (window.app) {
+        try {
+          // 云函数回退补充统一模型 Hy3（硬约束：禁止硬编码其他模型名）
+          const fallbackModel = (typeof AI_MODEL !== 'undefined' && AI_MODEL) ? AI_MODEL : 'Hy3';
+          const fallbackData = Object.assign({ model: fallbackModel }, data);
+          const result = await withTimeout(window.app.callFunction({ name: 'ai-proxy', data: fallbackData }));
+          if (result && result.result) {
+            return { success: true, ...result.result };
+          }
+          return { success: false, error: 'AI 响应为空' };
+        } catch (error) {
+          console.error('AI Proxy Error:', error);
+          return { success: false, error: error.message || 'AI 调用失败' };
+        }
+      }
+
+      return { success: false, error: 'AI 服务不可用（未配置 AIService 且 CloudBase 未初始化）' };
+    } finally {
+      // 无论成功失败都释放锁 + 清理计时器，确保不泄漏
+      this._aiInFlight = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  },
+
+  // 最终回退：返回提示信息（不再返回 mock 数据）
+  _aiProxyUnavailable() {
     console.warn('[DB] AI 服务不可用 — 未配置模型且 CloudBase 未初始化');
     return {
       success: false,
@@ -1701,9 +1733,47 @@ const DB = {
     return (window.CONFIG && window.CONFIG.kbBackend && window.CONFIG.kbBackend.baseURL) || 'http://localhost:8765';
   },
 
-  /** 资讯爬虫后端地址（news-crawler 云函数）；未配置时回退到 kbBackend（本地开发） */
+  /**
+   * 资讯爬虫后端地址（news-crawler 云函数 / 本地 FastAPI 分发器）。
+   * 解析优先级：
+   *  1) window.__STUDYMINDCONFIG__.crawlerBackend.baseURL —— QA / 用户运行时显式覆盖
+   *     （如设为 http://localhost:8765/api/news），直接返回，不再追加。
+   *  2) window.CONFIG.crawlerBackend.baseURL —— 生产云函数地址
+   *     （如 *.tcloudbase.com/news-crawler），保持原样（云函数 main_handler 按 body.action 路由）。
+   *  3) 未配置时回退 kbBackend（本地 FastAPI）；当解析出的 base 指向本地 FastAPI
+   *     （host 含 localhost/127.0.0.1，或等于 kbBackend）时，自动追加 /api/news
+   *     形成 action 分发器地址，使本地 dev 默认打到 /api/news。
+   */
   _crawlerBackendURL() {
-    return (window.CONFIG && window.CONFIG.crawlerBackend && window.CONFIG.crawlerBackend.baseURL) || this._kbBackendURL();
+    // 0) 运行时显式覆盖优先（QA 联调 / 用户配置完整 action 路由地址）
+    const override = window.__STUDYMINDCONFIG__ &&
+      window.__STUDYMINDCONFIG__.crawlerBackend &&
+      window.__STUDYMINDCONFIG__.crawlerBackend.baseURL;
+    if (override) return override;
+
+    const CONFIG = window.CONFIG || {};
+    const kb = (CONFIG.kbBackend && CONFIG.kbBackend.baseURL) || 'http://localhost:8765';
+    let base = (CONFIG.crawlerBackend && CONFIG.crawlerBackend.baseURL) || '';
+    // 未配置 crawlerBackend → 回退本地 FastAPI
+    if (!base) base = kb;
+    return this._withApiNewsDispatcher(base, kb);
+  },
+
+  /**
+   * 若解析出的 base 指向本地 FastAPI（host 含 localhost/127.0.0.1，或等于 kbBackend），
+   * 自动追加 /api/news 形成 action 分发器地址；生产云函数地址保持原样。
+   */
+  _withApiNewsDispatcher(base, kb) {
+    if (!base) return base;
+    const trimmed = String(base).replace(/\/+$/, '');
+    // 已含 /api/news 分发路径则直接返回
+    if (/\/api\/news$/i.test(trimmed)) return trimmed;
+    let host = '';
+    try { host = new URL(trimmed).host; } catch (e) { host = trimmed; }
+    const isLocal = host.indexOf('localhost') !== -1 ||
+      host.indexOf('127.0.0.1') !== -1 ||
+      trimmed === String(kb).replace(/\/+$/, '');
+    return isLocal ? trimmed + '/api/news' : trimmed;
   },
 
   /* ----------------------------------------------------------------
@@ -1724,6 +1794,15 @@ const DB = {
   },
 
   /**
+   * F3b：判断 crawlerBackendURL 是否为可达的 HTTP(S) 端点。
+   * 使用 /^https?:\/\//i 正则，只要是 http(s) 即视为可达——含本地
+   * http://localhost:8765，从而解除"base 指向 localhost 就被判非 online"的双门控。
+   */
+  _isHttpBackend(base) {
+    return !!base && /^https?:\/\//i.test(String(base));
+  },
+
+  /**
    * 统一爬虫调用入口：封装三级 fallback，返回归一化结构
    * { ok, source, valid, dropped, items, failedSources }
    *  - source: 'http' | 'callFunction' | 'local'
@@ -1735,21 +1814,24 @@ const DB = {
   async _callCrawler(action, payload) {
     const pl = payload || {};
     const base = this._crawlerBackendURL();
-    const online = !!base && base.indexOf('localhost') === -1;
     const realEnv = this._isRealCloudbase();
     const realInstance = !!(window.app && typeof window.app.callFunction === 'function');
 
-    // 仅真实环境才尝试远端（Mock 开发环境直接本地兜底，不打扰 dev）
-    if (realEnv && online) {
+    // 【T01/F3b·联调可达性】解耦 window.TCB + localhost 双门控：
+    // 只要 crawlerBackendURL 是可达的 HTTP(S) 端点（含本地 http://localhost:8765，
+    // 由 _isHttpBackend 用 /^https?:\/\//i 判定），就总是先尝试 HTTP POST
+    // （extract/rss/validate 均为纯 HTTP JSON，无需 CloudBase SDK）；
+    // 非 http(s) 或无 base 才回退。callFunction 仅作为真实 CloudBase 环境的冗余二级。
+    if (this._isHttpBackend(base)) {
       // 第一级：HTTP POST（raw action 路由，无需 app 实例）
       try {
         const httpData = await this._httpPostCrawler(action, pl, base);
         if (httpData) return this._normalizeCrawler(action, httpData, 'http');
       } catch (e) {
-        console.warn('[DB] crawler HTTP 失败，回退 callFunction:', e && e.message);
+        console.warn('[DB] crawler HTTP 失败，回退:', e && e.message);
       }
-      // 第二级：CloudBase SDK callFunction（真实实例可用时）
-      if (realInstance) {
+      // 第二级：真实 CloudBase 实例可用时，再尝试 callFunction（仅作冗余备份）
+      if (realEnv && realInstance) {
         try {
           const cfRes = await window.app.callFunction({
             name: 'news-crawler',
@@ -1823,7 +1905,9 @@ const DB = {
       const valid = [];
       const dropped = [];
       for (const it of items) {
-        const body = (it.body || it.summary || it.content || '').trim();
+        // F4b：本地校验收紧——只认 body / content，绝不回退到 summary，
+        // 避免纯 Mock 环境下只有 summary 的"标题党"条目蒙混过关。
+        const body = (it.body || it.content || '').trim();
         const src = (it.source || it.sourceName || it.sourceUrl || '').trim();
         if (!body || body.length < MIN_BODY) {
           dropped.push(Object.assign({}, it, { reason: !body ? 'no_body' : 'body_too_short' }));
@@ -1848,8 +1932,9 @@ const DB = {
 
   /**
    * 入库前硬性过滤（验收标准 3）— 统一走 _callCrawler 三级 fallback。
-   * 在线（真实环境 + crawlerBackend 已配置且非 localhost）优先 HTTP POST，
-   * 失败回退 CloudBase SDK callFunction，均不可用时本地同规则兜底，
+   * 只要有 crawlerBackendURL（含本地 FastAPI http://localhost:8765，F3b 已解除
+   * localhost 双门控）就优先 HTTP POST；真实 CloudBase 实例再冗余 callFunction；
+   * 均不可用时本地同规则兜底。本地校验只认 body/content（F4b 已移除 summary 回退），
    * 保证「无正文 / 无来源 = 不抓取」硬规则始终成立。
    * @returns {Promise<boolean>} true=可入库
    */
@@ -2553,19 +2638,33 @@ const DB = {
     let savedCount = 0;
     for (const article of articles) {
       try {
-        /* 【Issue 2 修复】尝试抓取文章全文，提升内容质量 */
-        let fullContent = article.content || '';
+        /* 【需求2·严禁摘要当正文】优先使用服务端已抽取的真实正文（content/body），绝不把 summary 当正文 */
+        let fullContent = article.content || article.body || '';
+        // 归一化：让后续评分/写库看到的 content/body 都是真实正文（避免正文仅存在于 body 字段时评分输入为空）
+        if (fullContent) {
+          article.content = fullContent;
+          article.body = fullContent;
+        }
+
+        /* 仅当真实正文为空且存在原文链接时，才走 extract 兜底（避免对已成功项重复抓取） */
         if (!fullContent && article.sourceUrl) {
           try {
             const extractRes = await this._callCrawler('extract', { url: article.sourceUrl });
             const extractData = extractRes && extractRes.items && extractRes.items[0];
-            if (extractData && extractData.success !== false && extractData.content) {
-              fullContent = extractData.content;
+            if (extractData && extractData.success !== false && (extractData.content || extractData.body)) {
+              fullContent = extractData.content || extractData.body;
               article.content = fullContent;
+              article.body = fullContent;
             }
           } catch (extractErr) {
-            console.warn('[DB] 全文抓取失败，使用摘要:', extractErr.message);
+            console.warn('[DB] 全文抓取失败:', extractErr.message);
           }
+        }
+
+        /* 【硬规则】真实正文为空或过短 → 直接跳过，绝不入库摘要（禁止只爬标题/摘要） */
+        if (!fullContent || fullContent.trim().length < 50) {
+          console.log('[DB] ⏭️ 无真实正文（或正文过短），不入库:', article.title);
+          continue;
         }
 
         /* 【问题3】写库前先跑纯规则决策：无来源 / 广告 / 重复 → 直接丢弃，不入库不评分 */
@@ -2588,7 +2687,7 @@ const DB = {
         }
 
         /* 【Issue 3 修复】AI评分使用文章全文而非仅标题+摘要 */
-        const evalContent = fullContent || article.summary || '';
+        const evalContent = fullContent || '';
         const prompt = '请判断以下资讯是否与学习相关，并给出评分和分类。\n\n' +
           '标题：' + (article.title || '无标题') + '\n' +
           '内容：' + evalContent.substring(0, 3000) + '\n' +
@@ -2621,7 +2720,7 @@ const DB = {
           title: article.title || '',
           summary: article.summary || '',
           // 【需求2·严禁摘要当正文】body 只认真实正文，绝不把 RSS 摘要当 body
-          body: fullContent || article.body || '',
+          body: fullContent || '',
           source: article.sourceName || '',
           sourceUrl: article.sourceUrl || ''
         });
@@ -2634,8 +2733,9 @@ const DB = {
         await this._exec(
           this._collection('news_items').add({
             title: parsed.title || article.title || '未命名资讯',
-            content: article.content || '',
-            summary: parsed.summary || article.summary || '',
+            content: fullContent,                 // 真实正文（绝不 = summary）
+            summary: article.summary || '',       // 仅作 teaser
+            body: fullContent,                    // 同步保留 body 字段（与 schema 一致）
             sourceUrl: article.sourceUrl || '',
             sourceName: article.sourceName || 'RSS',
             category: parsed.category || '',

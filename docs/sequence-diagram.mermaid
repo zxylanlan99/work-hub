@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor U as 用户(点点点 E2E)
+    participant P as news.html
+    participant D as DB.dailyCrawlAndScore
+    participant C as DB._callCrawler
+    participant B as FastAPI /api/news
+    participant N as news_utils
+
+    U->>P: 点击「开始抓取资讯」
+    P->>D: dailyCrawlAndScore(sources)
+    D->>D: getEnabledRssUrls()
+    D->>C: _callCrawler('rss', {sources})
+    Note over C: 【修复点A·T01】HTTP 级解耦 window.TCB 门控<br/>只要 baseURL 可达(含 localhost)即尝试
+    C->>B: HTTP POST /api/news {action:'rss', sources}
+    B->>N: _fetch_rss_with_extract(sources)
+    Note over B,N: 【修复点C·T03】先清空 content/body，仅保留 summary
+    loop 每个源 / 每源前10篇 / 预算45s
+        B->>N: parse_rss_feed() → 文章骨架
+        B->>B: _fetch_article_body(url, 超时8s) → extract_body
+        B-->>B: body=真实正文; summary 仅当原为空时兜底
+    end
+    B-->>C: {success, data:[Article(body=真实)], failedSources}
+    C->>C: _normalizeCrawler('rss') → items = data
+    C-->>D: {items:[Article...]}
+    D->>D: 遍历 articles
+    Note over D: 【修复点C·T03】fullContent = article.body(非 content/summary)<br/>仅当 body 为空才 per-article extract 兜底
+    alt article.body 为空
+        D->>C: _callCrawler('extract', {url})
+        C->>B: POST /api/news {action:'extract', url}
+        B-->>C: 扁平对象 {success, body, content, ...}
+        C->>C: _normalizeCrawler('extract') → items:[扁平]
+    end
+    D->>C: _validateNewsItem({body, source})
+    C->>B: POST /api/news {action:'validate', items}
+    B-->>C: {valid:[...], dropped:[...]}
+    alt 通过 filter_news_items (body≥50 且有来源)
+        D->>D: 写入 news_items.content = 真实body（content==body）
+        D-->>P: 列表渲染真实正文
+        U->>P: 点击卡片「阅读全文」(news-open-detail)
+        P->>P: 打开 newsPreview，渲染 content → news-full-body
+    else 无正文 / 太短 / 无来源
+        D->>D: 跳过，绝不入库（硬规则成立）
+    end

@@ -100,37 +100,102 @@ def _normalize_rss_item(article: dict, source_url: str) -> dict:
 
 # ── HTML 正文 / 元信息提取 ─────────────────────────────────
 class _BodyExtractor(HTMLParser):
-    """从 HTML 中提取正文文本，跳过 script/style/nav/header/footer 等标签"""
-    SKIP_TAGS = {'script', 'style', 'nav', 'header', 'footer', 'aside', 'noscript', 'svg', 'iframe'}
+    """从 HTML 提取正文文本，跳过噪声子树，按块级标签还原段落结构。
+
+    T02 增强要点（资讯模块爬虫重构）：
+      - SKIP_TAGS：script/style/nav/header/footer/aside 等整棵子树跳过；
+        新增 figure/template/form/button。
+      - BLOCK_TAGS：p/div/section/article/li/blockquote/h1-h6/br 等块级标签处
+        插入段落分隔（空行），保留文章结构，而非逐块 \\n 拼接。
+      - NOISE_PATTERNS：对含 comment/sidebar/related/advert/share/footer/nav
+        等关键词的 class/id/role 的 div/section/aside/article 子树整体跳过。
+      - CJK 适配：去掉 len(text) > 2 的硬过滤，保留非空 strip 后的文本，
+        段落级密度由块级分组保证（中文短句不再被误删）。
+    """
+    # 直接整棵跳过的标签
+    SKIP_TAGS = {
+        'script', 'style', 'nav', 'header', 'footer', 'aside',
+        'noscript', 'svg', 'iframe', 'figure', 'template', 'form', 'button',
+    }
+    # 块级标签：结束处插入段落分隔，还原文章结构
+    BLOCK_TAGS = {
+        'p', 'div', 'section', 'article', 'li', 'blockquote',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br',
+    }
+    # 噪声子树匹配（class/id/role 命中则整棵跳过）
+    NOISE_PATTERNS = (
+        'comment', 'comments', 'sidebar', 'related', 'recommend',
+        'advert', 'ad-', 'share', 'footer', 'nav', 'cookie', 'banner',
+        'reply', 'social', 'promo', 'sponsor',
+    )
 
     def __init__(self):
-        super().__init__()
+        super().__init__(convert_charrefs=True)
         self._skip_depth = 0
-        self._chunks = []
+        self._chunks = []    # 段落列表
+        self._current = []   # 当前段落内的文本片段
+
+    def _is_noise_attr(self, tag: str, attrs) -> bool:
+        """div/section/aside/article 的 class/id/role 命中噪声关键词则跳过。"""
+        if tag not in ('div', 'section', 'aside', 'article'):
+            return False
+        for name, value in attrs:
+            if name in ('class', 'id', 'role'):
+                val = (value or '').lower()
+                for pat in self.NOISE_PATTERNS:
+                    if pat in val:
+                        return True
+        return False
+
+    def _flush_paragraph(self) -> None:
+        text = ''.join(self._current).strip()
+        if text:
+            self._chunks.append(text)
+        self._current = []
 
     def handle_starttag(self, tag, attrs):
-        if tag == 'body':
-            pass
         if tag in self.SKIP_TAGS:
             self._skip_depth += 1
+            return
+        # 噪声子树（div/section/aside/article 的 class/id 命中关键词）整体跳过
+        if self._skip_depth == 0 and self._is_noise_attr(tag, attrs):
+            self._skip_depth += 1
+            return
+        # 块级开始：先把之前累积的文本落盘，避免与上行粘连
+        if self._skip_depth == 0 and tag in self.BLOCK_TAGS:
+            self._flush_paragraph()
 
     def handle_endtag(self, tag):
-        if tag in self.SKIP_TAGS and self._skip_depth > 0:
+        if tag in self.SKIP_TAGS:
+            if self._skip_depth > 0:
+                self._skip_depth -= 1
+            return
+        # 处于跳过子树内：对应的 div/section/aside/article 结束则减一层
+        if self._skip_depth > 0 and tag in ('div', 'section', 'aside', 'article'):
             self._skip_depth -= 1
+            return
+        # 正常正文流：块级结束强制分段
+        if self._skip_depth == 0 and tag in self.BLOCK_TAGS:
+            self._flush_paragraph()
 
     def handle_data(self, data):
         if self._skip_depth > 0:
             return
+        # CJK 适配：保留非空 strip 后的文本，段落级密度由块级分组保证
         text = data.strip()
-        if text and len(text) > 2:
-            self._chunks.append(text)
+        if text:
+            self._current.append(text)
 
     def get_text(self) -> str:
-        return '\n'.join(self._chunks)
+        self._flush_paragraph()
+        return '\n\n'.join(self._chunks)
 
 
 def extract_body(html_text: str, max_len: int = 20000) -> str:
-    """提取正文文本（body），过长截断"""
+    """提取正文文本（body），按块级段落还原结构，过长截断
+
+    max_len 仅作上限保护；运行期真实正文存储由调用方截断到 8000 字符。
+    """
     parser = _BodyExtractor()
     parser.feed(html_text)
     text = parser.get_text()

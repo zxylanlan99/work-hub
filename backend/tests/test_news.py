@@ -69,6 +69,40 @@ def test_extract_meta_and_body():
     assert '第二段更长一些' in body
 
 
+def test_extract_body_noise_skip_and_cjk():
+    """T02 增强：保留正文段落、排除评论/侧边栏、不误删中文短句。"""
+    html = (
+        '<html><head><title>标题</title></head><body>'
+        '<article>'
+        '<p>这是正文第一段，介绍背景信息。</p>'
+        '<p>短句。</p>'
+        '<p>第二段更长一些，提供更多细节用于验证正文抽取质量。</p>'
+        '<div class="comments">'
+        '<p>网友评论：说得太对了！</p>'
+        '<div class="comment-item">这是评论区里的一条评论内容，不应出现在正文。</div>'
+        '</div>'
+        '<aside class="sidebar-related">'
+        '<p>相关推荐：一堆广告链接和推广文案。</p>'
+        '</aside>'
+        '</article>'
+        '</body></html>'
+    )
+    body = extract_body(html)
+    # 正文段落被保留
+    assert '这是正文第一段' in body
+    assert '短句。' in body
+    assert '第二段更长一些' in body
+    # 评论 / 侧边栏文本被排除
+    assert '网友评论' not in body
+    assert '说得太对了' not in body
+    assert '评论区里的一条评论' not in body
+    assert '相关推荐' not in body
+    assert '广告链接' not in body
+    # 段落结构：正文段落之间以空行分隔
+    assert '\n\n' in body
+
+
+
 def test_filter_drops_no_body():
     item = {'title': 't', 'summary': 's', 'source': 'src', 'body': ''}
     ok, reason = is_valid_news_item(item)

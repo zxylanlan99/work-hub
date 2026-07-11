@@ -102,15 +102,21 @@ exports.main = async (event, context) => {
       max_tokens: effMaxTokens
     };
 
+    // 【Issue 修复】服务端 fetch 超时（40s）：避免上游 LLM 慢响应/挂起时云函数实例被长期占用
+    const controller = new AbortController();
+    const fetchTimeoutId = setTimeout(() => controller.abort(), 40000);
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
+      signal: controller.signal
     });
 
+    clearTimeout(fetchTimeoutId);
     console.log('响应状态:', response.status);
     const data = await response.json();
 

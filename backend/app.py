@@ -13,6 +13,7 @@ StudyMind 知识库后端 — FastAPI 主应用
 import os
 import re
 import json
+import time
 import logging
 import asyncio
 import threading
@@ -70,11 +71,14 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="StudyMind 知识库后端", version="1.0.0")
 
 # CORS — 允许前端跨域调用（生产环境限制具体域名）
+# 资讯模块重构：加入 '*' 通配，确保浏览器能跨域调用 localhost:8765/api/news
+# （前端 dev server 默认 localhost:8090；如仅具体来源仍可按需收窄）。
 ALLOWED_ORIGINS = [
+    "*",  # 通配，便于本地联调与 QA 跨域调用
     "https://studymind-d7g06nv0de98a1f1b-1255395253.tcloudbaseapp.com",  # 腾讯云部署
     "http://localhost:8771",  # 本地开发
     "http://localhost:8765",  # 本地开发备选
-    "http://localhost:8090",  # Trae 预览服务器
+    "http://localhost:8090",  # Trae / npm run dev 预览服务器
     "http://127.0.0.1:8765",
     "http://127.0.0.1:8771",
     "http://127.0.0.1:8090",
@@ -612,85 +616,75 @@ async def web_search(req: WebSearchRequest):
         return {'success': False, 'error': str(e), 'data': []}
 
 
-class RssRequest(BaseModel):
-    sources: list[str]
+# ── 资讯抓取：服务端逐篇正文抽取参数 ─────────────────────────
+# 对齐 Cloud Function（functions/news-crawler/index.py）的防护策略，避免整体超时：
+_RSS_EXTRACT_LIMIT = 10       # 每个源最多抓取多少篇真实正文
+_RSS_ARTICLE_TIMEOUT = 8      # 单篇正文抓取超时(秒)
+_RSS_EXTRACT_BUDGET = 45      # 单次 RSS 正文抓取总预算(秒)
 
 
-class ExtractRequest(BaseModel):
-    url: str
-
-
-@app.post("/api/news/extract")
-async def extract_article_content(req: ExtractRequest):
+def _fetch_article_body(url: str, timeout: int = 15) -> dict:
     """
-    【Issue 2 修复】抓取文章原文 URL，提取正文文本内容
-    供 dailyCrawlAndScore 调用，提升 AI 评分的信息量
+    抓取单篇文章原文并提取真实正文，返回扁平四要素对象（无 items 包裹）。
+
+    返回结构（与 Cloud Function handle_extract 一致）：
+    {success, title, summary, source, body, content, url, length}
+    失败：{success:False, error, content:''}
     """
-    url = req.url
-    if not url:
-        raise HTTPException(status_code=400, detail="URL 为空")
-    # SSRF 防护：仅允许 https，并拦截指向私网/链路本地的目标（F3 修复）
     _validate_outbound_url(url)
+    headers = {
+        'User-Agent': (
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ),
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+    }
+    request = urllib.request.Request(url, headers=headers)
+    with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CONTEXT) as resp:
+        raw = resp.read()
+        # 尝试多种编码（CJK 适配）
+        for enc in ('utf-8', 'gbk', 'gb2312', 'latin-1'):
+            try:
+                html_text = raw.decode(enc)
+                break
+            except UnicodeDecodeError:
+                continue
+        else:
+            html_text = raw.decode('utf-8', errors='replace')
 
-    try:
-        headers = {
-            'User-Agent': (
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-                '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-            ),
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        }
-        request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=15, context=_SSL_CONTEXT) as resp:
-            raw = resp.read()
-            # 尝试多种编码
-            for enc in ('utf-8', 'gbk', 'gb2312', 'latin-1'):
-                try:
-                    html_text = raw.decode(enc)
-                    break
-                except UnicodeDecodeError:
-                    continue
-            else:
-                html_text = raw.decode('utf-8', errors='replace')
+    text = extract_body(html_text)
+    title, summary = extract_meta(html_text)
 
-        # 提取正文（body）与元信息（标题/摘要）
-        text = extract_body(html_text)
-        title, summary = extract_meta(html_text)
+    # 截断过长内容（保留前 8000 字符）
+    if len(text) > 8000:
+        text = text[:8000]
 
-        # 截断过长内容（保留前 8000 字符）
-        if len(text) > 8000:
-            text = text[:8000]
-
-        # 来源：取 URL 主机名
-        source = urllib.parse.urlparse(url).netloc or url
-
-        logger.info(f"文章抓取: {url}, 提取 {len(text)} 字符")
-        # 归一化为四要素结构返回（body=正文，content 保留兼容前端）
-        return {
-            'success': True,
-            'title': title,
-            'summary': summary,
-            'source': source,
-            'body': text,
-            'content': text,
-            'url': url,
-            'length': len(text)
-        }
-
-    except Exception as e:
-        logger.error(f"文章抓取失败 {url}: {e}")
-        return {'success': False, 'error': str(e), 'content': ''}
+    source = urllib.parse.urlparse(url).netloc or url
+    return {
+        'success': True,
+        'title': title,
+        'summary': summary,
+        'source': source,
+        'body': text,
+        'content': text,
+        'url': url,
+        'length': len(text),
+    }
 
 
-@app.post("/api/news/rss")
-async def fetch_rss(req: RssRequest):
+def _fetch_rss_with_extract(sources: list) -> dict:
     """
-    抓取多个 RSS 源，返回文章列表（真实数据）
-    """
-    if not req.sources:
-        raise HTTPException(status_code=400, detail="RSS 源为空")
+    抓取多个 RSS 源并在服务端逐篇抽取真实正文（对齐 Cloud Function handle_rss）。
 
+    - 解析后先清空 content/body，严禁把 RSS 摘要当正文。
+    - 仅对前 _RSS_EXTRACT_LIMIT 篇调用 _fetch_article_body 填真实正文；
+      单篇超时 _RSS_ARTICLE_TIMEOUT，单次总预算 _RSS_EXTRACT_BUDGET 保护。
+    - 抽取成功（body 非空）才写回 content/body；summary 为空时用 meta.summary
+      仅回填 summary 字段。失败/空则 body 留空（绝不回填 RSS 摘要）。
+    - 返回 {success, data:[...], count, failedSources}，每篇含
+      title/summary/source/body/content/url/sourceUrl/publishedAt。
+    """
     all_articles = []
     failed_sources = []
     headers = {
@@ -699,16 +693,48 @@ async def fetch_rss(req: RssRequest):
             '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         )
     }
+    # 时间预算保护：逼近总预算前停止后续抓取，避免整体超时
+    extract_deadline = time.time() + _RSS_EXTRACT_BUDGET
 
-    for source in req.sources:
+    for source in sources or []:
         try:
-            # SSRF 防护：校验每个 RSS 源 URL（F3 修复）
+            # SSRF 防护：校验每个 RSS 源 URL
             _validate_outbound_url(source)
             request = urllib.request.Request(source, headers=headers)
             with urllib.request.urlopen(request, timeout=15, context=_SSL_CONTEXT) as resp:
                 xml_text = resp.read().decode('utf-8', errors='replace')
             articles = _parse_rss_feed(xml_text, source)
             logger.info(f"RSS 抓取: {source}, {len(articles)} 条")
+
+            # 【需求2·严禁摘要当正文】先清空 content/body，仅保留 summary 字段
+            for art in articles:
+                art['content'] = ''
+                art['body'] = ''
+
+            # 仅对前 N 篇抓取真实正文（标准库 extract_body），其余 body 留空
+            for art in articles[:_RSS_EXTRACT_LIMIT]:
+                # 时间预算保护：超时则停止后续抓取
+                if time.time() > extract_deadline:
+                    logger.warning("RSS 正文抓取已达时间预算，停止后续抓取")
+                    break
+                url = art.get('url') or art.get('sourceUrl') or ''
+                if not url:
+                    continue
+                try:
+                    res = _fetch_article_body(url, timeout=_RSS_ARTICLE_TIMEOUT)
+                    if res.get('success') and res.get('body'):
+                        body = res['body']
+                        art['content'] = body
+                        art['body'] = body
+                        # summary 为空时用提取的 meta.summary 兜底（仍只进 summary 字段）
+                        if not art.get('summary') and res.get('summary'):
+                            art['summary'] = res['summary']
+                    else:
+                        reason = res.get('error') if isinstance(res, dict) else '未知错误'
+                        logger.warning(f"RSS 正文抓取无效 {url}: {reason}")
+                except Exception as e:
+                    logger.warning(f"RSS 正文抓取异常 {url}: {e}")
+
             all_articles.extend(articles)
         except Exception as e:
             logger.warning(f"RSS 源抓取失败 {source}: {e}")
@@ -724,6 +750,106 @@ async def fetch_rss(req: RssRequest):
             unique.append(a)
 
     return {'success': True, 'data': unique, 'count': len(unique), 'failedSources': failed_sources}
+
+
+class RssRequest(BaseModel):
+    sources: list[str]
+
+
+class ExtractRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/news/extract")
+async def extract_article_content(req: ExtractRequest):
+    """
+    【Issue 2 修复】抓取文章原文 URL，提取正文文本内容
+    供 dailyCrawlAndScore 调用，提升 AI 评分的信息量。
+    复用共享 helper _fetch_article_body，返回扁平四要素对象（无 items 包裹）。
+    """
+    url = req.url
+    if not url:
+        raise HTTPException(status_code=400, detail="URL 为空")
+    try:
+        result = _fetch_article_body(url, timeout=_RSS_ARTICLE_TIMEOUT)
+        logger.info(f"文章抓取: {url}, 提取 {result.get('length', 0)} 字符")
+        return result
+    except Exception as e:
+        logger.error(f"文章抓取失败 {url}: {e}")
+        return {'success': False, 'error': str(e), 'content': ''}
+
+
+@app.post("/api/news/rss")
+async def fetch_rss(req: RssRequest):
+    """
+    抓取多个 RSS 源并在服务端逐篇抽取真实正文，返回文章列表。
+    委托给共享 helper _fetch_rss_with_extract（含 SSRF 防护 + 超时/预算保护）。
+    """
+    if not req.sources:
+        raise HTTPException(status_code=400, detail="RSS 源为空")
+    return _fetch_rss_with_extract(req.sources)
+
+
+class NewsValidateRequest(BaseModel):
+    items: list[dict] = []
+
+
+@app.post("/api/news/validate")
+async def news_validate(req: NewsValidateRequest):
+    """
+    入库前硬性过滤（验收标准 3）：包装 filter_news_items，
+    丢弃无正文 / 正文过短 / 无来源的资讯。
+    返回 {success, valid:[...], dropped:[{item, reason}]}
+    """
+    filtered = filter_news_items(req.items)
+    return {'success': True, 'valid': filtered['valid'], 'dropped': filtered['dropped']}
+
+
+@app.post("/api/news")
+async def news_dispatcher(request: Request):
+    """
+    资讯爬虫 action 分发器（平替 Cloud Function 的 main_handler 路由）。
+
+    【契约】后端出扁平、前端包 items：
+      - extract：返回扁平对象 {success,title,summary,source,body,content,url,length}（无 items 包裹）
+      - rss    ：返回 {success, data:[...], count, failedSources}
+      - validate：返回 {success, valid:[...], dropped:[...]}
+    前端 _callCrawler 统一把结果归一化为 {ok, items:[...], ...}。
+
+    _httpPostCrawler 正是 POST {action, ...} 到该地址（base），
+    故新路由必须是 /api/news（与 Cloud Function 同构）。
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="请求体须为 JSON")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="请求体须为 JSON 对象")
+
+    action = (body.get('action') or '').lower()
+
+    if action == 'extract':
+        url = body.get('url') or ''
+        if not url:
+            return {'success': False, 'error': 'URL 为空', 'content': ''}
+        try:
+            return _fetch_article_body(url, timeout=_RSS_ARTICLE_TIMEOUT)
+        except Exception as e:
+            logger.error(f"文章抓取失败 {url}: {e}")
+            return {'success': False, 'error': str(e), 'content': ''}
+
+    if action == 'validate':
+        items = body.get('items') or []
+        filtered = filter_news_items(items)
+        return {'success': True, 'valid': filtered['valid'], 'dropped': filtered['dropped']}
+
+    if action == 'rss':
+        sources = body.get('sources') or []
+        if not sources:
+            raise HTTPException(status_code=400, detail="RSS 源为空")
+        return _fetch_rss_with_extract(sources)
+
+    raise HTTPException(status_code=400, detail=f"未知 action: {action}")
 
 
 # ── 资讯入库（验收标准 3 + 4）──────────────────────────────

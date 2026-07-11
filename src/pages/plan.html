@@ -427,7 +427,7 @@
       <div style="font-size:48px;margin-bottom:12px;">🎉</div>
       <div style="font-size:17px;font-weight:700;color:var(--gray-800);margin-bottom:8px;" id="completeTaskTitle">「任务名」完成！</div>
       <div style="font-size:13px;color:var(--gray-500);margin-bottom:6px;" id="completeTaskProgress">里程碑2 进度：3/4 任务 · 75%</div>
-      <div style="font-size:12.5px;color:var(--gray-400);margin-bottom:20px;">自动生成复习卡片，将在 <strong style="color:var(--primary)">2天后</strong> 推送复习</div>
+      <div style="font-size:12.5px;color:var(--gray-400);margin-bottom:20px;">已生成复习卡片，<strong style="color:var(--primary)">今日</strong> 即可开始复习</div>
 
       <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
         <!-- 选项1：写学习笔记 -->
@@ -445,7 +445,7 @@
           <span style="font-size:24px;flex-shrink:0;">🔄</span>
           <div style="flex:1;min-width:0;">
             <div style="font-size:14px;font-weight:600;color:var(--gray-800);">只生成复习卡片，继续下一任务</div>
-            <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">2天后提醒复习此知识点</div>
+            <div style="font-size:12px;color:var(--gray-400);margin-top:2px;">今日即可复习此知识点</div>
           </div>
           <span style="color:var(--gray-300);flex-shrink:0;">→</span>
         </div>
@@ -1204,7 +1204,7 @@ async function openTaskCompleteModalWithInfo(taskId) {
   } catch (e) { /* 非阻塞 */ }
 
   document.getElementById('completeTaskTitle').textContent = `「${taskTitle}」完成！`;
-  document.getElementById('completeTaskProgress').textContent = progressText || '自动生成复习卡片，将在 2天后 推送复习';
+  document.getElementById('completeTaskProgress').textContent = progressText || '已生成复习卡片，今日即可复习';
   document.getElementById('completeNoteTitle').textContent = `趁热打铁：写一篇学习笔记`;
 
   modal.classList.add('show');
@@ -1332,7 +1332,9 @@ async function completeWith(type) {
               const goalTitle = res.data.title || '';
               // 创建复习卡片
               const nextReview = new Date();
-              nextReview.setDate(nextReview.getDate() + 2);
+              // 【复习流程修复】首次复习立即到期（今日即可复习）。
+              // 原逻辑排到 +2 天，导致卡片永远不出现在「今日复习」队列，复习计划流程形同虚设。
+              nextReview.setDate(nextReview.getDate());
               // 问题4 修复：knowledgeId 必须是真实知识条目 ID，而非 taskId
               const _cardData = {
                 question: `关于「${cardTitle}」的核心要点是什么？`,
@@ -1695,6 +1697,13 @@ function manualCreateToStep3() {
 // AI 拆解：调用接口生成里程碑和任务
 // 【Issue 1 修复】将第2步AI对话内容也纳入生成上下文
 async function aiGeneratePlan() {
+  // 【Issue 修复】防重入锁：避免用户在加载中反复点击「AI 智能拆解」触发并发请求、重复烧 token
+  if (window._aiPlanGenerating) {
+    toast('AI 正在生成中，请稍候…', 'warning');
+    return;
+  }
+  window._aiPlanGenerating = true;
+
   var titleEl = document.getElementById('goalTitleInput');
   var bgEl = document.getElementById('goalBackground');
   var title = titleEl ? titleEl.value.trim() : '';
@@ -1703,6 +1712,7 @@ async function aiGeneratePlan() {
   if (!title && !description) {
     toast('请先在第一步填写目标信息', 'warning');
     createPrevStep();
+    window._aiPlanGenerating = false;
     return;
   }
 
@@ -1744,13 +1754,28 @@ async function aiGeneratePlan() {
       // AI 失败，生成默认里程碑
       editorMilestones = generateDefaultPlan(title);
       renderMilestoneEditor();
-      toast('AI 暂不可用，已生成默认方案', 'info');
+      // 区分超时/被拒与真不可用，给出更明确的提示
+      if (res.error && res.error.indexOf('超时') >= 0) {
+        toast('AI 生成超时（已停止），已生成默认方案，可手动调整', 'warning');
+      } else if (res.error && res.error.indexOf('进行中') >= 0) {
+        toast('AI 任务进行中，请稍候', 'warning');
+      } else {
+        toast('AI 暂不可用，已生成默认方案', 'info');
+      }
     }
   } catch (error) {
     console.error('[Plan] ❌ AI 拆解失败:', error);
     editorMilestones = generateDefaultPlan(title);
     renderMilestoneEditor();
-    toast('AI 拆解失败，已生成默认方案', 'info');
+    // 超时/主动停止也走这里（_aiProxy 会 reject 超时错误）
+    if (error && error.message && error.message.indexOf('超时') >= 0) {
+      toast('AI 生成超时（已停止任务，避免资源浪费），已生成默认方案', 'warning');
+    } else {
+      toast('AI 拆解失败，已生成默认方案', 'info');
+    }
+  } finally {
+    // 【Issue 修复】无论成功/失败/超时，释放防重入锁，允许用户后续重试
+    window._aiPlanGenerating = false;
   }
 }
 

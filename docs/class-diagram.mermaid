@@ -1,0 +1,41 @@
+classDiagram
+    class Article {
+        +string title
+        +string summary   %% 仅作 teaser，绝不充当 body
+        +string source
+        +string body      %% 真实正文（与 content 同值，content==body）
+        +string content   %% 真实正文（与 body 同值）
+        +string url
+        +string sourceUrl
+        +string publishedAt
+    }
+
+    class NewsUtils {
+        +parse_rss_feed(xml, src) list
+        +extract_body(html, max_len=20000) string
+        +extract_meta(html) (title, desc)
+        +filter_news_items(items, min=50) dict
+        +build_news_document(item) string
+    }
+
+    class FastAPIBackend {
+        +POST /api/news  (action: rss|extract|validate)
+        -_fetch_article_body(url, timeout=8) dict
+        -_fetch_rss_with_extract(sources) dict
+        -_validate_news_items(items) dict
+    }
+
+    class NewsCrawlerClient {
+        +_callCrawler(action, payload) dict
+        -_httpPostCrawler(action, payload, base) dict
+        -_normalizeCrawler(action, data, source) dict
+        -_localCrawler(action, payload) dict
+        +_validateNewsItem(item) bool
+        +dailyCrawlAndScore(sources) dict
+    }
+
+    NewsCrawlerClient ..> NewsUtils : 本地兜底同规则(filter_news_items 等价)
+    FastAPIBackend --> NewsUtils : 服务端抽取/过滤
+    NewsCrawlerClient --> FastAPIBackend : HTTP POST baseURL+"/api/news" {action}
+    FastAPIBackend ..> Article : 返回 data[] 含真实 body
+    NewsCrawlerClient ..> Article : items[] 含真实 body

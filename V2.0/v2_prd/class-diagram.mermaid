@@ -1,0 +1,133 @@
+%% StudyMind V2.0 — 数据结构 / 类图 (ER 示意)
+%% 对应架构设计文档 §5 (StudyMind_V2.0_Architecture_v1.0.md)
+%% 业务实体存 data-service(Postgres, 等价于 V1.x CloudBase 集合)
+%% 知识向量/切片由 FastGPT 管理(kb-service 持 collection_id 映射, 不在此展开)
+%% v1.0 修订: NewsItem 补 isFavorited(V2-NEWS-004); Category 补 createdAt; ReviewCard 补 lastReviewed
+
+classDiagram
+  class Goal {
+    +string title
+    +string description
+    +string status
+    +date deadline
+    +datetime createdAt
+  }
+  class Milestone {
+    +string goalId
+    +string title
+    +string status
+    +int sort
+  }
+  class Task {
+    +string goalId
+    +string milestoneId
+    +string title
+    +string status
+    +date deadline
+    +int sort
+  }
+  class ReviewCard {
+    +string question
+    +string answer
+    +string questionType
+    +string knowledgeId
+    +float mastery
+    +int interval
+    +date nextReview
+    +float easeFactor
+    +int repetition
+    +datetime lastReviewed
+  }
+  class ReviewHistory {
+    +string cardId
+    +int quality
+    +int interval
+    +float mastery
+    +datetime reviewedAt
+  }
+  class KnowledgeItem {
+    +string title
+    +text content
+    +string summary
+    +string categoryId
+    +string[] tags
+    +string sourceUrl
+    +string sourceType
+    +bool isDeleted
+    +int chunkCount
+    +string backendCollectionId
+  }
+  class Category {
+    +string name
+    +string parentId
+    +string color
+    +int sort
+    +datetime createdAt
+  }
+  class NewsItem {
+    +string title
+    +string summary
+    +string source
+    +text body
+    +string sourceUrl
+    +int bodyLength
+    +bool passedRedline
+    +string dropReason
+    +float recommendScore
+    +bool hasRead
+    +bool isFavorited
+  }
+  class OutputDoc {
+    +string title
+    +text content
+    +string status
+    +string summary
+    +string categoryId
+  }
+  class AgentSkill {
+    +string name
+    +text prompt
+    +string[] tools
+    +bool builtin
+    +string scope
+  }
+  class CustomAgent {
+    +string name
+    +text prompt
+    +string[] skillIds
+    +string knowledgeScope
+    +string model
+    +bool builtin = false
+  }
+  class AgentMemory {
+    +string agentId
+    +list history
+  }
+  class AiModel {
+    +string provider
+    +string planType
+    +string modelName
+    +string displayName
+    +string baseUrl
+    +string status
+  }
+  class RssSource {
+    +string url
+    +bool enabled
+    +string status
+    +datetime lastFetched
+  }
+  class RedlineConfig {
+    +int minBodyLen
+    +string[] sourceBlacklist
+    +string[] keywordBlacklist
+    +float dedupThreshold
+  }
+
+  Goal "1" *-- "0..*" Milestone : contains
+  Milestone "1" *-- "0..*" Task : contains
+  ReviewCard "0..1" --> "1" KnowledgeItem : knowledgeId
+  KnowledgeItem "*" --> "0..1" Category : categoryId
+  CustomAgent "*" --> "*" AgentSkill : skillIds
+  AgentMemory ..> CustomAgent : keyed by agentId
+  NewsItem ..> RedlineConfig : validated against

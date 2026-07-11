@@ -1,0 +1,103 @@
+%% StudyMind V2.0 — 关键链路时序图
+%% 对应架构设计文档 §6 (StudyMind_V2.0_Architecture_v1.0.md)
+%% v1.0 修订: 新增 ⑥ 资讯收藏切换 (V2-NEWS-004)
+
+%% ① 学习计划由智能体生成
+sequenceDiagram
+  actor U as 用户
+  participant P as PlanPage(前端)
+  participant AS as agent-service
+  participant CS as crawler-service
+  participant KS as kb-service
+  participant DS as data-service
+  U->>P: 描述学习目标
+  P->>AS: POST /api/agent/chat {agentId:planner, query, skillIds:[web_search]}
+  AS->>CS: GET /api/search/web?q=...
+  CS-->>AS: 搜索结果[]
+  AS->>KS: POST /api/kb/search (知识检索,可选)
+  KS-->>AS: chunks[]
+  AS-->>P: {content(计划草案JSON), citations[]}
+  P->>U: 展示草案(带引用)
+  U->>P: 确认并保存
+  P->>DS: POST /goals + /milestones + /tasks
+  DS-->>P: goalId
+  P-->>U: 已入库
+
+%% ② 复习计划由智能体生成 (SM-2 基线保留)
+sequenceDiagram
+  actor U as 用户
+  participant R as ReviewPage(前端)
+  participant DS as data-service
+  participant AS as agent-service
+  U->>R: 生成复习计划
+  R->>DS: GET /review_cards?mastery<0.5
+  DS-->>R: weakTopics[]
+  R->>AS: POST /api/agent/chat {agentId:reviewer, query:weakTopics}
+  AS-->>R: {cards:[{question,answer,questionType}]}
+  R->>U: 展示复习条目
+  U->>R: 一键入队
+  R->>DS: POST /review_cards(batch) + batch-enqueue
+  DS-->>R: ok
+
+%% ③ 知识沉淀 大纲→成稿 (单面编辑器)
+sequenceDiagram
+  actor U as 用户
+  participant O as OutputPage(前端)
+  participant AS as agent-service
+  participant KS as kb-service
+  participant DS as data-service
+  U->>O: 写大纲
+  O->>AS: POST /api/agent/chat {agentId:writer, query:outline, skillIds:[web_search,knowledge_base]}
+  AS->>KS: POST /api/kb/search
+  KS-->>AS: chunks[]
+  AS-->>O: {content(成稿), citations[]}
+  O->>U: 展示成稿+引用chip(行内插入, 无对比)
+  U->>O: 插入编辑器/保存
+  O->>DS: POST /output_docs {content, status}
+  DS-->>O: docId
+
+%% ④ 资讯爬取红线拦截 (C2 服务端执行)
+sequenceDiagram
+  participant S as crawler-service
+  participant NET as 公网 RSS/网页
+  participant RL as redline 引擎
+  actor U as 用户
+  participant N as NewsPage(前端)
+  U->>N: 抓取资讯
+  N->>S: POST /api/news/rss {sources:启用源}
+  S->>NET: 抓取 RSS + 逐篇正文抽取(extract_body)
+  NET-->>S: 原始条目[](含body)
+  S->>RL: validate(items) R1-R5
+  RL-->>S: {valid[], dropped:[{item,reason}]}
+  S-->>N: {valid[], dropped[]}
+  N->>U: 通过卡 / 拦截卡(朱砂原因)
+
+%% ⑤ 资讯入库知识库 (红线双保险, 保留清单 #12)
+sequenceDiagram
+  participant N as NewsPage(前端)
+  participant S as crawler-service
+  participant KS as kb-service
+  participant FG as FastGPT
+  participant QD as Qdrant
+  participant DS as data-service
+  N->>S: POST /api/news/ingest {items:passed}
+  S->>S: filter_news_items (红线双保险, C2)
+  S->>KS: POST /api/kb/ingest-news {text, meta}
+  KS->>FG: 建文档+切片+BGE-M3向量化 (仅 RAG, C3)
+  FG->>QD: upsert 向量
+  FG-->>KS: collectionId, chunkCount
+  KS-->>S: {collectionId, chunkCount}
+  S->>DS: POST /news_items(passed)
+  DS-->>S: ok
+  S-->>N: {ingested, dropped}
+
+%% ⑥ 资讯收藏切换 (V2-NEWS-004, 保留清单 #7)
+sequenceDiagram
+  actor U as 用户
+  participant N as NewsPage(前端)
+  participant DS as data-service
+  U->>N: 点击收藏/取消收藏
+  N->>DS: POST /api/news/{id}/favorite
+  DS->>DS: 翻转 news_items.isFavorited
+  DS-->>N: { isFavorited: bool }
+  N-->>U: 卡片收藏态即时更新 + 收藏夹同步(列表/详情/收藏夹三处一致)

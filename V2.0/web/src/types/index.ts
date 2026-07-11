@@ -264,3 +264,59 @@ export interface PlanStatsResponse {
   active: number;
   completion_rate: number; // 0-1
 }
+
+// --------------------------------------------------------------------------- //
+// T04 自定义智能体 / 自定义 Skill（V2-AGENT-002 / 003 / 005）
+// 字段 snake_case 须与 data-service schemas.CustomAgentRead / AgentSkillRead 对齐。
+// --------------------------------------------------------------------------- //
+export interface AgentSkill {
+  // 注意：后端 /api/db/agent_skills 返回混合 id —— 内置 Skill 为字符串 "builtin:xxx"，
+  // 自定义 Skill 为整数；前端统一以 string 处理（custom agent 的 skill_ids 亦为 string[]）。
+  id: number | string;
+  name: string;
+  prompt: string;
+  tools: string[];
+  scope: "builtin" | "user";
+  builtin: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CustomAgent {
+  id: number;
+  name: string;
+  prompt: string;
+  skill_ids: string[];
+  knowledge_scope: string;
+  model: string;
+  builtin: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** 创建自定义智能体请求体（agent-service POST /api/agent，字段用前端驼峰）。 */
+export interface CustomAgentInput {
+  name: string;
+  prompt: string;
+  skillIds: string[];
+  knowledgeScope?: string;
+  model?: string;
+}
+
+/** 创建自定义 Skill 请求体（agent-service POST /api/skill）。 */
+export interface SkillInput {
+  name: string;
+  prompt: string;
+  tools: Array<"web_search" | "knowledge_base" | "code_exec">;
+}
+
+// --------------------------------------------------------------------------- //
+// T16 资讯推荐维度权重（V2-NEWS-003，调 POST /api/news/recommend）
+// --------------------------------------------------------------------------- //
+export interface RecommendWeights {
+  relevance: number; // 相关度
+  recency: number; // 时效性
+  authority: number; // 权威性
+  completeness: number; // 完整度
+  dedup: number; // 去重
+}

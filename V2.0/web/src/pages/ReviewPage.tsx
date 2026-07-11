@@ -19,6 +19,8 @@ import {
   Empty,
 } from "../components/ui";
 import type { ReviewCard, CardType, QuizQuestion, KnowledgeItem, ChatMessage } from "../types";
+import ReviewCalendar from "../features/review/ReviewCalendar";
+import AdaptiveQuiz from "../features/review/AdaptiveQuiz";
 
 const QUALITY_LABELS: Array<{ q: number; label: string }> = [
   { q: 0, label: "完全忘了" },
@@ -205,6 +207,12 @@ export default function ReviewPage() {
           </CardBody>
         </Card>
       </div>
+
+      {/* 复习日历 + 连续天数（T16 V2-REVIEW-002/003） */}
+      <ReviewCalendar cards={cards} loading={cardsState.loading} error={cardsState.error} />
+
+      {/* 难度自适应出题（T16 V2-REVIEW-002，P1） */}
+      <AdaptiveQuiz />
 
       {/* 基础出题 */}
       <Card>

@@ -1,6 +1,7 @@
 // 知识库（T12，保留清单 #1 分类 / #2 知识条目 / #12 入库链路）
 // 分类树 + 知识条目列表/新建 + 「上传到知识库」（kb-service 入库，回写 backend_collection_id）。
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { categoriesApi } from "../lib/api/categories";
 import { knowledgeApi } from "../lib/api/knowledge";
 import { kbApi } from "../lib/api/kb";
@@ -21,6 +22,9 @@ import {
   Empty,
 } from "../components/ui";
 import type { Category, KnowledgeItem } from "../types";
+import { createReviewCardsFromKnowledge } from "../features/knowledge/knowledgeToReview";
+import { setOutputSeed } from "../features/knowledge/outputBridge";
+import { splitIntoChunks, type Chunk } from "../features/knowledge/chunking";
 
 function CategoryNode({
   node,
@@ -101,6 +105,14 @@ export default function KnowledgePage() {
   const [catName, setCatName] = useState("");
   const [catModal, setCatModal] = useState(false);
 
+  // T16：知识条目 -> 复习卡 / 写作助手 / 分块预览
+  const [cardMsg, setCardMsg] = useState<string | null>(null);
+  const [genCardId, setGenCardId] = useState<number | null>(null);
+  const [chunkItem, setChunkItem] = useState<KnowledgeItem | null>(null);
+  const [chunks, setChunks] = useState<Chunk[]>([]);
+  const [reIngestId, setReIngestId] = useState<number | null>(null);
+  const navigate = useNavigate();
+
   const items = (itemsState.data ?? []).filter(
     (it) => selectedCat === null || it.category_id === selectedCat
   );
@@ -161,12 +173,68 @@ export default function KnowledgePage() {
     itemsState.reload();
   }
 
+  // T16 V2-REVIEW-004：一键生成复习卡（关联 knowledgeId，落库 review_cards）
+  async function generateCardsFor(item: KnowledgeItem) {
+    setGenCardId(item.id);
+    setCardMsg(null);
+    try {
+      const ids = await createReviewCardsFromKnowledge(item);
+      setCardMsg(`已为「${item.title}」生成 ${ids.length} 张复习卡（已关联该知识条目）。`);
+    } catch (e) {
+      setCardMsg(`生成失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setGenCardId(null);
+    }
+  }
+
+  // T16 V2-OUTPUT-003：知识条目 -> 写作助手（续写），经 sessionStorage 种子联动
+  function sendToWriter(item: KnowledgeItem) {
+    setOutputSeed({ title: item.title, content: item.content, sourceKnowledgeId: item.id });
+    navigate("/sedimentation");
+  }
+
+  // T16 V2-KB-003：分块预览
+  function openChunk(item: KnowledgeItem) {
+    setChunkItem(item);
+    setChunks(splitIntoChunks(item.content));
+  }
+
+  function updateChunk(index: number, text: string) {
+    setChunks((prev) => prev.map((c, i) => (i === index ? { ...c, text } : c)));
+  }
+
+  // T16 V2-KB-003：手动调整后重新入库（合并分块 -> kb-service）
+  async function reIngestChunks(item: KnowledgeItem) {
+    setReIngestId(item.id);
+    try {
+      const text = chunks.map((c) => c.text).join("\n\n");
+      let collectionId = item.backend_collection_id;
+      if (!collectionId) {
+        const ds = await kbApi.createDataset(item.title || "studymind");
+        collectionId = ds.backend_collection_id;
+      }
+      await kbApi.uploadDocument(collectionId, item.title, text);
+      if (collectionId !== item.backend_collection_id) {
+        await knowledgeApi.update(item.id, { backend_collection_id: collectionId });
+      }
+      itemsState.reload();
+      setChunkItem(null);
+      setChunks([]);
+    } finally {
+      setReIngestId(null);
+    }
+  }
+
   return (
     <div>
       <div className="page-head">
         <h1>知识库</h1>
         <p>分类管理 · 知识条目 · 上传到知识库（FastGPT 检索后端，C3）</p>
       </div>
+
+      {cardMsg ? (
+        <Banner kind={cardMsg.startsWith("生成失败") ? "error" : "info"}>{cardMsg}</Banner>
+      ) : null}
 
       <div className="grid grid-2">
         {/* 分类树 */}
@@ -270,6 +338,15 @@ export default function KnowledgePage() {
                           {uploadingId === it.id ? "入库中…" : "上传到知识库"}
                         </Button>
                       ) : null}
+                      <Button size="sm" variant="ghost" disabled={genCardId === it.id} onClick={() => generateCardsFor(it)}>
+                        {genCardId === it.id ? "生成中…" : "生成复习卡"}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => sendToWriter(it)}>
+                        送入写作助手
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => openChunk(it)}>
+                        分块预览
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => deleteItem(it.id)}>
                         删除
                       </Button>
@@ -363,6 +440,46 @@ export default function KnowledgePage() {
           <Field label="分类名称">
             <Input value={catName} onChange={(e) => setCatName(e.target.value)} />
           </Field>
+        </Modal>
+      ) : null}
+
+      {/* 分块预览（T16 V2-KB-003，参考 FastGPT 的分块管理） */}
+      {chunkItem ? (
+        <Modal
+          title={`分块预览：${chunkItem.title}`}
+          onClose={() => { setChunkItem(null); setChunks([]); }}
+          footer={
+            <>
+              <Button
+                variant="ghost"
+                onClick={() => { setChunkItem(null); setChunks([]); }}
+              >
+                关闭
+              </Button>
+              <Button onClick={() => reIngestChunks(chunkItem)} disabled={reIngestId === chunkItem.id}>
+                {reIngestId === chunkItem.id ? "入库中…" : "重新入库（合并当前分块）"}
+              </Button>
+            </>
+          }
+        >
+          <div className="muted" style={{ marginBottom: 8 }}>
+            共 {chunks.length} 个分块（本地预览，可手动编辑后重新入库；绿阶表示长度）。
+          </div>
+          <div className="list">
+            {chunks.map((c, i) => (
+              <div key={i} className="item">
+                <div className="row-between">
+                  <span className="item-title">#{i + 1}</span>
+                  <Badge tone={c.text.length > 500 ? "amber" : "default"}>{c.text.length} 字</Badge>
+                </div>
+                <Textarea
+                  value={c.text}
+                  onChange={(e) => updateChunk(i, e.target.value)}
+                  style={{ minHeight: 72, marginTop: 6 }}
+                />
+              </div>
+            ))}
+          </div>
         </Modal>
       ) : null}
     </div>

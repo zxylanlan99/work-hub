@@ -10,5 +10,7 @@ export { agentsApi } from "./agents";
 export { kbApi } from "./kb";
 export { crawlerApi } from "./crawler";
 export { homeApi } from "./home";
+export { skillsApi } from "./skills";
+export { dbApi } from "./db";
 export { api, request, ApiError, SERVICE_BASE } from "../api";
 export type { ServiceName, RequestOptions } from "../api";

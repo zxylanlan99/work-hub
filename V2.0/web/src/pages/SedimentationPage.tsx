@@ -5,6 +5,9 @@ import React, { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { agentsApi } from "../lib/api/agents";
+import { categoriesApi } from "../lib/api/categories";
+import { knowledgeApi } from "../lib/api/knowledge";
+import { useAsyncData } from "../lib/async";
 import {
   Card,
   CardHead,
@@ -14,7 +17,11 @@ import {
   Input,
   Banner,
   Spinner,
+  Select,
+  Modal,
 } from "../components/ui";
+import { getOutputSeed, clearOutputSeed } from "../features/knowledge/outputBridge";
+import type { Category } from "../types";
 
 const DRAFT_KEY = "studymind.sedimentation.draft";
 
@@ -22,6 +29,13 @@ export default function SedimentationPage() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState<"" | "polish" | "summary">("");
   const [note, setNote] = useState<string | null>(null);
+
+  // T16 V2-OUTPUT-003：成稿 -> 知识库
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [catId, setCatId] = useState<string>("");
+  const [savingKb, setSavingKb] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
+  const catState = useAsyncData<Category[]>(() => categoriesApi.list(), []);
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -31,6 +45,15 @@ export default function SedimentationPage() {
   // 恢复本地草稿（用户自身内容，非 mock 数据）。
   useEffect(() => {
     try {
+      // 优先：来自知识库的续写种子（知识条目 -> 写作助手）
+      const seed = getOutputSeed();
+      if (seed && editor) {
+        if (seed.title) setTitle(seed.title);
+        const html = `<p>${(seed.content || "").replace(/\n{1,2}/g, "</p><p>")}</p>`;
+        editor.commands.setContent(html);
+        clearOutputSeed();
+        return;
+      }
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as { title: string; html: string };
@@ -94,12 +117,45 @@ export default function SedimentationPage() {
     }
   }
 
+  // T16 V2-OUTPUT-003：成稿 -> 知识库分类
+  async function saveToKb() {
+    if (!editor) return;
+    const text = editor.getText().trim();
+    if (!title.trim() && !text) {
+      setSeedMsg("请先填写标题或正文。");
+      return;
+    }
+    setSavingKb(true);
+    setSeedMsg(null);
+    try {
+      await knowledgeApi.create({
+        title: title.trim() || "未命名成稿",
+        content: text,
+        summary: title.trim(),
+        category_id: catId ? Number(catId) : null,
+        source_type: "writing",
+      });
+      setSaveOpen(false);
+      setSeedMsg("已存入知识库。");
+    } catch (e) {
+      setSeedMsg(`存入失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSavingKb(false);
+    }
+  }
+
   return (
     <div>
       <div className="page-head">
         <h1>知识沉淀</h1>
         <p>单一写作面（无对比模式）· 大纲成稿 / 润色完善 · 调用 general 智能体</p>
       </div>
+
+      {seedMsg ? (
+        <Banner kind={seedMsg.startsWith("存入失败") || seedMsg.startsWith("请先") ? "error" : "info"}>
+          {seedMsg}
+        </Banner>
+      ) : null}
 
       <Card>
         <CardHead
@@ -108,6 +164,9 @@ export default function SedimentationPage() {
             <div className="row">
               <Button size="sm" variant="secondary" onClick={saveDraft}>
                 保存草稿
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setSaveOpen(true)}>
+                存入知识库
               </Button>
               <Button size="sm" variant="ghost" onClick={() => exportFile("md")}>
                 导出 .md
@@ -171,6 +230,38 @@ export default function SedimentationPage() {
             本页使用本地草稿 + 导出作为兜底，确保写作不丢失。
           </p>
         </CardBody>
+      {/* 存入知识库（T16 V2-OUTPUT-003） */}
+      {saveOpen ? (
+        <Modal
+          title="存入知识库"
+          onClose={() => setSaveOpen(false)}
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setSaveOpen(false)}>
+                取消
+              </Button>
+              <Button onClick={saveToKb} disabled={savingKb}>
+                {savingKb ? "存入中…" : "存入"}
+              </Button>
+            </>
+          }
+        >
+          <Field label="存入分类">
+            <Select value={catId} onChange={(e) => setCatId(e.target.value)}>
+              <option value="">未分类</option>
+              {(catState.data ?? []).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="muted">
+            当前标题与正文将作为一条知识条目写入知识库（source_type=writing）。
+          </div>
+        </Modal>
+      ) : null}
+
       </Card>
     </div>
   );

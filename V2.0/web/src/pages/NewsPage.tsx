@@ -18,7 +18,7 @@ import {
   Spinner,
   Empty,
 } from "../components/ui";
-import type { NewsItem, RssFetchResult, RedlineCheckResult } from "../types";
+import type { NewsItem, RssFetchResult, RedlineCheckResult, RecommendWeights } from "../types";
 
 type Tab = "all" | "favorites";
 
@@ -35,6 +35,18 @@ export default function NewsPage() {
   const [checkForm, setCheckForm] = useState({ url: "", title: "", content: "" });
   const [checkResult, setCheckResult] = useState<RedlineCheckResult | null>(null);
   const [checking, setChecking] = useState(false);
+
+  // T16 V2-NEWS-003：推荐维度权重配置
+  const [weights, setWeights] = useState<RecommendWeights>({
+    relevance: 1,
+    recency: 0.8,
+    authority: 0.8,
+    completeness: 0.7,
+    dedup: 0.6,
+  });
+  const [recResult, setRecResult] = useState<NewsItem[] | null>(null);
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
 
   const list = tab === "favorites" ? favState.data ?? [] : allState.data ?? [];
   const loading = tab === "favorites" ? favState.loading : allState.loading;
@@ -76,6 +88,20 @@ export default function NewsPage() {
       setCheckResult(res);
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function runRecommend() {
+    setRecLoading(true);
+    setRecError(null);
+    try {
+      const res = await newsApi.recommend(weights);
+      setRecResult(res);
+    } catch (e) {
+      setRecError(e instanceof Error ? e.message : String(e));
+      setRecResult([]);
+    } finally {
+      setRecLoading(false);
     }
   }
 
@@ -145,6 +171,69 @@ export default function NewsPage() {
           </CardBody>
         </Card>
       ) : null}
+
+      {/* 推荐维度权重（T16 V2-NEWS-003） */}
+      <Card>
+        <CardHead title="推荐维度权重" />
+        <CardBody>
+          <div className="muted" style={{ marginBottom: 10 }}>
+            调整各维度权重后获取个性化推荐（调 POST /api/news/recommend）。
+          </div>
+          <div className="grid grid-2">
+            {(
+              [
+                ["relevance", "相关度"],
+                ["recency", "时效性"],
+                ["authority", "权威性"],
+                ["completeness", "完整度"],
+                ["dedup", "去重"],
+              ] as Array<[keyof RecommendWeights, string]>
+            ).map(([key, label]) => (
+              <Field key={key} label={`${label} · ${weights[key].toFixed(1)}`}>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={weights[key]}
+                  onChange={(e) =>
+                    setWeights((w) => ({ ...w, [key]: Number(e.target.value) }))
+                  }
+                  style={{ width: "100%" }}
+                />
+              </Field>
+            ))}
+          </div>
+          <Button onClick={runRecommend} disabled={recLoading}>
+            {recLoading ? "推荐中…" : "获取推荐"}
+          </Button>
+          {recError ? (
+            <Banner kind="error">
+              推荐失败：{recError}（后端 /api/news/recommend 待 T17 实现）
+            </Banner>
+          ) : null}
+          {recResult && recResult.length > 0 ? (
+            <div className="list" style={{ marginTop: 12 }}>
+              {recResult.map((it) => (
+                <div key={it.id} className="item">
+                  <div className="row-between">
+                    <a className="item-title" href={it.url} target="_blank" rel="noreferrer">
+                      {it.title}
+                    </a>
+                  </div>
+                  <div className="item-meta">
+                    <span>{it.source}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recResult ? (
+            <div className="muted" style={{ marginTop: 12 }}>
+              无推荐结果。
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
 
       {/* 红线自检 */}
       <Card>

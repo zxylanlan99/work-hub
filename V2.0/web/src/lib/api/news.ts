@@ -1,6 +1,6 @@
 // 资讯（data-service /api/news，保留清单 #6 浏览/已读 / #7 收藏 / V2-NEWS-004）
 import { request } from "../api";
-import type { NewsItem } from "../../types";
+import type { NewsItem, RecommendWeights } from "../../types";
 
 export const newsApi = {
   list: (params?: { favorited?: boolean }) =>
@@ -16,5 +16,12 @@ export const newsApi = {
   toggleFavorite: (id: number) =>
     request<{ is_favorited: boolean }>("data", `/api/news/${id}/favorite`, {
       method: "POST",
+    }),
+  /** 推荐维度权重（POST /api/news/recommend，T16 V2-NEWS-003）。
+   *  weights: 相关度/时效性/权威性/完整度/去重。后端 T17 实现该端点；前端按真实接口调用（C1，零 mock）。 */
+  recommend: (weights?: RecommendWeights) =>
+    request<NewsItem[]>("data", "/api/news/recommend", {
+      method: "POST",
+      body: weights ? { weights } : {},
     }),
 };

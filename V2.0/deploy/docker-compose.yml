@@ -1,0 +1,152 @@
+# StudyMind V2.0 — local single-host orchestration (docker-compose)
+#
+# Default `docker compose up` starts ONLY the baseline stack:
+#   postgres, qdrant, data-service, web
+# The backend AI services (agent / kb / crawler) are gated behind the
+# `backend` profile and start with:
+#   docker compose --profile backend up
+#
+# Paths are relative to this file (deploy/), so build contexts point at
+# ../services/<name> and ../web.
+
+services:
+  # ------------------------------------------------------------------ #
+  # Infrastructure
+  # ------------------------------------------------------------------ #
+  postgres:
+    image: postgres:16-alpine
+    container_name: studymind-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-studymind}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: studymind-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------ #
+  # data-service (FastAPI + Postgres) — system record source (C1)
+  # ------------------------------------------------------------------ #
+  data-service:
+    build:
+      context: ../services/data-service
+    container_name: studymind-data-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SQLALCHEMY_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-studymind}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      DATA_SERVICE_URL: ${DATA_SERVICE_URL:-http://localhost:8000}
+      AGENT_SERVICE_URL: ${AGENT_SERVICE_URL:-http://localhost:8001}
+      KB_SERVICE_URL: ${KB_SERVICE_URL:-http://localhost:8002}
+      CRAWLER_SERVICE_URL: ${CRAWLER_SERVICE_URL:-http://localhost:8003}
+      WEB_ORIGIN: http://localhost:5173
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------ #
+  # web (React + Vite, nginx static) — placeholder shell for Wave 1
+  # ------------------------------------------------------------------ #
+  web:
+    build:
+      context: ../web
+    container_name: studymind-web
+    restart: unless-stopped
+    depends_on:
+      - data-service
+    ports:
+      - "${WEB_PORT:-5173}:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------------------------------------------------------------------ #
+  # Backend AI services — NOT implemented in Wave 1.
+  # Gated behind profile "backend": `docker compose --profile backend up`
+  # Their build contexts exist (with placeholder Dockerfiles) so the
+  # compose file stays valid and builds cleanly.
+  # ------------------------------------------------------------------ #
+  agent-service:
+    build:
+      context: ../services/agent-service
+    container_name: studymind-agent-service
+    restart: unless-stopped
+    profiles: ["backend"]
+    depends_on:
+      - data-service
+    environment:
+      DATA_SERVICE_URL: ${DATA_SERVICE_URL:-http://localhost:8000}
+      KB_SERVICE_URL: ${KB_SERVICE_URL:-http://localhost:8002}
+      CRAWLER_SERVICE_URL: ${CRAWLER_SERVICE_URL:-http://localhost:8003}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL_NAME: ${LLM_MODEL_NAME:-}
+    ports:
+      - "8001:8001"
+
+  kb-service:
+    build:
+      context: ../services/kb-service
+    container_name: studymind-kb-service
+    restart: unless-stopped
+    profiles: ["backend"]
+    depends_on:
+      - data-service
+    environment:
+      DATA_SERVICE_URL: ${DATA_SERVICE_URL:-http://localhost:8000}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+    ports:
+      - "8002:8002"
+
+  crawler-service:
+    build:
+      context: ../services/crawler
+    container_name: studymind-crawler-service
+    restart: unless-stopped
+    profiles: ["backend"]
+    depends_on:
+      - data-service
+    environment:
+      DATA_SERVICE_URL: ${DATA_SERVICE_URL:-http://localhost:8000}
+      KB_SERVICE_URL: ${KB_SERVICE_URL:-http://localhost:8002}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+    ports:
+      - "8003:8003"
+
+volumes:
+  pgdata:
+  qdrant_data:

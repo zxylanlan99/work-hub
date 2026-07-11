@@ -162,6 +162,10 @@ export interface NewsItem {
   score?: number; // 0..1 加权总分（维度权重计算，红线不参与）
   passed?: boolean; // 服务端红线再校验是否通过（R2/R3/R4）
   dropReason?: string[]; // 触发红线的原因列表（空 = 通过）
+  // T08 / V2-NEWS-001/002 —— 入库管线回写字段（可选，旧数据无；兼容既有 undefined）。
+  status?: string | null; // pending | imported | failed | rejected | error
+  backend_collection_id?: string | null; // kb-service 回写的 collectionId
+  chunk_count?: number | null; // kb-service 切片数
 }
 
 /** crawler /api/crawler/rss/fetch 返回结构（前端假设 rejected 形态）。 */
@@ -181,8 +185,53 @@ export interface RedlineCheckResult {
   reasons: string[];
 }
 
-export interface CrawlerSearchResult {
-  data: Array<{ title: string; url: string; snippet: string }>;
+/** 单条联网搜索结果（crawler /api/crawler/search 的 data 元素）。 */
+export interface CrawlerSearchResultItem {
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+/**
+ * crawler /api/crawler/search 返回结构。
+ * request() 已解包统一信封 {code,data,message}，因此 data 即结果数组本身
+ * （后端返回裸数组，与同服务 /rss/fetch、/redline/check 的 data 字段同构）。
+ * 旧类型曾多包一层 `data`，与后端真实响应不一致，已修正。
+ */
+export type CrawlerSearchResult = CrawlerSearchResultItem[];
+
+// --------------------------------------------------------------------------- //
+// T08 资讯入库（crawler /api/crawler/news/ingest，V2-NEWS-001/002）
+// --------------------------------------------------------------------------- //
+/** 入库请求体单条（对应后端 NewsIngestItem：title/url 必填，其余可选）。 */
+export interface CrawlerIngestItem {
+  title: string;
+  url: string;
+  source?: string;
+  content?: string;
+  summary?: string;
+  published_at?: string | null;
+}
+
+/** 入库逐条结果（对应后端 ingest_news 的 results 元素）。 */
+export interface CrawlerIngestResultItem {
+  id?: number;
+  title: string;
+  url: string;
+  status: "imported" | "failed" | "rejected" | "error";
+  reasons?: string[];
+  collectionId?: string;
+  chunkCount?: number;
+}
+
+/** 入库汇总（对应后端 ingest_news 返回的 saga summary，request 解包后即为该结构）。 */
+export interface CrawlerIngestResult {
+  total: number;
+  imported: number;
+  failed: number;
+  rejected: number;
+  error: number;
+  results: CrawlerIngestResultItem[];
 }
 
 // --------------------------------------------------------------------------- //

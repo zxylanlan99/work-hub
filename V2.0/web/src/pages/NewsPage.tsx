@@ -18,7 +18,13 @@ import {
   Spinner,
   Empty,
 } from "../components/ui";
-import type { NewsItem, RssFetchResult, RedlineCheckResult, RecommendWeights } from "../types";
+import type {
+  NewsItem,
+  RssFetchResult,
+  RedlineCheckResult,
+  RecommendWeights,
+  CrawlerIngestResult,
+} from "../types";
 
 type Tab = "all" | "favorites";
 
@@ -30,6 +36,11 @@ export default function NewsPage() {
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<RssFetchResult | null>(null);
   const [fetchErr, setFetchErr] = useState<string | null>(null);
+
+  // T08 入库（V2-NEWS-001/002）：把本次通过红线的资讯批量导入知识库
+  const [ingesting, setIngesting] = useState(false);
+  const [ingestResult, setIngestResult] = useState<CrawlerIngestResult | null>(null);
+  const [ingestErr, setIngestErr] = useState<string | null>(null);
 
   // 红线自检
   const [checkForm, setCheckForm] = useState({ url: "", title: "", content: "" });
@@ -77,6 +88,29 @@ export default function NewsPage() {
       setFetchErr(e instanceof Error ? e.message : String(e));
     } finally {
       setFetching(false);
+    }
+  }
+
+  async function runIngest() {
+    if (!fetchResult || fetchResult.passed.length === 0) return;
+    setIngesting(true);
+    setIngestErr(null);
+    try {
+      const items = fetchResult.passed.map((it) => ({
+        title: it.title,
+        url: it.url,
+        source: it.source,
+        content: it.content,
+        summary: it.summary,
+        published_at: it.published_at ?? null,
+      }));
+      const res = await crawlerApi.ingestNews(items);
+      setIngestResult(res);
+      allState.reload();
+    } catch (e) {
+      setIngestErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setIngesting(false);
     }
   }
 
@@ -137,6 +171,47 @@ export default function NewsPage() {
               通过 <b className="text-bamboo">{fetchResult.passed.length}</b> 条 · 拦截{" "}
               <b className="text-cinnabar">{fetchResult.rejected.length}</b> 条（仅展示通过项，拦截项标红原因，遵守 C2）
             </div>
+            <div style={{ marginBottom: 12 }}>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={runIngest}
+                disabled={ingesting || fetchResult.passed.length === 0}
+              >
+                {ingesting ? "导入中…" : "导入知识库"}
+              </Button>
+              {fetchResult.passed.length === 0 ? (
+                <span className="muted" style={{ marginLeft: 8 }}>无通过项可导入</span>
+              ) : null}
+            </div>
+            {ingestErr ? (
+              <Banner kind="error">导入失败：{ingestErr}</Banner>
+            ) : null}
+            {ingestResult ? (
+              <Banner kind={ingestResult.imported > 0 ? "info" : "error"}>
+                导入完成：成功 <b>{ingestResult.imported}</b> · 失败{" "}
+                <b>{ingestResult.failed}</b> · 拦截 <b>{ingestResult.rejected}</b> · 错误{" "}
+                <b>{ingestResult.error}</b> / 共 {ingestResult.total} 条
+              </Banner>
+            ) : null}
+            {ingestResult && ingestResult.results.some((r) => r.status !== "imported") ? (
+              <div className="list" style={{ marginTop: 8 }}>
+                {ingestResult.results
+                  .filter((r) => r.status !== "imported")
+                  .map((r, i) => (
+                    <div
+                      key={i}
+                      className="item"
+                      style={{ borderColor: "var(--cinnabar-soft)", borderStyle: "dashed" }}
+                    >
+                      <div className="item-title text-cinnabar">{r.title}</div>
+                      <div className="item-meta text-cinnabar">
+                        {r.status}：{(r.reasons ?? []).join("；") || "未知原因"}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            ) : null}
             {fetchResult.passed.length > 0 ? (
               <div className="list">
                 {fetchResult.passed.map((it, i) => (
@@ -208,9 +283,7 @@ export default function NewsPage() {
             {recLoading ? "推荐中…" : "获取推荐"}
           </Button>
           {recError ? (
-            <Banner kind="error">
-              推荐失败：{recError}（后端 /api/news/recommend 待 T17 实现）
-            </Banner>
+            <Banner kind="error">推荐失败：{recError}</Banner>
           ) : null}
           {recResult && recResult.length > 0 ? (
             <div className="list" style={{ marginTop: 12 }}>

@@ -4,6 +4,8 @@ import type {
   RssFetchResult,
   RedlineCheckResult,
   CrawlerSearchResult,
+  CrawlerIngestItem,
+  CrawlerIngestResult,
 } from "../../types";
 
 export const crawlerApi = {
@@ -24,5 +26,11 @@ export const crawlerApi = {
     request<RedlineCheckResult>("crawler", "/api/crawler/redline/check", {
       method: "GET",
       params: body,
+    }),
+  /** T08 入库：把通过红线的资讯批量导入知识库（saga → kb-service）。 */
+  ingestNews: (items: CrawlerIngestItem[]) =>
+    request<CrawlerIngestResult>("crawler", "/api/crawler/news/ingest", {
+      method: "POST",
+      body: { items },
     }),
 };

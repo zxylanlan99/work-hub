@@ -119,6 +119,20 @@ describe("服务路由（base 端口）", () => {
     expect(url).toContain("/api/crawler/search");
   });
 
+  it("crawlerApi.ingestNews POST /api/crawler/news/ingest 且请求体含 items（T08 契约）", async () => {
+    await crawlerApi.ingestNews([
+      { title: "量子计算进展", url: "https://example.com/a", content: "正文…" },
+    ]);
+    const [url, opts] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("localhost:8003");
+    expect(url).toContain("/api/crawler/news/ingest");
+    expect(opts.method).toBe("POST");
+    const body = JSON.parse((opts.body as string) ?? "{}");
+    expect(body).toEqual({
+      items: [{ title: "量子计算进展", url: "https://example.com/a", content: "正文…" }],
+    });
+  });
+
   it("SERVICE_BASE 默认端口符合架构约定 (8000/8001/8002/8003)", () => {
     expect(SERVICE_BASE.data).toBe("http://localhost:8000");
     expect(SERVICE_BASE.agent).toBe("http://localhost:8001");
